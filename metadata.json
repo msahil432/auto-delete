@@ -1,0 +1,6 @@
+{
+  "name": "Auto Delete",
+  "description": "An app that automatically deletes or trashes files in specific folders after a configured duration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
