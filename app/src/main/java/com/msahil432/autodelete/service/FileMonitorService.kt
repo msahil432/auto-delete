@@ -24,12 +24,8 @@ class FileMonitorService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(1, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else {
-            startForeground(1, createNotification())
-        }
-        
+        startForeground(1, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+
         coroutineScope.launch {
             val db = (application as AutoDeleteApp).database
             db.appDao().getEnabledFolderConfigs().collectLatest { configs ->
@@ -72,17 +68,15 @@ class FileMonitorService : Service() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                "file_monitor_channel",
-                "File Monitor Service",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Monitors folders for new files"
-            }
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            "file_monitor_channel",
+            "File Monitor Service",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Monitors folders for new files"
         }
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(channel)
     }
 
     private fun createNotification(): Notification {
