@@ -16,7 +16,7 @@ interface AppDao {
     suspend fun insertFolder(folder: Folder): Long
 
     @Delete
-    suspend fun deleteFolder(folder: Folder)
+    suspend fun deleteFolder(folder: Folder): Unit
 
     @Query("SELECT * FROM time_usages WHERE folderId = :folderId ORDER BY usageCount DESC LIMIT 4")
     suspend fun getTopTimeUsages(folderId: Long): List<TimeUsage>
@@ -25,10 +25,10 @@ interface AppDao {
     suspend fun getTimeUsage(folderId: Long, duration: Long): TimeUsage?
 
     @Insert
-    suspend fun insertTimeUsage(timeUsage: TimeUsage)
+    suspend fun insertTimeUsage(timeUsage: TimeUsage): Unit
 
     @Update
-    suspend fun updateTimeUsage(timeUsage: TimeUsage)
+    suspend fun updateTimeUsage(timeUsage: TimeUsage): Unit
 
     @Insert
     suspend fun insertScheduledDeletion(scheduledDeletion: ScheduledDeletion): Long
@@ -37,7 +37,7 @@ interface AppDao {
     suspend fun getScheduledDeletion(id: Long): ScheduledDeletion?
 
     @Query("DELETE FROM scheduled_deletions WHERE id = :id")
-    suspend fun removeScheduledDeletion(id: Long)
+    suspend fun removeScheduledDeletion(id: Long): Unit
 
     @Query("SELECT * FROM scheduled_deletions")
     suspend fun getAllScheduledDeletions(): List<ScheduledDeletion>
@@ -46,7 +46,7 @@ interface AppDao {
     suspend fun insertHistory(history: History): Long
 
     @Update
-    suspend fun updateHistory(history: History)
+    suspend fun updateHistory(history: History): Unit
     
     @Query("SELECT * FROM history ORDER BY createdTime DESC")
     fun getAllHistory(): Flow<List<History>>
