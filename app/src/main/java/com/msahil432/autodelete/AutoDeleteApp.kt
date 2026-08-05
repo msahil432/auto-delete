@@ -3,6 +3,8 @@ package com.msahil432.autodelete
 import android.app.Application
 import androidx.room.Room
 import com.msahil432.autodelete.data.AppDatabase
+import com.msahil432.autodelete.data.MIGRATION_1_2
+import com.msahil432.autodelete.data.MIGRATION_2_3
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -20,6 +22,8 @@ class AutoDeleteApp : Application() {
             this,
             AppDatabase::class.java,
             "auto_delete_db"
-        ).build()
+        )
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .build()
     }
 }

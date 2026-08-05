@@ -11,10 +11,11 @@ data class FolderConfig(
     val isDefaultScreenshotsFolder: Boolean,
     val enabled: Boolean,
     val deletionMode: DeletionMode,
-    val defaultActionOnIgnore: String, // TimePeriod or KEEP
-    val candidateTimePeriods: String, // comma separated or json
-    val recentlyUsedPeriods: String, // comma separated or json
-    val fileTypeExcludeList: String?,
+    val defaultActionOnIgnore: String, // TimePeriod label or KEEP
+    val candidateTimePeriods: String,  // JSON array of TimePeriodPreset; legacy CSV accepted
+    val recentlyUsedPeriods: String,   // JSON array of TimePeriodPreset labels; legacy CSV accepted
+    val fileTypeExcludeList: String?,  // JSON array of FilterRule — always skip matching files
+    val fileTypeIncludeList: String?,  // JSON array of FilterRule — only watch matching files (null/empty = watch all)
     val createdAt: Long
 )
 

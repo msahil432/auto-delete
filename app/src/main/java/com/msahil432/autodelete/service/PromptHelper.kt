@@ -32,8 +32,10 @@ import com.msahil432.autodelete.data.PendingAction
 import com.msahil432.autodelete.data.ActionStatus
 import com.msahil432.autodelete.data.LogAction
 import com.msahil432.autodelete.data.ActivityLogEntry
+import com.msahil432.autodelete.data.TimePeriodPreset
+import com.msahil432.autodelete.data.decodeTimePeriodPresets
+import com.msahil432.autodelete.data.encodeTimePeriodPresets
 import kotlinx.coroutines.*
-import java.util.concurrent.TimeUnit
 
 object PromptHelper {
     fun showPrompt(context: Context, config: FolderConfig, filePath: String) {
@@ -58,8 +60,8 @@ object PromptHelper {
                         PromptContent(
                             config = config,
                             filePath = filePath,
-                            onAction = { timePeriod ->
-                                handleAction(context, config, filePath, timePeriod)
+                            onAction = { preset ->
+                                handleAction(context, config, filePath, preset)
                                 windowManager.removeViewImmediate(this@apply)
                             },
                             onKeep = {
@@ -95,13 +97,12 @@ object PromptHelper {
         lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
 
         windowManager.addView(composeView, layoutParams)
-        
+
         // Auto dismiss after some time (e.g., 10 seconds)
         CoroutineScope(Dispatchers.Main).launch {
             delay(10000)
             if (composeView.parent != null) {
                 windowManager.removeViewImmediate(composeView)
-                // Handle default action on ignore
                 handleIgnore(context, config, filePath)
             }
         }
@@ -109,7 +110,7 @@ object PromptHelper {
 
     private fun showNotificationPrompt(context: Context, config: FolderConfig, filePath: String) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        
+
         // Ensure channel exists
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = android.app.NotificationChannel(
@@ -118,23 +119,26 @@ object PromptHelper {
             notificationManager.createNotificationChannel(channel)
         }
 
-        val periods = config.recentlyUsedPeriods.split(",").filter { it.isNotBlank() }
-        val candidatePeriods = if (periods.isNotEmpty()) periods else config.candidateTimePeriods.split(",").filter { it.isNotBlank() }
-        
-        val actions = candidatePeriods.take(3).map { period ->
+        // Decode presets from JSON — fall back to candidateTimePeriods if recentlyUsed is empty
+        val recentlyUsed = decodeTimePeriodPresets(config.recentlyUsedPeriods)
+        val candidates   = decodeTimePeriodPresets(config.candidateTimePeriods)
+        val displayPresets = if (recentlyUsed.isNotEmpty()) recentlyUsed else candidates
+
+        val actions = displayPresets.take(3).map { preset ->
             val actionIntent = Intent(context, ActionReceiver::class.java).apply {
                 action = "com.msahil432.autodelete.ACTION_SCHEDULE"
                 putExtra("folderId", config.id)
                 putExtra("filePath", filePath)
-                putExtra("timePeriod", period)
+                putExtra("timePeriodMillis", preset.millis)
+                putExtra("timePeriodLabel", preset.label)
             }
             val pendingIntent = PendingIntent.getBroadcast(
-                context, 
-                filePath.hashCode() + period.hashCode(), 
-                actionIntent, 
+                context,
+                filePath.hashCode() + preset.millis.hashCode(),
+                actionIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            NotificationCompat.Action(0, "In $period", pendingIntent)
+            NotificationCompat.Action(0, "In ${preset.label}", pendingIntent)
         }
 
         val builder = NotificationCompat.Builder(context, "prompts")
@@ -166,33 +170,30 @@ object PromptHelper {
         if (config.defaultActionOnIgnore == "KEEP") {
             handleKeep(context, config, filePath)
         } else {
-            handleAction(context, config, filePath, config.defaultActionOnIgnore)
+            // defaultActionOnIgnore stores a label — find the matching preset by label
+            val candidates = decodeTimePeriodPresets(config.candidateTimePeriods)
+            val preset = candidates.firstOrNull { it.label.equals(config.defaultActionOnIgnore, ignoreCase = true) }
+            if (preset != null) {
+                handleAction(context, config, filePath, preset)
+            } else {
+                handleKeep(context, config, filePath)
+            }
         }
     }
 
-    private fun handleAction(context: Context, config: FolderConfig, filePath: String, timePeriod: String) {
-        if (timePeriod.equals("never", ignoreCase = true)) {
-            handleKeep(context, config, filePath)
-            return
-        }
-        
-        val durationMillis = parseTimePeriod(timePeriod)
-        
+    private fun handleAction(context: Context, config: FolderConfig, filePath: String, preset: TimePeriodPreset) {
         val db = (context.applicationContext as AutoDeleteApp).database
         CoroutineScope(Dispatchers.IO).launch {
             db.appDao().insertPendingAction(
                 PendingAction(
                     folderId = config.id,
                     fileUri = filePath,
-                    scheduledAt = System.currentTimeMillis() + durationMillis,
+                    scheduledAt = System.currentTimeMillis() + preset.millis,
                     status = ActionStatus.PENDING
                 )
             )
-            // Schedule worker here
-            FileActionWorker.schedule(context, config.id, filePath, durationMillis)
-            
-            // Update recently used periods
-            updateRecentlyUsed(db, config, timePeriod)
+            FileActionWorker.schedule(context, config.id, filePath, preset.millis)
+            updateRecentlyUsed(db, config, preset)
         }
     }
 
@@ -210,28 +211,18 @@ object PromptHelper {
             )
         }
     }
-    
-    private suspend fun updateRecentlyUsed(db: com.msahil432.autodelete.data.AppDatabase, config: FolderConfig, timePeriod: String) {
-        val currentList = config.recentlyUsedPeriods.split(",").filter { it.isNotBlank() }.toMutableList()
-        currentList.remove(timePeriod)
-        currentList.add(0, timePeriod)
-        val newList = currentList.take(4).joinToString(",")
-        db.appDao().updateFolderConfig(config.copy(recentlyUsedPeriods = newList))
-    }
 
-    private fun parseTimePeriod(period: String): Long {
-        // Handle "30 sec", "1 hour", "1 week", "1 month"
-        val lower = period.lowercase().trim()
-        val num = lower.filter { it.isDigit() }.toLongOrNull() ?: 1L
-        return when {
-            lower.contains("sec") -> num * 1000L
-            lower.contains("min") -> num * 60_000L
-            lower.contains("h") -> num * 3600_000L
-            lower.contains("d") -> num * 86_400_000L
-            lower.contains("w") -> num * 604_800_000L
-            lower.contains("mo") -> num * 2_592_000_000L
-            else -> 60_000L
-        }
+    private suspend fun updateRecentlyUsed(
+        db: com.msahil432.autodelete.data.AppDatabase,
+        config: FolderConfig,
+        used: TimePeriodPreset
+    ) {
+        // Decode existing recently-used list, move `used` to the front, keep at most 4
+        val current = decodeTimePeriodPresets(config.recentlyUsedPeriods).toMutableList()
+        current.removeAll { it.millis == used.millis }
+        current.add(0, used)
+        val trimmed = current.take(4)
+        db.appDao().updateFolderConfig(config.copy(recentlyUsedPeriods = encodeTimePeriodPresets(trimmed)))
     }
 }
 
@@ -239,26 +230,27 @@ object PromptHelper {
 fun PromptContent(
     config: FolderConfig,
     filePath: String,
-    onAction: (String) -> Unit,
+    onAction: (TimePeriodPreset) -> Unit,
     onKeep: () -> Unit
 ) {
-    val periods = config.recentlyUsedPeriods.split(",").filter { it.isNotBlank() }
-    val candidatePeriods = if (periods.isNotEmpty()) periods else config.candidateTimePeriods.split(",").filter { it.isNotBlank() }
-    val topPeriods = candidatePeriods.take(4)
+    // Decode from JSON — recentlyUsed takes priority over candidatePeriods
+    val recentlyUsed = decodeTimePeriodPresets(config.recentlyUsedPeriods)
+    val candidates   = decodeTimePeriodPresets(config.candidateTimePeriods)
+    val topPresets   = (if (recentlyUsed.isNotEmpty()) recentlyUsed else candidates).take(4)
 
     Column(modifier = Modifier.padding(16.dp)) {
         Text(text = "New File Detected", style = MaterialTheme.typography.titleMedium)
         Text(text = filePath.substringAfterLast("/"), style = MaterialTheme.typography.bodyMedium)
         Spacer(modifier = Modifier.height(16.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            topPeriods.take(2).forEach { period ->
-                Button(onClick = { onAction(period) }) { Text(period) }
+            topPresets.take(2).forEach { preset ->
+                Button(onClick = { onAction(preset) }) { Text("In ${preset.label}") }
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            topPeriods.drop(2).take(2).forEach { period ->
-                Button(onClick = { onAction(period) }) { Text(period) }
+            topPresets.drop(2).take(2).forEach { preset ->
+                Button(onClick = { onAction(preset) }) { Text("In ${preset.label}") }
             }
         }
         Spacer(modifier = Modifier.height(8.dp))

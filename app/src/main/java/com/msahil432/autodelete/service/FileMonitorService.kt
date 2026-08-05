@@ -14,6 +14,8 @@ import android.content.pm.ServiceInfo
 import androidx.core.app.NotificationCompat
 import com.msahil432.autodelete.AutoDeleteApp
 import com.msahil432.autodelete.data.FolderConfig
+import com.msahil432.autodelete.data.FilterRule
+import com.msahil432.autodelete.data.decodeFilterRules
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
 
@@ -94,13 +96,31 @@ class RecursiveFileObserver(
     private val config: FolderConfig,
     private val onFileCreated: (String) -> Unit
 ) : FileObserver(rootPath, CREATE or MOVED_TO) {
+
+    // Decode filter rules once at construction time for efficiency
+    private val excludeRules: List<FilterRule> = decodeFilterRules(config.fileTypeExcludeList)
+    private val includeRules: List<FilterRule> = decodeFilterRules(config.fileTypeIncludeList)
+
     override fun onEvent(event: Int, path: String?) {
         if (path == null) return
         val fullPath = "$rootPath/$path"
-        
-        // Ensure it's not a directory creation and we handle the specific events
+
         if (event and CREATE != 0 || event and MOVED_TO != 0) {
-             onFileCreated(fullPath)
+            val fileName = path.substringAfterLast('/')
+
+            // 1. Inclusion list check — if non-empty, file MUST match at least one rule
+            if (includeRules.isNotEmpty() && includeRules.none { it.matches(fileName) }) {
+                Log.d("FileMonitorService", "Skipping (not in include list): $fileName")
+                return
+            }
+
+            // 2. Exclusion list check — if file matches any exclusion rule, skip it
+            if (excludeRules.any { it.matches(fileName) }) {
+                Log.d("FileMonitorService", "Skipping (excluded): $fileName")
+                return
+            }
+
+            onFileCreated(fullPath)
         }
     }
 }

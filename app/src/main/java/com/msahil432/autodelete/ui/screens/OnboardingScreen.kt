@@ -20,6 +20,10 @@ import com.msahil432.autodelete.data.AppDao
 import com.msahil432.autodelete.data.FolderConfig
 import com.msahil432.autodelete.data.DeletionMode
 import com.msahil432.autodelete.data.SettingsRepository
+import com.msahil432.autodelete.data.DEFAULT_EXCLUSION_RULES
+import com.msahil432.autodelete.data.DEFAULT_TIME_PRESETS
+import com.msahil432.autodelete.data.encodeFilterRules
+import com.msahil432.autodelete.data.encodeTimePeriodPresets
 import kotlinx.coroutines.launch
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -49,17 +53,18 @@ fun OnboardingScreen(
                 2 -> NotificationPermissionStep { currentStep = 3 }
                 3 -> AllFilesAccessStep(context) { currentStep = 4 }
                 4 -> OverlayPermissionStep(context) { currentStep = 5 }
-                5 -> BatteryExemptionStep(context) { currentStep = 6 }
-                6 -> DefaultConfigStep(
+                5 -> ScopedStorageStep(context) { currentStep = 6 }
+                6 -> BatteryExemptionStep(context) { currentStep = 7 }
+                7 -> DefaultConfigStep(
                     onNext = { mode, keepAction ->
                         coroutineScope.launch {
-                            val defaultPool = "30 sec,1 hour,1 week,1 month,never"
+                            val defaultPresets = encodeTimePeriodPresets(DEFAULT_TIME_PRESETS)
                             settingsRepository.setGlobalDeletionMode(mode.name)
-                            settingsRepository.setGlobalDefaultPool(defaultPool)
-                            
+                            settingsRepository.setGlobalDefaultPool(defaultPresets)
+
                             val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
                             val screenshotsDir = "${picturesDir.absolutePath}/Screenshots"
-                            
+
                             appDao.insertFolderConfig(
                                 FolderConfig(
                                     path = screenshotsDir,
@@ -68,9 +73,10 @@ fun OnboardingScreen(
                                     enabled = true,
                                     deletionMode = mode,
                                     defaultActionOnIgnore = keepAction,
-                                    candidateTimePeriods = defaultPool,
-                                    recentlyUsedPeriods = "30 sec,1 hour,1 week,1 month",
-                                    fileTypeExcludeList = null,
+                                    candidateTimePeriods = defaultPresets,
+                                    recentlyUsedPeriods = defaultPresets,
+                                    fileTypeExcludeList = encodeFilterRules(DEFAULT_EXCLUSION_RULES),
+                                    fileTypeIncludeList = null,
                                     createdAt = System.currentTimeMillis()
                                 )
                             )
@@ -190,6 +196,35 @@ fun OverlayPermissionStep(context: Context, onNext: () -> Unit) {
     
     if (!isGranted) {
         TextButton(onClick = onNext) { Text("Skip (Use notifications)") }
+    }
+}
+
+@Composable
+fun ScopedStorageStep(context: Context, onNext: () -> Unit) {
+    Text("Folder Access (Optional)", style = MaterialTheme.typography.headlineMedium)
+    Spacer(modifier = Modifier.height(16.dp))
+    Text(
+        "To monitor custom folders (beyond Screenshots), grant folder access via the system file browser. " +
+        "This lets you pick any folder and gives the app persistent access to it."
+    )
+    Spacer(modifier = Modifier.height(32.dp))
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            context.contentResolver.takePersistableUriPermission(uri, flags)
+        }
+        // Always continue regardless of whether a folder was picked here — they can do it later
+        onNext()
+    }
+
+    Button(onClick = { launcher.launch(null) }) {
+        Text("Grant Folder Access")
+    }
+    TextButton(onClick = onNext) {
+        Text("Skip (You can grant this per-folder later)")
     }
 }
 

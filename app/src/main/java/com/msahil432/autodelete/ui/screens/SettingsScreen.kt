@@ -15,6 +15,10 @@ import androidx.compose.ui.unit.dp
 import com.msahil432.autodelete.data.AppDao
 import com.msahil432.autodelete.data.FolderConfig
 import com.msahil432.autodelete.data.SettingsRepository
+import com.msahil432.autodelete.data.DEFAULT_EXCLUSION_RULES
+import com.msahil432.autodelete.data.DEFAULT_TIME_PRESETS
+import com.msahil432.autodelete.data.encodeFilterRules
+import com.msahil432.autodelete.data.encodeTimePeriodPresets
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
@@ -46,18 +50,19 @@ fun SettingsScreen(
                 // To do: Add Folder Picker
                 coroutineScope.launch {
                     val defaultMode = settingsRepository.globalDeletionMode.firstOrNull() ?: "TRASH"
-                    val defaultPool = settingsRepository.globalDefaultPool.firstOrNull() ?: "30 sec,1 hour,1 week,1 month,never"
+                    val defaultPresets = encodeTimePeriodPresets(DEFAULT_TIME_PRESETS)
                     val newId = appDao.insertFolderConfig(
                         FolderConfig(
-                            path = "/storage/emulated/0/Download", // Mock for now, would be picked
-                            displayName = "Downloads",
+                            path = "/storage/emulated/0/Download", // Placeholder — user can change in detail screen
+                            displayName = "New Folder",
                             isDefaultScreenshotsFolder = false,
                             enabled = true,
                             deletionMode = com.msahil432.autodelete.data.DeletionMode.valueOf(defaultMode),
                             defaultActionOnIgnore = "KEEP",
-                            candidateTimePeriods = defaultPool,
-                            recentlyUsedPeriods = "30 sec,1 hour,1 week,1 month",
-                            fileTypeExcludeList = null,
+                            candidateTimePeriods = defaultPresets,
+                            recentlyUsedPeriods = defaultPresets,
+                            fileTypeExcludeList = encodeFilterRules(DEFAULT_EXCLUSION_RULES),
+                            fileTypeIncludeList = null,
                             createdAt = System.currentTimeMillis()
                         )
                     )
