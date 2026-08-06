@@ -106,6 +106,17 @@ fun FolderDetailScreen(folderId: Long, appDao: AppDao, onBack: () -> Unit) {
 
                 SectionDivider()
 
+                // ── 2b. Move Rule ──
+                MoveRuleSection(
+                    config = currentConfig,
+                    onConfigUpdated = { updated ->
+                        config = updated
+                        coroutineScope.launch { appDao.updateFolderConfig(updated) }
+                    }
+                )
+
+                SectionDivider()
+
                 // ── 3. Time Period Presets ──
                 TimePeriodPresetsSection(
                     config = currentConfig,
@@ -1025,4 +1036,275 @@ private fun SectionContainer(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun SectionDivider() {
     Spacer(Modifier.height(4.dp))
+}
+
+// ─── Section: Move Rule ───────────────────────────────────────────────────────
+
+@Composable
+fun MoveRuleSection(
+    config: FolderConfig,
+    onConfigUpdated: (FolderConfig) -> Unit
+) {
+    val context = LocalContext.current
+    var editedDestPath by remember(config.moveDestinationPath) {
+        mutableStateOf(config.moveDestinationPath ?: "")
+    }
+    var isEditingDest by remember { mutableStateOf(false) }
+
+    // SAF folder picker for destination
+    val destPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            context.contentResolver.takePersistableUriPermission(uri, flags)
+
+            val uriPath = uri.path ?: uri.toString()
+            val friendlyPath = uriPath
+                .removePrefix("/tree/primary:")
+                .removePrefix("/tree/")
+                .let { if (!it.startsWith("/")) "/storage/emulated/0/$it" else it }
+
+            editedDestPath = friendlyPath
+            onConfigUpdated(config.copy(moveDestinationPath = friendlyPath))
+        }
+    }
+
+    SectionContainer {
+        // Header
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Default.DriveFileMove,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                "Move Rule",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // ── Intent callout ──────────────────────────────────────────────────────
+        Row(
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f))
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+        ) {
+            Icon(
+                Icons.Default.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp).padding(top = 2.dp)
+            )
+            Text(
+                "Google Photos doesn’t allow third-party apps to reliably delete photos. " +
+                "Instead, you can move files to a separate backup folder that Google Photos syncs. " +
+                "Once synced, you can manage deletion directly from the Google Photos app.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                lineHeight = 18.sp
+            )
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        // ── Enable toggle ────────────────────────────────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Enable Move Rule",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    "Replace deletion with a move to the backup folder",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = config.moveRuleEnabled,
+                onCheckedChange = { enabled ->
+                    onConfigUpdated(config.copy(moveRuleEnabled = enabled))
+                }
+            )
+        }
+
+        // ── Expanded settings (visible only when enabled) ────────────────────────
+        AnimatedVisibility(
+            visible = config.moveRuleEnabled,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                Spacer(Modifier.height(16.dp))
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    thickness = 0.5.dp
+                )
+                Spacer(Modifier.height(16.dp))
+
+                // ── Destination folder picker ───────────────────────────────────
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.FolderCopy,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            "Destination Folder",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        // Folder picker
+                        IconButton(
+                            onClick = { destPickerLauncher.launch(null) },
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.FolderOpen,
+                                contentDescription = "Pick destination folder",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        // Edit toggle
+                        IconButton(
+                            onClick = {
+                                if (isEditingDest) {
+                                    // Save manual edit
+                                    onConfigUpdated(config.copy(moveDestinationPath = editedDestPath.ifBlank { null }))
+                                }
+                                isEditingDest = !isEditingDest
+                            },
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            Icon(
+                                if (isEditingDest) Icons.Default.Check else Icons.Default.Edit,
+                                contentDescription = if (isEditingDest) "Save" else "Edit path",
+                                tint = if (isEditingDest) MaterialTheme.colorScheme.primary
+                                       else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                if (isEditingDest) {
+                    OutlinedTextField(
+                        value = editedDestPath,
+                        onValueChange = { editedDestPath = it },
+                        label = { Text("Destination Path") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        trailingIcon = {
+                            IconButton(onClick = {
+                                isEditingDest = false
+                                onConfigUpdated(config.copy(moveDestinationPath = editedDestPath.ifBlank { null }))
+                            }) {
+                                Icon(Icons.Default.Check, contentDescription = "Save")
+                            }
+                        }
+                    )
+                } else {
+                    // Display current path (or placeholder)
+                    val displayPath = editedDestPath.ifBlank { null }
+                    if (displayPath != null) {
+                        Text(
+                            text = displayPath,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f))
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                "No destination set — tap 📂 to pick a folder",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    thickness = 0.5.dp
+                )
+                Spacer(Modifier.height(14.dp))
+
+                // ── Show 'Keep' toggle ──────────────────────────────────────────
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Show ‘Keep’ button",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            "When off, only Move Now is shown in the prompt",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = config.moveShowKeep,
+                        onCheckedChange = { showKeep ->
+                            onConfigUpdated(config.copy(moveShowKeep = showKeep))
+                        }
+                    )
+                }
+            }
+        }
+    }
 }

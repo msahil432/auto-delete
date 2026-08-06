@@ -5,12 +5,15 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.view.Gravity
 import android.view.WindowManager
+import android.util.Log
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.msahil432.autodelete.MainActivity
@@ -36,6 +39,9 @@ import com.msahil432.autodelete.data.TimePeriodPreset
 import com.msahil432.autodelete.data.decodeTimePeriodPresets
 import com.msahil432.autodelete.data.encodeTimePeriodPresets
 import kotlinx.coroutines.*
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 
 object PromptHelper {
     fun showPrompt(context: Context, config: FolderConfig, filePath: String) {
@@ -67,7 +73,13 @@ object PromptHelper {
                             onKeep = {
                                 handleKeep(context, config, filePath)
                                 windowManager.removeViewImmediate(this@apply)
-                            }
+                            },
+                            onMove = if (config.moveRuleEnabled) {
+                                {
+                                    handleMove(context, config, filePath)
+                                    windowManager.removeViewImmediate(this@apply)
+                                }
+                            } else null
                         )
                     }
                 }
@@ -124,23 +136,6 @@ object PromptHelper {
         val candidates   = decodeTimePeriodPresets(config.candidateTimePeriods)
         val displayPresets = if (recentlyUsed.isNotEmpty()) recentlyUsed else candidates
 
-        val actions = displayPresets.take(3).map { preset ->
-            val actionIntent = Intent(context, ActionReceiver::class.java).apply {
-                action = "com.msahil432.autodelete.ACTION_SCHEDULE"
-                putExtra("folderId", config.id)
-                putExtra("filePath", filePath)
-                putExtra("timePeriodMillis", preset.millis)
-                putExtra("timePeriodLabel", preset.label)
-            }
-            val pendingIntent = PendingIntent.getBroadcast(
-                context,
-                filePath.hashCode() + preset.millis.hashCode(),
-                actionIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            NotificationCompat.Action(0, "In ${preset.label}", pendingIntent)
-        }
-
         val builder = NotificationCompat.Builder(context, "prompts")
             .setSmallIcon(android.R.drawable.ic_menu_delete)
             .setContentTitle("New File Detected")
@@ -148,20 +143,71 @@ object PromptHelper {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
 
-        actions.forEach { builder.addAction(it) }
+        if (config.moveRuleEnabled) {
+            // Move Rule active: show [Move Now] [1st time-delay] [2nd time-delay]
+            val moveIntent = Intent(context, ActionReceiver::class.java).apply {
+                action = "com.msahil432.autodelete.ACTION_MOVE"
+                putExtra("folderId", config.id)
+                putExtra("filePath", filePath)
+            }
+            val movePendingIntent = PendingIntent.getBroadcast(
+                context,
+                filePath.hashCode() xor 0xABC123,
+                moveIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(0, "➡️ Move Now", movePendingIntent)
 
-        val keepIntent = Intent(context, ActionReceiver::class.java).apply {
-            action = "com.msahil432.autodelete.ACTION_KEEP"
-            putExtra("folderId", config.id)
-            putExtra("filePath", filePath)
+            // Add up to 2 time-delay actions
+            displayPresets.take(2).forEach { preset ->
+                val actionIntent = Intent(context, ActionReceiver::class.java).apply {
+                    action = "com.msahil432.autodelete.ACTION_SCHEDULE"
+                    putExtra("folderId", config.id)
+                    putExtra("filePath", filePath)
+                    putExtra("timePeriodMillis", preset.millis)
+                    putExtra("timePeriodLabel", preset.label)
+                }
+                val pendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    filePath.hashCode() + preset.millis.hashCode(),
+                    actionIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                builder.addAction(0, "In ${preset.label}", pendingIntent)
+            }
+        } else {
+            // No Move Rule: show up to 3 time-delay actions + Keep
+            val actions = displayPresets.take(3).map { preset ->
+                val actionIntent = Intent(context, ActionReceiver::class.java).apply {
+                    action = "com.msahil432.autodelete.ACTION_SCHEDULE"
+                    putExtra("folderId", config.id)
+                    putExtra("filePath", filePath)
+                    putExtra("timePeriodMillis", preset.millis)
+                    putExtra("timePeriodLabel", preset.label)
+                }
+                val pendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    filePath.hashCode() + preset.millis.hashCode(),
+                    actionIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                NotificationCompat.Action(0, "In ${preset.label}", pendingIntent)
+            }
+            actions.forEach { builder.addAction(it) }
+
+            val keepIntent = Intent(context, ActionReceiver::class.java).apply {
+                action = "com.msahil432.autodelete.ACTION_KEEP"
+                putExtra("folderId", config.id)
+                putExtra("filePath", filePath)
+            }
+            val keepPendingIntent = PendingIntent.getBroadcast(
+                context,
+                filePath.hashCode(),
+                keepIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(0, "Keep", keepPendingIntent)
         }
-        val keepPendingIntent = PendingIntent.getBroadcast(
-            context,
-            filePath.hashCode(),
-            keepIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        builder.addAction(0, "Keep", keepPendingIntent)
 
         notificationManager.notify(filePath.hashCode(), builder.build())
     }
@@ -179,6 +225,98 @@ object PromptHelper {
                 handleKeep(context, config, filePath)
             }
         }
+    }
+
+    private fun handleMove(context: Context, config: FolderConfig, filePath: String) {
+        val db = (context.applicationContext as AutoDeleteApp).database
+        CoroutineScope(Dispatchers.IO).launch {
+            val destUriString = config.moveDestinationPath
+            val sourceFile = File(filePath)
+
+            if (destUriString.isNullOrBlank() || !sourceFile.exists()) {
+                // Destination not configured or source gone — keep and notify
+                handleKeep(context, config, filePath)
+                fireErrorNotification(
+                    context,
+                    filePath,
+                    if (destUriString.isNullOrBlank()) "Move destination not configured."
+                    else "Source file not found: ${sourceFile.name}"
+                )
+                return@launch
+            }
+
+            try {
+                // Resolve destination directory via SAF Uri or plain path
+                val destDir: File = if (destUriString.startsWith("/")) {
+                    File(destUriString)
+                } else {
+                    // SAF tree URI — convert to a real path heuristically (same approach as FolderPathSection)
+                    val uriPath = Uri.parse(destUriString).path ?: destUriString
+                    val friendlyPath = uriPath
+                        .removePrefix("/tree/primary:")
+                        .removePrefix("/tree/")
+                        .let { if (!it.startsWith("/")) "/storage/emulated/0/$it" else it }
+                    File(friendlyPath)
+                }
+
+                if (!destDir.exists()) destDir.mkdirs()
+
+                // Build a unique destination file name (handle conflicts)
+                val baseName = sourceFile.nameWithoutExtension
+                val ext = sourceFile.extension.let { if (it.isNotEmpty()) ".$it" else "" }
+                var destFile = File(destDir, sourceFile.name)
+                var counter = 1
+                while (destFile.exists()) {
+                    destFile = File(destDir, "${baseName}_$counter$ext")
+                    counter++
+                }
+
+                // Copy then delete source
+                FileInputStream(sourceFile).use { input ->
+                    FileOutputStream(destFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                sourceFile.delete()
+
+                // Log success
+                db.appDao().insertActivityLog(
+                    ActivityLogEntry(
+                        folderId = config.id,
+                        fileName = sourceFile.name,
+                        fileUri = filePath,
+                        action = LogAction.MOVED,
+                        timestamp = System.currentTimeMillis(),
+                        destinationPath = destFile.absolutePath
+                    )
+                )
+            } catch (e: Exception) {
+                Log.e("PromptHelper", "Move failed for $filePath", e)
+                handleKeep(context, config, filePath)
+                fireErrorNotification(context, filePath, "Move failed: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    private fun fireErrorNotification(context: Context, filePath: String, message: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channel = android.app.NotificationChannel(
+                "move_errors", "Move Errors", NotificationManager.IMPORTANCE_DEFAULT
+            )
+            nm.createNotificationChannel(channel)
+        }
+        val notification = NotificationCompat.Builder(context, "move_errors")
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle("Auto Delete — Move Failed")
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(
+                "File: ${filePath.substringAfterLast("/")}\n$message\nThe file was kept in place."
+            ))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .build()
+        NotificationManagerCompat.from(context).notify(filePath.hashCode() xor 0x7E770001, notification)
     }
 
     private fun handleAction(context: Context, config: FolderConfig, filePath: String, preset: TimePeriodPreset) {
@@ -231,7 +369,8 @@ fun PromptContent(
     config: FolderConfig,
     filePath: String,
     onAction: (TimePeriodPreset) -> Unit,
-    onKeep: () -> Unit
+    onKeep: () -> Unit,
+    onMove: (() -> Unit)? = null
 ) {
     // Decode from JSON — recentlyUsed takes priority over candidatePeriods
     val recentlyUsed = decodeTimePeriodPresets(config.recentlyUsedPeriods)
@@ -254,8 +393,22 @@ fun PromptContent(
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
-        OutlinedButton(onClick = onKeep, modifier = Modifier.fillMaxWidth()) {
-            Text("Keep")
+        // Move Now button — visible when Move Rule is enabled
+        if (onMove != null) {
+            Button(
+                onClick = onMove,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("➡️ Move Now")
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+        // Keep button — hidden by default when Move Rule is on; visible if moveShowKeep is true
+        val showKeep = onMove == null || config.moveShowKeep
+        if (showKeep) {
+            OutlinedButton(onClick = onKeep, modifier = Modifier.fillMaxWidth()) {
+                Text("Keep")
+            }
         }
     }
 }

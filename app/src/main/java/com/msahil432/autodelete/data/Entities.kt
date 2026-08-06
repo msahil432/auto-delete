@@ -16,7 +16,11 @@ data class FolderConfig(
     val recentlyUsedPeriods: String,   // JSON array of TimePeriodPreset labels; legacy CSV accepted
     val fileTypeExcludeList: String?,  // JSON array of FilterRule — always skip matching files
     val fileTypeIncludeList: String?,  // JSON array of FilterRule — only watch matching files (null/empty = watch all)
-    val createdAt: Long
+    val createdAt: Long,
+    // ── Move Rule ──────────────────────────────────────────────────────────────
+    val moveRuleEnabled: Boolean = false,           // Move files instead of deleting
+    val moveDestinationPath: String? = null,        // SAF URI string of the destination folder
+    val moveShowKeep: Boolean = false               // Show 'Keep' button in prompt when move is on
 )
 
 enum class DeletionMode {
@@ -33,7 +37,7 @@ data class PendingAction(
 )
 
 enum class ActionStatus {
-    PENDING, TRASHED, DELETED, KEPT, CANCELLED
+    PENDING, TRASHED, DELETED, KEPT, CANCELLED, MOVED
 }
 
 @Entity(tableName = "activity_logs")
@@ -43,9 +47,10 @@ data class ActivityLogEntry(
     val fileName: String,
     val fileUri: String,
     val action: LogAction,
-    val timestamp: Long
+    val timestamp: Long,
+    val destinationPath: String? = null  // Populated when action == MOVED
 )
 
 enum class LogAction {
-    TRASHED, DELETED, KEPT, RESTORED
+    TRASHED, DELETED, KEPT, RESTORED, MOVED
 }

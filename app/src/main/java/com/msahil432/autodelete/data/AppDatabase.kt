@@ -142,9 +142,25 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
+/**
+ * Migration from version 3 → 4:
+ *  - Adds `moveRuleEnabled` (INTEGER NOT NULL DEFAULT 0) to folder_configs
+ *  - Adds `moveDestinationPath` (TEXT DEFAULT NULL) to folder_configs
+ *  - Adds `moveShowKeep` (INTEGER NOT NULL DEFAULT 0) to folder_configs
+ *  - Adds `destinationPath` (TEXT DEFAULT NULL) to activity_logs
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE folder_configs ADD COLUMN moveRuleEnabled INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE folder_configs ADD COLUMN moveDestinationPath TEXT DEFAULT NULL")
+        db.execSQL("ALTER TABLE folder_configs ADD COLUMN moveShowKeep INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE activity_logs ADD COLUMN destinationPath TEXT DEFAULT NULL")
+    }
+}
+
 @Database(
     entities = [FolderConfig::class, PendingAction::class, ActivityLogEntry::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
