@@ -48,9 +48,10 @@ data class ActivityLogEntry(
     val fileUri: String,
     val action: LogAction,
     val timestamp: Long,
-    val destinationPath: String? = null  // Populated when action == MOVED
+    val destinationPath: String? = null,  // Populated when action == MOVED
+    val errorDetails: String? = null       // Populated when action == ERRORED (message + brief stack trace)
 )
 
 enum class LogAction {
-    TRASHED, DELETED, KEPT, RESTORED, MOVED
+    TRASHED, DELETED, KEPT, RESTORED, MOVED, ERRORED
 }

@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.msahil432.autodelete.data.AppDao
 import com.msahil432.autodelete.data.ActivityLogEntry
+import com.msahil432.autodelete.data.LogAction
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -76,7 +77,22 @@ fun ActivityLogItem(log: ActivityLogEntry, onUndo: () -> Unit) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(log.fileName, style = MaterialTheme.typography.bodyLarge)
-                Text("${log.action.name} - $dateString", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    text = "${log.action.name} - $dateString",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (log.action == LogAction.ERRORED)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (log.action == LogAction.ERRORED && !log.errorDetails.isNullOrBlank()) {
+                    Text(
+                        text = log.errorDetails,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
             }
             if (log.action == com.msahil432.autodelete.data.LogAction.TRASHED) {
                 TextButton(onClick = onUndo) {

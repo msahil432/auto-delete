@@ -158,9 +158,20 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
     }
 }
 
+/**
+ * Migration from version 4 → 5:
+ *  - Adds `errorDetails` (TEXT DEFAULT NULL) to activity_logs
+ *    Populated when action == ERRORED; stores the exception message + brief stack trace.
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE activity_logs ADD COLUMN errorDetails TEXT DEFAULT NULL")
+    }
+}
+
 @Database(
     entities = [FolderConfig::class, PendingAction::class, ActivityLogEntry::class],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

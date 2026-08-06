@@ -6,6 +6,7 @@ import com.msahil432.autodelete.data.AppDatabase
 import com.msahil432.autodelete.data.MIGRATION_1_2
 import com.msahil432.autodelete.data.MIGRATION_2_3
 import com.msahil432.autodelete.data.MIGRATION_3_4
+import com.msahil432.autodelete.data.MIGRATION_4_5
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -24,7 +25,7 @@ class AutoDeleteApp : Application() {
             AppDatabase::class.java,
             "auto_delete_db"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
     }
 }

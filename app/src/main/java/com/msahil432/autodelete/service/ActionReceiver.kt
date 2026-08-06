@@ -153,13 +153,17 @@ class ActionReceiver : BroadcastReceiver() {
             )
         } catch (e: Exception) {
             Log.e("ActionReceiver", "Move failed for $filePath", e)
+            val briefTrace = e.stackTrace.take(3)
+                .joinToString("\n") { "  at ${it.className.substringAfterLast('.')}.${it.methodName}(${it.fileName}:${it.lineNumber})" }
+            val errorDetails = "${e::class.simpleName}: ${e.message}\n$briefTrace"
             db.appDao().insertActivityLog(
                 ActivityLogEntry(
                     folderId = config.id,
                     fileName = filePath.substringAfterLast("/"),
                     fileUri = filePath,
-                    action = LogAction.KEPT,
-                    timestamp = System.currentTimeMillis()
+                    action = LogAction.ERRORED,
+                    timestamp = System.currentTimeMillis(),
+                    errorDetails = errorDetails
                 )
             )
         }

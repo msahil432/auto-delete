@@ -104,6 +104,23 @@ class FileActionWorker(
             return Result.success()
         } catch (e: Exception) {
             Log.e("FileActionWorker", "Error processing file: $filePath", e)
+            val briefTrace = e.stackTrace.take(3)
+                .joinToString("\n") { "  at ${it.className.substringAfterLast('.')}.${it.methodName}(${it.fileName}:${it.lineNumber})" }
+            val errorDetails = "${e::class.simpleName}: ${e.message}\n$briefTrace"
+            try {
+                db.appDao().insertActivityLog(
+                    ActivityLogEntry(
+                        folderId = folderId,
+                        fileName = file.name,
+                        fileUri = filePath,
+                        action = LogAction.ERRORED,
+                        timestamp = System.currentTimeMillis(),
+                        errorDetails = errorDetails
+                    )
+                )
+            } catch (logEx: Exception) {
+                Log.e("FileActionWorker", "Failed to write error log", logEx)
+            }
             return Result.retry()
         }
     }

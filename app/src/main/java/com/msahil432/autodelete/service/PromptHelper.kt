@@ -292,7 +292,19 @@ object PromptHelper {
                 )
             } catch (e: Exception) {
                 Log.e("PromptHelper", "Move failed for $filePath", e)
-                handleKeep(context, config, filePath)
+                val briefTrace = e.stackTrace.take(3)
+                    .joinToString("\n") { "  at ${it.className.substringAfterLast('.')}.${it.methodName}(${it.fileName}:${it.lineNumber})" }
+                val errorDetails = "${e::class.simpleName}: ${e.message}\n$briefTrace"
+                db.appDao().insertActivityLog(
+                    ActivityLogEntry(
+                        folderId = config.id,
+                        fileName = filePath.substringAfterLast("/"),
+                        fileUri = filePath,
+                        action = LogAction.ERRORED,
+                        timestamp = System.currentTimeMillis(),
+                        errorDetails = errorDetails
+                    )
+                )
                 fireErrorNotification(context, filePath, "Move failed: ${e.localizedMessage}")
             }
         }
