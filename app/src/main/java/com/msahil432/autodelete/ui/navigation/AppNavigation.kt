@@ -12,6 +12,7 @@ import com.msahil432.autodelete.ui.screens.OnboardingScreen
 import com.msahil432.autodelete.ui.screens.SettingsScreen
 import com.msahil432.autodelete.ui.screens.FolderDetailScreen
 import com.msahil432.autodelete.ui.screens.ActivityLogScreen
+import com.msahil432.autodelete.ui.screens.PermissionCheckScreen
 
 @Composable
 fun AppNavigation(
@@ -45,6 +46,9 @@ fun AppNavigation(
                 },
                 onNavigateToActivityLog = {
                     navController.navigate("activity_log")
+                },
+                onNavigateToPermissions = {
+                    navController.navigate("permissions")
                 }
             )
         }
@@ -60,6 +64,11 @@ fun AppNavigation(
         composable("activity_log") {
             ActivityLogScreen(
                 appDao = appDao,
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable("permissions") {
+            PermissionCheckScreen(
                 onBack = { navController.popBackStack() }
             )
         }

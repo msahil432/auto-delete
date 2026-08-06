@@ -3,33 +3,141 @@ package com.msahil432.autodelete.ui.screens
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.msahil432.autodelete.data.AppDao
-import com.msahil432.autodelete.data.FolderConfig
-import com.msahil432.autodelete.data.DeletionMode
-import com.msahil432.autodelete.data.SettingsRepository
 import com.msahil432.autodelete.data.DEFAULT_EXCLUSION_RULES
 import com.msahil432.autodelete.data.DEFAULT_TIME_PRESETS
+import com.msahil432.autodelete.data.DeletionMode
+import com.msahil432.autodelete.data.FolderConfig
+import com.msahil432.autodelete.data.SettingsRepository
 import com.msahil432.autodelete.data.encodeFilterRules
 import com.msahil432.autodelete.data.encodeTimePeriodPresets
 import kotlinx.coroutines.launch
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
 
-@OptIn(ExperimentalPermissionsApi::class)
+// ─── Permission model ────────────────────────────────────────────────────────
+
+data class AppPermission(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector,
+    val isRequired: Boolean,
+    val isGranted: (Context) -> Boolean,
+    val grant: (Context, () -> Unit) -> Unit   // (context, onResult) — opens system UI
+)
+
+fun buildPermissionList(): List<AppPermission> = listOf(
+    AppPermission(
+        id = "notifications",
+        title = "Notifications",
+        subtitle = "Show prompts and keep the monitor service alive in the background.",
+        icon = Icons.Default.Notifications,
+        isRequired = true,
+        isGranted = { ctx ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(
+                    ctx, Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            } else true
+        },
+        grant = { _, _ -> /* handled via rememberPermissionState in the step */ }
+    ),
+    AppPermission(
+        id = "all_files",
+        title = "All Files Access",
+        subtitle = "Required to monitor folders and move/delete files anywhere on the device.",
+        icon = Icons.Default.FolderOpen,
+        isRequired = true,
+        isGranted = { _ ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                Environment.isExternalStorageManager()
+            else true
+        },
+        grant = { ctx, _ ->
+            try {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                    .setData(Uri.parse("package:${ctx.packageName}"))
+                ctx.startActivity(intent)
+            } catch (_: Exception) {
+                ctx.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+            }
+        }
+    ),
+    AppPermission(
+        id = "overlay",
+        title = "Display Over Other Apps",
+        subtitle = "Show a floating prompt when a new file is detected — faster than a notification.",
+        icon = Icons.Default.Layers,
+        isRequired = false,
+        isGranted = { ctx -> Settings.canDrawOverlays(ctx) },
+        grant = { ctx, _ ->
+            ctx.startActivity(
+                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:${ctx.packageName}"))
+            )
+        }
+    ),
+    AppPermission(
+        id = "battery",
+        title = "Battery Optimization Exemption",
+        subtitle = "Prevent Android from killing the monitor service to save battery.",
+        icon = Icons.Default.BatteryFull,
+        isRequired = false,
+        isGranted = { ctx ->
+            (ctx.getSystemService(Context.POWER_SERVICE) as PowerManager)
+                .isIgnoringBatteryOptimizations(ctx.packageName)
+        },
+        grant = { ctx, _ ->
+            ctx.startActivity(
+                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:${ctx.packageName}"))
+            )
+        }
+    )
+)
+
+// ─── Onboarding screen ───────────────────────────────────────────────────────
+
+private val TOTAL_STEPS = 7   // Welcome + 4 permissions + DefaultConfig + Done
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingScreen(
     settingsRepository: SettingsRepository,
@@ -38,50 +146,735 @@ fun OnboardingScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    var currentStep by remember { mutableIntStateOf(1) }
+    var step by remember { mutableIntStateOf(0) }
 
-    Surface(modifier = Modifier.fillMaxSize()) {
+    val permissions = remember { buildPermissionList() }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // ── Top progress bar ──────────────────────────────────────────────
+            OnboardingProgressBar(step = step, total = TOTAL_STEPS)
+
+            // ── Step content ──────────────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                AnimatedContent(
+                    targetState = step,
+                    transitionSpec = {
+                        val dir = if (targetState > initialState) 1 else -1
+                        (slideInHorizontally(tween(300)) { it * dir } + fadeIn(tween(200))) togetherWith
+                                (slideOutHorizontally(tween(300)) { -it * dir } + fadeOut(tween(200)))
+                    },
+                    label = "onboarding_step"
+                ) { currentStep ->
+                    when (currentStep) {
+                        0 -> WelcomeStep(onNext = { step = 1 })
+                        in 1..4 -> PermissionStep(
+                            permission = permissions[currentStep - 1],
+                            stepIndex = currentStep,
+                            onNext = { step++ }
+                        )
+                        5 -> DefaultConfigStep(
+                            onNext = { mode, keepAction ->
+                                coroutineScope.launch {
+                                    val defaultPresets = encodeTimePeriodPresets(DEFAULT_TIME_PRESETS)
+                                    settingsRepository.setGlobalDeletionMode(mode.name)
+                                    settingsRepository.setGlobalDefaultPool(defaultPresets)
+
+                                    val picturesDir = Environment.getExternalStoragePublicDirectory(
+                                        Environment.DIRECTORY_PICTURES
+                                    )
+                                    val screenshotsDir = "${picturesDir.absolutePath}/Screenshots"
+
+                                    appDao.insertFolderConfig(
+                                        FolderConfig(
+                                            path = screenshotsDir,
+                                            displayName = "Screenshots",
+                                            isDefaultScreenshotsFolder = true,
+                                            enabled = true,
+                                            deletionMode = mode,
+                                            defaultActionOnIgnore = keepAction,
+                                            candidateTimePeriods = defaultPresets,
+                                            recentlyUsedPeriods = defaultPresets,
+                                            fileTypeExcludeList = encodeFilterRules(DEFAULT_EXCLUSION_RULES),
+                                            fileTypeIncludeList = null,
+                                            createdAt = System.currentTimeMillis()
+                                        )
+                                    )
+                                    settingsRepository.setOnboardingComplete(true)
+                                    step = 6
+                                }
+                            }
+                        )
+                        else -> AllSetStep(
+                            permissions = permissions,
+                            onDone = onComplete
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─── Progress bar ────────────────────────────────────────────────────────────
+
+@Composable
+private fun OnboardingProgressBar(step: Int, total: Int) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Setup",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "${minOf(step + 1, total)} / $total",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        LinearProgressIndicator(
+            progress = { (step.toFloat() + 1f) / total.toFloat() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(50)),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    }
+}
+
+// ─── Welcome step ────────────────────────────────────────────────────────────
+
+@Composable
+private fun WelcomeStep(onNext: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(96.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.AutoDelete,
+                contentDescription = null,
+                modifier = Modifier.size(52.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Text(
+            "Welcome to Auto Delete",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            "Automatically detects new files in folders you choose and schedules them for cleanup — so your storage stays tidy without thinking about it.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            lineHeight = 22.sp
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        // Feature highlights
+        listOf(
+            Triple(Icons.Default.FolderOpen, "Monitor any folder", "Screenshots, Downloads, or custom directories"),
+            Triple(Icons.Default.Timer, "Scheduled cleanup", "Delete or move files after a time delay you choose"),
+            Triple(Icons.Default.DriveFileMove, "Google Photos safe", "Move to a backup folder instead of deleting")
+        ).forEach { (icon, title, sub) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                Column {
+                    Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Button(
+            onClick = onNext,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text("Get Started", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        }
+    }
+}
+
+// ─── Permission step ─────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PermissionStep(
+    permission: AppPermission,
+    stepIndex: Int,
+    onNext: () -> Unit
+) {
+    val context = LocalContext.current
+
+    // Re-check status every time this composable is recomposed (e.g. after returning from Settings)
+    var granted by remember { mutableStateOf(permission.isGranted(context)) }
+
+    // For the notification permission we need the accompanist launcher path
+    val notifLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        granted = isGranted
+        if (isGranted) onNext()
+    }
+
+    // For settings-based permissions we launch an activity and re-check on return
+    val settingsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        granted = permission.isGranted(context)
+        if (granted) onNext()
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        // Status circle
+        Box(
+            modifier = Modifier
+                .size(88.dp)
+                .clip(CircleShape)
+                .background(
+                    if (granted) MaterialTheme.colorScheme.tertiaryContainer
+                    else if (permission.isRequired) MaterialTheme.colorScheme.errorContainer
+                    else MaterialTheme.colorScheme.secondaryContainer
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                permission.icon,
+                contentDescription = null,
+                modifier = Modifier.size(44.dp),
+                tint = if (granted) MaterialTheme.colorScheme.tertiary
+                       else if (permission.isRequired) MaterialTheme.colorScheme.error
+                       else MaterialTheme.colorScheme.secondary
+            )
+        }
+
+        // Required / Optional badge
+        Surface(
+            shape = RoundedCornerShape(50),
+            color = if (permission.isRequired) MaterialTheme.colorScheme.errorContainer
+                    else MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = if (permission.isRequired) MaterialTheme.colorScheme.error
+                           else MaterialTheme.colorScheme.onSurfaceVariant
+        ) {
+            Text(
+                if (permission.isRequired) "Required" else "Optional",
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Text(
+            permission.title,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            permission.subtitle,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            lineHeight = 22.sp
+        )
+
+        // Status chip
+        AnimatedVisibility(visible = true) {
+            PermissionStatusChip(granted = granted)
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        if (granted) {
+            Button(
+                onClick = onNext,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary
+                )
+            ) {
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Continue", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            }
+        } else {
+            Button(
+                onClick = {
+                    when (permission.id) {
+                        "notifications" -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                onNext()
+                            }
+                        }
+                        "all_files" -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                try {
+                                    settingsLauncher.launch(
+                                        Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                                            .setData(Uri.parse("package:${context.packageName}"))
+                                    )
+                                } catch (_: Exception) {
+                                    settingsLauncher.launch(
+                                        Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                                    )
+                                }
+                            } else onNext()
+                        }
+                        "overlay" -> settingsLauncher.launch(
+                            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:${context.packageName}"))
+                        )
+                        "battery" -> settingsLauncher.launch(
+                            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                Uri.parse("package:${context.packageName}"))
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Grant Permission", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            }
+
+            if (!permission.isRequired) {
+                TextButton(
+                    onClick = onNext,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "Skip for now",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PermissionStatusChip(granted: Boolean) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(
+                if (granted) MaterialTheme.colorScheme.tertiaryContainer
+                else MaterialTheme.colorScheme.surfaceVariant
+            )
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            if (granted) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = if (granted) MaterialTheme.colorScheme.tertiary
+                   else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            if (granted) "Granted" else "Not granted",
+            style = MaterialTheme.typography.labelMedium,
+            color = if (granted) MaterialTheme.colorScheme.tertiary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+// ─── Default config step ─────────────────────────────────────────────────────
+
+@Composable
+private fun DefaultConfigStep(onNext: (DeletionMode, String) -> Unit) {
+    var mode by remember { mutableStateOf(DeletionMode.TRASH) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(88.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Settings,
+                contentDescription = null,
+                modifier = Modifier.size(44.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Text(
+            "Default Setup",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            "We'll monitor your Screenshots folder automatically. What should happen when a scheduled timer fires?",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            lineHeight = 22.sp
+        )
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(
+                Triple(DeletionMode.TRASH, "Move to Trash", "Recoverable from the system trash"),
+                Triple(DeletionMode.DELETE, "Delete Permanently", "Cannot be recovered"),
+                Triple(DeletionMode.ASK_AGAIN, "Ask Again", "Re-prompt when the timer fires")
+            ).forEach { (m, label, sub) ->
+                val selected = mode == m
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            if (selected) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                        )
+                        .border(
+                            width = if (selected) 2.dp else 0.dp,
+                            color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    RadioButton(
+                        selected = selected,
+                        onClick = { mode = m },
+                        colors = RadioButtonDefaults.colors(
+                            selectedColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    Column {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                        Text(
+                            sub,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        Button(
+            onClick = { onNext(mode, "KEEP") },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text("Finish Setup", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        }
+    }
+}
+
+// ─── All Set step ────────────────────────────────────────────────────────────
+
+@Composable
+private fun AllSetStep(
+    permissions: List<AppPermission>,
+    onDone: () -> Unit
+) {
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(96.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.tertiaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.CheckCircle,
+                contentDescription = null,
+                modifier = Modifier.size(52.dp),
+                tint = MaterialTheme.colorScheme.tertiary
+            )
+        }
+
+        Text(
+            "You're all set!",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            "Auto Delete is ready. Here's a summary of your permission status:",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+
+        // Permission summary cards
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            permissions.forEach { perm ->
+                val granted = perm.isGranted(context)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (granted) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                            else if (perm.isRequired) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        )
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        if (granted) Icons.Default.CheckCircle else Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = if (granted) MaterialTheme.colorScheme.tertiary
+                               else if (perm.isRequired) MaterialTheme.colorScheme.error
+                               else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            perm.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            if (granted) "Granted" else if (perm.isRequired) "Not granted — required!" else "Not granted — optional",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (granted) MaterialTheme.colorScheme.tertiary
+                                    else if (perm.isRequired) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        Button(
+            onClick = onDone,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text("Open App", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        }
+    }
+}
+
+// ─── Permissions check screen (post-onboarding, launched from Settings) ──────
+
+@Composable
+fun PermissionCheckScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val permissions = remember { buildPermissionList() }
+
+    // Trigger recomposition when returning from a Settings screen
+    var refreshKey by remember { mutableIntStateOf(0) }
+
+    val notifLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { refreshKey++ }
+
+    val settingsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { refreshKey++ }
+
+    Scaffold(
+        topBar = {
+            @OptIn(ExperimentalMaterial3Api::class)
+            TopAppBar(
+                title = { Text("Permissions", fontWeight = FontWeight.SemiBold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
-                .padding(24.dp)
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            when (currentStep) {
-                1 -> WelcomeStep { currentStep = 2 }
-                2 -> NotificationPermissionStep { currentStep = 3 }
-                3 -> AllFilesAccessStep(context) { currentStep = 4 }
-                4 -> OverlayPermissionStep(context) { currentStep = 5 }
-                5 -> ScopedStorageStep(context) { currentStep = 6 }
-                6 -> BatteryExemptionStep(context) { currentStep = 7 }
-                7 -> DefaultConfigStep(
-                    onNext = { mode, keepAction ->
-                        coroutineScope.launch {
-                            val defaultPresets = encodeTimePeriodPresets(DEFAULT_TIME_PRESETS)
-                            settingsRepository.setGlobalDeletionMode(mode.name)
-                            settingsRepository.setGlobalDefaultPool(defaultPresets)
+            // Force re-evaluation of isGranted on each refresh
+            val grantedStates = remember(refreshKey) {
+                permissions.map { it.isGranted(context) }
+            }
 
-                            val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-                            val screenshotsDir = "${picturesDir.absolutePath}/Screenshots"
+            val allRequired = permissions.filter { it.isRequired }
+                .all { it.isGranted(context) }
 
-                            appDao.insertFolderConfig(
-                                FolderConfig(
-                                    path = screenshotsDir,
-                                    displayName = "Screenshots",
-                                    isDefaultScreenshotsFolder = true,
-                                    enabled = true,
-                                    deletionMode = mode,
-                                    defaultActionOnIgnore = keepAction,
-                                    candidateTimePeriods = defaultPresets,
-                                    recentlyUsedPeriods = defaultPresets,
-                                    fileTypeExcludeList = encodeFilterRules(DEFAULT_EXCLUSION_RULES),
-                                    fileTypeIncludeList = null,
-                                    createdAt = System.currentTimeMillis()
-                                )
+            if (allRequired) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f))
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Text(
+                        "All required permissions are granted.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f))
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Text(
+                        "Some required permissions are missing. The app may not function correctly.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
+            permissions.forEachIndexed { idx, perm ->
+                val granted = grantedStates[idx]
+                PermissionCard(
+                    permission = perm,
+                    granted = granted,
+                    onGrant = {
+                        when (perm.id) {
+                            "notifications" -> {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                            }
+                            "all_files" -> {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                    try {
+                                        settingsLauncher.launch(
+                                            Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                                                .setData(Uri.parse("package:${context.packageName}"))
+                                        )
+                                    } catch (_: Exception) {
+                                        settingsLauncher.launch(
+                                            Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                                        )
+                                    }
+                                }
+                            }
+                            "overlay" -> settingsLauncher.launch(
+                                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:${context.packageName}"))
                             )
-                            settingsRepository.setOnboardingComplete(true)
-                            onComplete()
+                            "battery" -> settingsLauncher.launch(
+                                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                    Uri.parse("package:${context.packageName}"))
+                            )
                         }
                     }
                 )
@@ -91,197 +884,96 @@ fun OnboardingScreen(
 }
 
 @Composable
-fun WelcomeStep(onNext: () -> Unit) {
-    Text("Welcome to Auto Delete", style = MaterialTheme.typography.headlineMedium)
-    Spacer(modifier = Modifier.height(16.dp))
-    Text("Detects new files in folders you choose and cleans them up automatically.")
-    Spacer(modifier = Modifier.height(32.dp))
-    Button(onClick = onNext) { Text("Get Started") }
-}
+private fun PermissionCard(
+    permission: AppPermission,
+    granted: Boolean,
+    onGrant: () -> Unit
+) {
+    val containerColor = when {
+        granted -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+        permission.isRequired -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    }
+    val borderColor = when {
+        granted -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f)
+        permission.isRequired -> MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
+        else -> MaterialTheme.colorScheme.outlineVariant
+    }
 
-@OptIn(ExperimentalPermissionsApi::class)
-@Composable
-fun NotificationPermissionStep(onNext: () -> Unit) {
-    Text("Notifications", style = MaterialTheme.typography.headlineMedium)
-    Spacer(modifier = Modifier.height(16.dp))
-    Text("We need notifications to show you a prompt when a new file is detected, and to keep the app running in the background reliably.")
-    Spacer(modifier = Modifier.height(32.dp))
-    
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        val permissionState = rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
-        Button(onClick = {
-            if (permissionState.status.isGranted) {
-                onNext()
-            } else {
-                permissionState.launchPermissionRequest()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(containerColor)
+            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                permission.icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = when {
+                    granted -> MaterialTheme.colorScheme.tertiary
+                    permission.isRequired -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.secondary
+                }
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        permission.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = if (permission.isRequired)
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (permission.isRequired)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    ) {
+                        Text(
+                            if (permission.isRequired) "Required" else "Optional",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+                Text(
+                    permission.subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-        }) {
-            Text(if (permissionState.status.isGranted) "Continue" else "Grant Permission")
+            PermissionStatusChip(granted = granted)
         }
-        if (!permissionState.status.isGranted) {
-            TextButton(onClick = onNext) { Text("Skip for now") }
-        }
-    } else {
-        Button(onClick = onNext) { Text("Continue") }
-    }
-}
 
-@Composable
-fun AllFilesAccessStep(context: Context, onNext: () -> Unit) {
-    Text("All Files Access", style = MaterialTheme.typography.headlineMedium)
-    Spacer(modifier = Modifier.height(16.dp))
-    Text("To monitor any folder and clean up files across your device, we need 'All Files Access'.")
-    Spacer(modifier = Modifier.height(32.dp))
-    
-    val isGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        Environment.isExternalStorageManager()
-    } else {
-        true // Handled by standard read/write permissions on older Android versions usually, but we target 36
-    }
-    
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
-            onNext()
-        }
-    }
-
-    Button(onClick = {
-        if (isGranted) {
-            onNext()
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                intent.data = Uri.parse("package:${context.packageName}")
-                launcher.launch(intent)
-            } catch (e: Exception) {
-                val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                launcher.launch(intent)
+        if (!granted) {
+            Button(
+                onClick = onGrant,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp),
+                colors = if (permission.isRequired)
+                    ButtonDefaults.buttonColors()
+                else
+                    ButtonDefaults.filledTonalButtonColors()
+            ) {
+                Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Grant in Settings", fontWeight = FontWeight.Medium)
             }
-        } else {
-            onNext()
-        }
-    }) {
-        Text(if (isGranted) "Continue" else "Grant Permission")
-    }
-    
-    if (!isGranted) {
-        TextButton(onClick = onNext) { Text("Skip for now (App will not work on custom folders)") }
-    }
-}
-
-@Composable
-fun OverlayPermissionStep(context: Context, onNext: () -> Unit) {
-    Text("Floating Overlay (Optional)", style = MaterialTheme.typography.headlineMedium)
-    Spacer(modifier = Modifier.height(16.dp))
-    Text("Allowing 'Display over other apps' lets us show a quick pop-up overlay when a file is created, instead of just a notification.")
-    Spacer(modifier = Modifier.height(32.dp))
-    
-    val isGranted = Settings.canDrawOverlays(context)
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (Settings.canDrawOverlays(context)) {
-            onNext()
         }
     }
-
-    Button(onClick = {
-        if (isGranted) {
-            onNext()
-        } else {
-            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
-            launcher.launch(intent)
-        }
-    }) {
-        Text(if (isGranted) "Continue" else "Grant Permission")
-    }
-    
-    if (!isGranted) {
-        TextButton(onClick = onNext) { Text("Skip (Use notifications)") }
-    }
-}
-
-@Composable
-fun ScopedStorageStep(context: Context, onNext: () -> Unit) {
-    Text("Folder Access (Optional)", style = MaterialTheme.typography.headlineMedium)
-    Spacer(modifier = Modifier.height(16.dp))
-    Text(
-        "To monitor custom folders (beyond Screenshots), grant folder access via the system file browser. " +
-        "This lets you pick any folder and gives the app persistent access to it."
-    )
-    Spacer(modifier = Modifier.height(32.dp))
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            context.contentResolver.takePersistableUriPermission(uri, flags)
-        }
-        // Always continue regardless of whether a folder was picked here — they can do it later
-        onNext()
-    }
-
-    Button(onClick = { launcher.launch(null) }) {
-        Text("Grant Folder Access")
-    }
-    TextButton(onClick = onNext) {
-        Text("Skip (You can grant this per-folder later)")
-    }
-}
-
-@Composable
-fun BatteryExemptionStep(context: Context, onNext: () -> Unit) {
-    Text("Battery Optimization", style = MaterialTheme.typography.headlineMedium)
-    Spacer(modifier = Modifier.height(16.dp))
-    Text("To ensure scheduled deletions run reliably and the file monitor isn't killed, please exempt this app from battery optimizations. Uses slightly more battery.")
-    Spacer(modifier = Modifier.height(32.dp))
-    
-    val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
-    val isGranted = pm.isIgnoringBatteryOptimizations(context.packageName)
-    
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        onNext()
-    }
-
-    Button(onClick = {
-        if (isGranted) {
-            onNext()
-        } else {
-            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}"))
-            launcher.launch(intent)
-        }
-    }) {
-        Text(if (isGranted) "Continue" else "Request Exemption")
-    }
-    
-    if (!isGranted) {
-        TextButton(onClick = onNext) { Text("Skip (May cause unreliable deletions)") }
-    }
-}
-
-@Composable
-fun DefaultConfigStep(onNext: (DeletionMode, String) -> Unit) {
-    var mode by remember { mutableStateOf(DeletionMode.TRASH) }
-    
-    Text("Setup Default Folder", style = MaterialTheme.typography.headlineMedium)
-    Spacer(modifier = Modifier.height(16.dp))
-    Text("We will monitor the Screenshots folder by default. What should happen when a timer expires?")
-    Spacer(modifier = Modifier.height(16.dp))
-    
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            RadioButton(selected = mode == DeletionMode.TRASH, onClick = { mode = DeletionMode.TRASH })
-            Text("Move to Trash (Recoverable)")
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            RadioButton(selected = mode == DeletionMode.DELETE, onClick = { mode = DeletionMode.DELETE })
-            Text("Delete Permanently")
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            RadioButton(selected = mode == DeletionMode.ASK_AGAIN, onClick = { mode = DeletionMode.ASK_AGAIN })
-            Text("Ask Again")
-        }
-    }
-    
-    Spacer(modifier = Modifier.height(32.dp))
-    Button(onClick = { onNext(mode, "KEEP") }) { Text("Finish Setup") }
 }
