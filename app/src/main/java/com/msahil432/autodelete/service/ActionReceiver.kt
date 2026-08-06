@@ -3,9 +3,7 @@ package com.msahil432.autodelete.service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.util.Log
-import androidx.core.app.NotificationManagerCompat
 import com.msahil432.autodelete.AutoDeleteApp
 import com.msahil432.autodelete.data.ActionStatus
 import com.msahil432.autodelete.data.ActivityLogEntry
@@ -19,9 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
+import androidx.core.app.NotificationManagerCompat
 
 class ActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -95,78 +91,7 @@ class ActionReceiver : BroadcastReceiver() {
         config: FolderConfig,
         filePath: String
     ) {
-        val destUriString = config.moveDestinationPath
-        val sourceFile = File(filePath)
-
-        if (destUriString.isNullOrBlank() || !sourceFile.exists()) {
-            db.appDao().insertActivityLog(
-                ActivityLogEntry(
-                    folderId = config.id,
-                    fileName = filePath.substringAfterLast("/"),
-                    fileUri = filePath,
-                    action = LogAction.KEPT,
-                    timestamp = System.currentTimeMillis()
-                )
-            )
-            Log.w("ActionReceiver", "Move skipped: dest=$destUriString exists=${sourceFile.exists()}")
-            return
-        }
-
-        try {
-            val destDir: File = if (destUriString.startsWith("/")) {
-                File(destUriString)
-            } else {
-                val uriPath = Uri.parse(destUriString).path ?: destUriString
-                val friendlyPath = uriPath
-                    .removePrefix("/tree/primary:")
-                    .removePrefix("/tree/")
-                    .let { if (!it.startsWith("/")) "/storage/emulated/0/$it" else it }
-                File(friendlyPath)
-            }
-            if (!destDir.exists()) destDir.mkdirs()
-
-            val baseName = sourceFile.nameWithoutExtension
-            val ext = sourceFile.extension.let { if (it.isNotEmpty()) ".$it" else "" }
-            var destFile = File(destDir, sourceFile.name)
-            var counter = 1
-            while (destFile.exists()) {
-                destFile = File(destDir, "${baseName}_$counter$ext")
-                counter++
-            }
-
-            FileInputStream(sourceFile).use { input ->
-                FileOutputStream(destFile).use { output ->
-                    input.copyTo(output)
-                }
-            }
-            sourceFile.delete()
-
-            db.appDao().insertActivityLog(
-                ActivityLogEntry(
-                    folderId = config.id,
-                    fileName = sourceFile.name,
-                    fileUri = filePath,
-                    action = LogAction.MOVED,
-                    timestamp = System.currentTimeMillis(),
-                    destinationPath = destFile.absolutePath
-                )
-            )
-        } catch (e: Exception) {
-            Log.e("ActionReceiver", "Move failed for $filePath", e)
-            val briefTrace = e.stackTrace.take(3)
-                .joinToString("\n") { "  at ${it.className.substringAfterLast('.')}.${it.methodName}(${it.fileName}:${it.lineNumber})" }
-            val errorDetails = "${e::class.simpleName}: ${e.message}\n$briefTrace"
-            db.appDao().insertActivityLog(
-                ActivityLogEntry(
-                    folderId = config.id,
-                    fileName = filePath.substringAfterLast("/"),
-                    fileUri = filePath,
-                    action = LogAction.ERRORED,
-                    timestamp = System.currentTimeMillis(),
-                    errorDetails = errorDetails
-                )
-            )
-        }
+        MoveHelper.performMove(context, config, filePath)
     }
 
     private suspend fun updateRecentlyUsed(
