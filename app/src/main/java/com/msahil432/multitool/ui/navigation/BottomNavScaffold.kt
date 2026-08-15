@@ -1,0 +1,168 @@
+package com.msahil432.multitool.ui.navigation
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.msahil432.multitool.data.AppDao
+import com.msahil432.multitool.data.SettingsRepository
+import com.msahil432.multitool.ui.screens.AppSettingsScreen
+import com.msahil432.multitool.ui.screens.BlockingHomeScreen
+import com.msahil432.multitool.ui.screens.FilesHomeScreen
+import com.msahil432.multitool.ui.screens.FolderDetailScreen
+import com.msahil432.multitool.ui.screens.ActivityLogScreen
+import com.msahil432.multitool.ui.screens.OnboardingScreen
+import com.msahil432.multitool.ui.screens.PermissionCheckScreen
+import com.msahil432.multitool.ui.screens.UsageHomeScreen
+import com.msahil432.multitool.ui.theme.MultiToolTheme
+
+@Composable
+fun BottomNavScaffold(
+  settingsRepository: SettingsRepository,
+  appDao: AppDao
+) {
+  val navController = rememberNavController()
+  val navBackStackEntry by navController.currentBackStackEntryAsState()
+  val currentDestination = navBackStackEntry?.destination
+
+  Scaffold(
+    modifier = Modifier.fillMaxSize(),
+    bottomBar = {
+      NavigationBar {
+        TopLevelDest.entries.forEach { dest ->
+          val selected = currentDestination?.hierarchy?.any { it.route == dest.route } == true
+          NavigationBarItem(
+            icon = {
+              Icon(
+                imageVector = dest.icon,
+                contentDescription = dest.label
+              )
+            },
+            label = { Text(dest.label) },
+            selected = selected,
+            onClick = {
+              navController.navigate(dest.route) {
+                // Pop up to the start destination to avoid building up a large back stack
+                popUpTo(navController.graph.findStartDestination().id) {
+                  saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+              }
+            }
+          )
+        }
+      }
+    }
+  ) { innerPadding ->
+    NavHost(
+      navController = navController,
+      startDestination = TopLevelDest.FILES.route,
+      modifier = Modifier.fillMaxSize()
+    ) {
+      // ── Files tab ────────────────────────────────────────────────────────────
+      composable(TopLevelDest.FILES.route) {
+        FilesHomeScreen(
+          settingsRepository = settingsRepository,
+          appDao = appDao,
+          innerPadding = innerPadding,
+          onNavigateToFolder = { folderId -> navController.navigate("folder/$folderId") },
+          onNavigateToActivityLog = { navController.navigate("activity_log") }
+        )
+      }
+      composable("folder/{folderId}") { backStackEntry ->
+        val folderId = backStackEntry.arguments?.getString("folderId")?.toLongOrNull()
+          ?: return@composable
+        FolderDetailScreen(
+          folderId = folderId,
+          appDao = appDao,
+          onBack = { navController.popBackStack() }
+        )
+      }
+      composable("activity_log") {
+        ActivityLogScreen(
+          appDao = appDao,
+          onBack = { navController.popBackStack() }
+        )
+      }
+
+      // ── Usage tab ────────────────────────────────────────────────────────────
+      composable(TopLevelDest.USAGE.route) {
+        UsageHomeScreen(innerPadding = innerPadding)
+      }
+
+      // ── Blocking tab ─────────────────────────────────────────────────────────
+      composable(TopLevelDest.BLOCKING.route) {
+        BlockingHomeScreen(innerPadding = innerPadding)
+      }
+
+      // ── Settings tab ─────────────────────────────────────────────────────────
+      composable(TopLevelDest.SETTINGS.route) {
+        AppSettingsScreen(
+          settingsRepository = settingsRepository,
+          innerPadding = innerPadding,
+          onNavigateToPermissions = { navController.navigate("permissions") }
+        )
+      }
+      composable("permissions") {
+        PermissionCheckScreen(onBack = { navController.popBackStack() })
+      }
+    }
+  }
+}
+
+@Preview(name = "BottomNavScaffold Light")
+@Composable
+private fun BottomNavScaffoldPreviewLight() {
+  // Preview is structural only — data dependencies are not wired
+  MultiToolTheme {
+    Scaffold(
+      bottomBar = {
+        NavigationBar {
+          TopLevelDest.entries.forEach { dest ->
+            NavigationBarItem(
+              icon = { Icon(dest.icon, contentDescription = dest.label) },
+              label = { Text(dest.label) },
+              selected = dest == TopLevelDest.FILES,
+              onClick = {}
+            )
+          }
+        }
+      }
+    ) { _ -> }
+  }
+}
+
+@Preview(uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "BottomNavScaffold Dark")
+@Composable
+private fun BottomNavScaffoldPreviewDark() {
+  MultiToolTheme {
+    Scaffold(
+      bottomBar = {
+        NavigationBar {
+          TopLevelDest.entries.forEach { dest ->
+            NavigationBarItem(
+              icon = { Icon(dest.icon, contentDescription = dest.label) },
+              label = { Text(dest.label) },
+              selected = dest == TopLevelDest.SETTINGS,
+              onClick = {}
+            )
+          }
+        }
+      }
+    ) { _ -> }
+  }
+}

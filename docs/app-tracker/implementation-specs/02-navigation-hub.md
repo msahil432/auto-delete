@@ -1,6 +1,14 @@
 # 02 — Navigation Hub (Bottom Nav)
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Done
+
+## Design decisions (recorded 2026-08-16)
+
+| # | Question | Decision |
+|---|----------|----------|
+| D1 | Settings tab content | Minimal: Permissions entry row + **read-only** placeholder rows for `globalDeletionMode` and `globalDefaultPool` using `SettingRow`. Real editing deferred to later specs. |
+| D2 | Design system prerequisite | All 9 design-system components implemented as part of this spec (since `25-design-system.md` was still Not Started). |
+| D3 | Usage tab icon | `Icons.Default.BarChart` used instead of `Icons.Default.QueryStats` to avoid adding the `material-icons-extended` dependency. |
 
 Prerequisites: `01-rename-package.md`, `25-design-system.md`.
 
