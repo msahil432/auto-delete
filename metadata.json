@@ -2,5 +2,5 @@
   "name": "Multi Tool",
   "description": "A multi-purpose productivity app: monitors folders for auto-deletion, tracks app usage, enforces focus/blocking rules, and provides notification management — all stored locally with no cloud sync.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }
