@@ -46,7 +46,7 @@ These specs decompose that document into buildable units. Where the two disagree
 | Usage data | `04-usage-repository.md` | 03 | ✅ Done |
 | Usage track | `05-usage-permission.md` | 02, 25 | ✅ Done |
 | Usage track | `06-usage-stats-collector.md` | 04, 05 | ✅ Done |
-| Usage track | `07-unlock-tracker.md` | 04 | 🔲 Not Started |
+| Usage track | `07-unlock-tracker.md` | 04 | ✅ Done |
 | Usage track | `08-usage-ui.md` | 04, 06, 07, 25 | 🔲 Not Started |
 | Blocking | `09-blocking-entities.md` | 01 | 🔲 Not Started |
 | Blocking | `10-blocking-rules-ui.md` | 09, 25 | 🔲 Not Started |

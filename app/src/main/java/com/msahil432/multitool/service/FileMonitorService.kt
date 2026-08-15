@@ -10,26 +10,48 @@ import android.os.Build
 import android.os.FileObserver
 import android.os.IBinder
 import android.util.Log
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import androidx.core.app.NotificationCompat
 import com.msahil432.multitool.MultiToolApp
 import com.msahil432.multitool.data.FolderConfig
 import com.msahil432.multitool.data.FilterRule
+import com.msahil432.multitool.data.TimelineEventType
+import com.msahil432.multitool.data.UnlockType
+import com.msahil432.multitool.data.UsageRepository
 import com.msahil432.multitool.data.decodeFilterRules
+import com.msahil432.multitool.tracking.ScreenUnlockReceiver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
 
 class FileMonitorService : Service() {
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val observers = mutableListOf<RecursiveFileObserver>()
+    private lateinit var usageRepo: UsageRepository
+    private val unlockReceiver = ScreenUnlockReceiver { type ->
+        coroutineScope.launch {
+            usageRepo.recordUnlock(type)
+            if (type == UnlockType.USER_PRESENT) {
+                usageRepo.recordTimeline("", TimelineEventType.UNLOCK)
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
         startForeground(1, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
 
+        val db = (application as MultiToolApp).database
+        usageRepo = UsageRepository(db.usageDao())
+
+        val unlockFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }
+        registerReceiver(unlockReceiver, unlockFilter)
+
         coroutineScope.launch {
-            val db = (application as MultiToolApp).database
             db.appDao().getEnabledFolderConfigs().collectLatest { configs ->
                 Log.d("FileMonitorService", "Configs updated, restarting observers")
                 restartObservers(configs)
@@ -66,6 +88,11 @@ class FileMonitorService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         observers.forEach { it.stopWatching() }
+        try {
+            unregisterReceiver(unlockReceiver)
+        } catch (e: Exception) {
+            Log.w("FileMonitorService", "Failed to unregister unlockReceiver", e)
+        }
         coroutineScope.cancel()
     }
 

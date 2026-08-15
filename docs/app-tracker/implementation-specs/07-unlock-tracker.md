@@ -1,6 +1,6 @@
 # 07 — Device Unlock Tracker
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Done
 
 Prerequisites: `04-usage-repository.md`.
 
