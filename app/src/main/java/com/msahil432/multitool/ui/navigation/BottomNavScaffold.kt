@@ -39,6 +39,7 @@ import com.msahil432.multitool.ui.screens.GeofenceProfilesScreen
 import com.msahil432.multitool.ui.screens.NotificationVaultScreen
 import com.msahil432.multitool.ui.screens.StrictModeScreen
 import com.msahil432.multitool.ui.screens.UsageTimelineScreen
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 
 @Composable
 fun BottomNavScaffold(

@@ -5,7 +5,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
@@ -25,6 +27,9 @@ import androidx.compose.ui.semantics.semantics
 import kotlinx.coroutines.launch
 
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Warning
 import com.msahil432.multitool.blocking.StrictModeController
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -102,7 +107,7 @@ fun AppSettingsScreen(
         SettingRow(
           title = "Location Profiles",
           subtitle = "Configure geofences to toggle focus profiles by location",
-          leadingIcon = androidx.compose.material.icons.filled.Place,
+          leadingIcon = Icons.Default.Place,
           onClick = onNavigateToGeofences
         )
         HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
@@ -121,9 +126,11 @@ fun AppSettingsScreen(
         Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
           com.msahil432.multitool.ui.components.PermissionTile(
             title = "Notification Access Required",
-            description = "Notification Listener permission is needed to intercept and vault notifications during focus sessions.",
-            isGranted = false,
-            onGrantClick = { showPermissionDisclosure = true }
+            subtitle = "Notification Listener permission is needed to intercept and vault notifications during focus sessions.",
+            granted = false,
+            icon = Icons.Default.Warning,
+            isRequired = true,
+            onGrant = { showPermissionDisclosure = true }
           )
         }
       }
@@ -131,7 +138,7 @@ fun AppSettingsScreen(
       SettingRow(
         title = "Enable Notification Vault",
         subtitle = if (notificationVaultEnabled) "Silencing restricted apps during focus" else "Disabled",
-        leadingIcon = androidx.compose.material.icons.filled.NotificationsActive,
+        leadingIcon = Icons.Default.NotificationsActive,
         trailing = {
           Switch(
             checked = notificationVaultEnabled,
@@ -157,7 +164,7 @@ fun AppSettingsScreen(
         } else {
           "${notificationBlockedPackages.size} apps explicitly restricted"
         },
-        leadingIcon = androidx.compose.material.icons.filled.Apps,
+        leadingIcon = Icons.Default.Apps,
         onClick = { showAppPicker = true }
       )
       HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
@@ -166,7 +173,7 @@ fun AppSettingsScreen(
         SettingRow(
           title = "View Notification Vault",
           subtitle = "Review held notifications and delivery digest",
-          leadingIcon = androidx.compose.material.icons.filled.Inbox,
+          leadingIcon = Icons.Default.Inbox,
           onClick = onNavigateToNotificationVault
         )
         HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
@@ -320,7 +327,7 @@ fun AppSettingsScreen(
         } else {
           "Disabled — sounds siren if tampering is detected during strict mode"
         },
-        leadingIcon = androidx.compose.material.icons.filled.Warning,
+        leadingIcon = Icons.Default.Warning,
         trailing = {
           Switch(
             checked = tamperAlarmEnabled,

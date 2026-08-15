@@ -2,7 +2,6 @@ package com.msahil432.multitool.ui.screens.challenge
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,8 +23,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.security.SecureRandom
 
 /**
@@ -103,7 +102,7 @@ fun TextMatchChallenge(
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.SemiBold,
-                    letterSpacing = androidx.compose.ui.unit.sp(1.2)
+                    letterSpacing = 1.2.sp
                 ),
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(16.dp)

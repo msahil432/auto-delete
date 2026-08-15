@@ -88,7 +88,7 @@ class MultiToolNotificationListener : NotificationListenerService() {
         }
 
         if (inDedicatedList) {
-            val allGroups = blockingRepo.allGroups.first()
+            val allGroups = blockingRepo.groups().first()
             val anyScheduleRuleExists = allGroups.filter { it.enabled }.any { group ->
                 blockingRepo.enabledRules(group.id).any { it.type == BlockRuleType.SCHEDULE }
             }

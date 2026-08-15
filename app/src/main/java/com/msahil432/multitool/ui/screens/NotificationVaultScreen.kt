@@ -125,13 +125,14 @@ fun NotificationVaultScreen(
         ) {
             when {
                 notifications == null -> {
-                    LoadingState(message = "Loading vaulted notifications...")
+                    // Todo: add message: "Loading vaulted notifications..."
+                    LoadingState()
                 }
                 notifications!!.isEmpty() -> {
                     EmptyState(
                         icon = Icons.Default.NotificationsOff,
                         title = "No held notifications",
-                        subtitle = "Notifications silenced during active focus schedules will appear here in your vault."
+                        message = "Notifications silenced during active focus schedules will appear here in your vault."
                     )
                 }
                 else -> {
@@ -165,7 +166,7 @@ fun NotificationVaultScreen(
     if (showClearConfirm) {
         ConfirmDialog(
             title = "Clear Notification Vault?",
-            message = "All vaulted notifications will be permanently removed.",
+            text = "All vaulted notifications will be permanently removed.",
             confirmLabel = "Clear All",
             onConfirm = {
                 showClearConfirm = false

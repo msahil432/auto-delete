@@ -21,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -615,8 +616,8 @@ private fun GeofenceEditScreenPreviewLight() {
             isEnabled = true,
             onEnabledChange = {},
             allGroups = listOf(
-                BlockGroup(id = 1, name = "Social Media", packageNames = "com.ig", enabled = true),
-                BlockGroup(id = 2, name = "Gaming", packageNames = "com.game", enabled = true)
+                BlockGroup(id = 1, name = "Social Media", packageNames = "com.ig", enabled = true, createdAt = System.currentTimeMillis()),
+                BlockGroup(id = 2, name = "Gaming", packageNames = "com.game", enabled = true, createdAt = System.currentTimeMillis())
             ),
             isLocating = false,
             errorMessage = null,
@@ -648,7 +649,7 @@ private fun GeofenceEditScreenPreviewDark() {
             isEnabled = true,
             onEnabledChange = {},
             allGroups = listOf(
-                BlockGroup(id = 1, name = "Social Media", packageNames = "com.ig", enabled = true)
+                BlockGroup(id = 1, name = "Social Media", packageNames = "com.ig", enabled = true, createdAt = System.currentTimeMillis())
             ),
             isLocating = false,
             errorMessage = null,

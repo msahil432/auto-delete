@@ -399,6 +399,14 @@ private fun PermissionStep(
     var showAllFilesDisclosure by remember { mutableStateOf(false) }
     var showNotificationDisclosure by remember { mutableStateOf(false) }
 
+    // For settings-based permissions we launch an activity and re-check on return
+    val settingsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        granted = permission.isGranted(context)
+        if (granted) onNext()
+    }
+
     if (showAccessibilityDisclosure) {
         ConfirmDialog(
             title = "Accessibility Disclosure",
@@ -485,14 +493,6 @@ private fun PermissionStep(
     ) { isGranted ->
         granted = isGranted
         if (isGranted) onNext()
-    }
-
-    // For settings-based permissions we launch an activity and re-check on return
-    val settingsLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) {
-        granted = permission.isGranted(context)
-        if (granted) onNext()
     }
 
     Column(

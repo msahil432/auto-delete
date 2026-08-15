@@ -30,6 +30,7 @@ import com.msahil432.multitool.ui.theme.MultiToolTheme
 import kotlinx.coroutines.launch
 
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Place
 import com.msahil432.multitool.blocking.StrictModeController
 

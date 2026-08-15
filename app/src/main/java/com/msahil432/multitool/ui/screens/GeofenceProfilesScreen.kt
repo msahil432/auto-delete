@@ -394,9 +394,9 @@ private fun GeofenceProfilesScreenPreviewLight() {
                 )
             ),
             groups = listOf(
-                BlockGroup(id = 1, name = "Social Media", packageNames = "com.ig", enabled = true),
-                BlockGroup(id = 2, name = "Games", packageNames = "com.game", enabled = true),
-                BlockGroup(id = 3, name = "Distractions", packageNames = "com.video", enabled = true)
+                BlockGroup(id = 1, name = "Social Media", packageNames = "com.ig", enabled = true, createdAt = System.currentTimeMillis()),
+                BlockGroup(id = 2, name = "Games", packageNames = "com.game", enabled = true, createdAt = System.currentTimeMillis()),
+                BlockGroup(id = 3, name = "Distractions", packageNames = "com.video", enabled = true, createdAt = System.currentTimeMillis())
             ),
             hasForegroundPermission = true,
             hasBackgroundPermission = true,
@@ -427,8 +427,8 @@ private fun GeofenceProfilesScreenPreviewDark() {
                 )
             ),
             groups = listOf(
-                BlockGroup(id = 1, name = "Social Media", packageNames = "com.ig", enabled = true),
-                BlockGroup(id = 2, name = "Games", packageNames = "com.game", enabled = true)
+                BlockGroup(id = 1, name = "Social Media", packageNames = "com.ig", enabled = true, createdAt = System.currentTimeMillis()),
+                BlockGroup(id = 2, name = "Games", packageNames = "com.game", enabled = true, createdAt = System.currentTimeMillis())
             ),
             hasForegroundPermission = false,
             hasBackgroundPermission = false,
