@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Security
@@ -11,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.msahil432.multitool.admin.DeviceAdminHelper
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.ui.components.SectionHeader
 import com.msahil432.multitool.ui.components.SettingRow
@@ -45,13 +47,17 @@ fun AppSettingsScreen(
   val notificationBlockedPackages by settingsRepository.notificationBlockedPackages.collectAsState(initial = emptySet())
 
   var isListenerGranted by remember { mutableStateOf(com.msahil432.multitool.util.NotificationAccess.isGranted(context)) }
+  var isAdminActive by remember { mutableStateOf(DeviceAdminHelper.isActive(context)) }
   var showPermissionDisclosure by remember { mutableStateOf(false) }
+  var showAdminDisclosure by remember { mutableStateOf(false) }
+  var showAdminDeactivateConfirm by remember { mutableStateOf(false) }
   var showAppPicker by remember { mutableStateOf(false) }
 
   DisposableEffect(lifecycleOwner) {
     val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
       if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
         isListenerGranted = com.msahil432.multitool.util.NotificationAccess.isGranted(context)
+        isAdminActive = DeviceAdminHelper.isActive(context)
       }
     }
     lifecycleOwner.lifecycle.addObserver(observer)
@@ -255,6 +261,43 @@ fun AppSettingsScreen(
       }
       HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
 
+      // ── Strict Mode & Anti-Uninstall Protection ───────────────────────────
+      SectionHeader(title = "Strict Mode & Protection")
+      Text(
+        text = "Prevents uninstalling the app while a strict-mode focus session is active.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+      )
+      SettingRow(
+        title = "Anti-uninstall protection",
+        subtitle = if (isAdminActive) "Active (Device Admin enabled)" else "Inactive — tap to enable",
+        leadingIcon = Icons.Default.AdminPanelSettings,
+        trailing = {
+          Switch(
+            checked = isAdminActive,
+            onCheckedChange = { checked ->
+              if (checked) {
+                showAdminDisclosure = true
+              } else {
+                showAdminDeactivateConfirm = true
+              }
+            },
+            modifier = Modifier.semantics {
+              contentDescription = "Toggle Anti-uninstall protection"
+            }
+          )
+        },
+        onClick = {
+          if (!isAdminActive) {
+            showAdminDisclosure = true
+          } else {
+            showAdminDeactivateConfirm = true
+          }
+        }
+      )
+      HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+
       // ── Global defaults (read-only placeholders — editable in future specs) ──
       SectionHeader(title = "Global Defaults")
       SettingRow(
@@ -294,6 +337,57 @@ fun AppSettingsScreen(
       },
       dismissButton = {
         TextButton(onClick = { showPermissionDisclosure = false }) {
+          Text("Cancel")
+        }
+      }
+    )
+  }
+
+  if (showAdminDisclosure) {
+    AlertDialog(
+      onDismissRequest = { showAdminDisclosure = false },
+      title = { Text("Anti-Uninstall Protection") },
+      text = {
+        Text("Multi Tool uses Device Administrator privileges solely to prevent the app from being uninstalled during an active strict-mode focus session.\n\nNo other device management features or policies are used. All settings and data stay completely on your device.")
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            showAdminDisclosure = false
+            DeviceAdminHelper.requestActivation(context)
+          }
+        ) {
+          Text("Continue")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { showAdminDisclosure = false }) {
+          Text("Cancel")
+        }
+      }
+    )
+  }
+
+  if (showAdminDeactivateConfirm) {
+    AlertDialog(
+      onDismissRequest = { showAdminDeactivateConfirm = false },
+      title = { Text("Deactivate Protection?") },
+      text = {
+        Text("Deactivating Device Admin will allow the app to be uninstalled even during active strict-mode focus sessions.")
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            showAdminDeactivateConfirm = false
+            DeviceAdminHelper.deactivate(context)
+            isAdminActive = DeviceAdminHelper.isActive(context)
+          }
+        ) {
+          Text("Deactivate")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { showAdminDeactivateConfirm = false }) {
           Text("Cancel")
         }
       }

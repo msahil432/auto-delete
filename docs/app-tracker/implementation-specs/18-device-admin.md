@@ -1,6 +1,6 @@
 # 18 — Device Admin (Anti-Uninstall)
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Done
 
 Prerequisites: `01-rename-package.md`.
 
