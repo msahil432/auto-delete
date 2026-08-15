@@ -32,4 +32,11 @@ class Converters {
 
     @TypeConverter
     fun toTimelineEventType(value: String): TimelineEventType = TimelineEventType.valueOf(value)
+
+    @TypeConverter
+    fun fromBlockRuleType(value: BlockRuleType): String = value.name
+
+    @TypeConverter
+    fun toBlockRuleType(value: String): BlockRuleType = BlockRuleType.valueOf(value)
 }
+

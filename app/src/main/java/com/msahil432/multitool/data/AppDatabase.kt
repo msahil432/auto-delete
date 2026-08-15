@@ -237,6 +237,75 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
     }
 }
 
+/**
+ * Migration from version 6 → 7:
+
+ *  - Adds `block_groups` table
+ *  - Adds `block_rules` table
+ *  - Adds `block_interceptions` table and index
+ *  - Adds `block_counters` table and unique index
+ */
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS block_groups (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                packageNames TEXT NOT NULL,
+                enabled INTEGER NOT NULL,
+                createdAt INTEGER NOT NULL
+            )
+        """.trimIndent())
+
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS block_rules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                groupId INTEGER NOT NULL,
+                type TEXT NOT NULL,
+                enabled INTEGER NOT NULL,
+                daysOfWeekMask INTEGER NOT NULL,
+                startMinuteOfDay INTEGER NOT NULL,
+                endMinuteOfDay INTEGER NOT NULL,
+                dailyQuotaMinutes INTEGER NOT NULL,
+                maxLaunchesPerDay INTEGER NOT NULL,
+                maxSessionMinutes INTEGER NOT NULL,
+                cooldownMinutes INTEGER NOT NULL,
+                goalPackageNames TEXT,
+                goalRequiredMinutes INTEGER NOT NULL
+            )
+        """.trimIndent())
+
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS block_interceptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                packageName TEXT NOT NULL,
+                ruleId INTEGER NOT NULL,
+                ruleType TEXT NOT NULL
+            )
+        """.trimIndent())
+        db.execSQL("""
+            CREATE INDEX IF NOT EXISTS index_block_interceptions_timestamp
+            ON block_interceptions(timestamp)
+        """.trimIndent())
+
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS block_counters (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                dateEpochDay INTEGER NOT NULL,
+                groupId INTEGER NOT NULL,
+                usedForegroundMillis INTEGER NOT NULL,
+                launchesUsed INTEGER NOT NULL,
+                lockedUntil INTEGER NOT NULL
+            )
+        """.trimIndent())
+        db.execSQL("""
+            CREATE UNIQUE INDEX IF NOT EXISTS index_block_counters_dateEpochDay_groupId
+            ON block_counters(dateEpochDay, groupId)
+        """.trimIndent())
+    }
+}
+
 @Database(
     entities = [
         FolderConfig::class,
@@ -245,9 +314,13 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
         UsageDailyStat::class,
         AppLaunchEvent::class,
         UnlockEvent::class,
-        TimelineEvent::class
+        TimelineEvent::class,
+        BlockGroup::class,
+        BlockRule::class,
+        BlockInterception::class,
+        BlockCounter::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -255,3 +328,4 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun appDao(): AppDao
     abstract fun usageDao(): UsageDao
 }
+
