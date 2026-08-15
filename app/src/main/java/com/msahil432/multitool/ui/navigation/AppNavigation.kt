@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.msahil432.multitool.data.AppDao
 import com.msahil432.multitool.data.SettingsRepository
+import com.msahil432.multitool.data.UsageRepository
 import com.msahil432.multitool.ui.screens.OnboardingScreen
 
 private const val ROUTE_ONBOARDING = "onboarding"
@@ -16,7 +17,8 @@ private const val ROUTE_HUB = "hub"
 @Composable
 fun AppNavigation(
   settingsRepository: SettingsRepository,
-  appDao: AppDao
+  appDao: AppDao,
+  usageRepository: UsageRepository
 ) {
   val navController = rememberNavController()
   val onboardingComplete by settingsRepository.onboardingComplete.collectAsState(initial = false)
@@ -41,7 +43,8 @@ fun AppNavigation(
     composable(ROUTE_HUB) {
       BottomNavScaffold(
         settingsRepository = settingsRepository,
-        appDao = appDao
+        appDao = appDao,
+        usageRepository = usageRepository
       )
     }
   }

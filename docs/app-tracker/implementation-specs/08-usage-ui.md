@@ -1,6 +1,6 @@
 # 08 — Usage Dashboard UI
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Complete
 
 Prerequisites: `04-usage-repository.md`, `06-usage-stats-collector.md`,
 `07-unlock-tracker.md`, `25-design-system.md`.
@@ -74,3 +74,15 @@ do this off the main thread).
 ## Out of scope
 
 - Blocking UI (spec 10). Modifying how data is collected (06/07).
+
+## Implementation Decisions
+
+- Created `util/DurationFormat.kt` with `fun Long.toHms(): String` formatting durations cleanly (hours, minutes, seconds) with "0m" fallback for <= 0ms.
+- Created `ui/screens/UsageViewModel.kt` reading Flows from `UsageRepository` for `totalScreenTimeToday`, `perApp` (sorted descending by foreground time), `unlocksToday`, and `timelineToday`.
+- App icon and label resolution done off the main thread with coroutines and cached in `Map<String, AppMeta>`.
+- `UsageHomeScreen.kt` implements all 4 states (Missing permission error state with direct settings grant button, Loading state, Empty state, and populated content layout with StatCards, per-app breakdown, and "View Timeline" button).
+- Added `LifecycleEventObserver` listening for `Lifecycle.Event.ON_RESUME` on `UsageHomeScreen` to re-check usage stats permission automatically when the user returns from system settings.
+- Created `ui/screens/UsageTimelineScreen.kt` featuring a reverse-chronological event timeline grouped by hour with distinct visual icons for app foreground, background, unlock, and block intercept events.
+- Added optional `actionLabel: String = "Retry"` parameter to `ErrorState` component to support custom action button labels like "Grant Permission".
+- Wired the Usage tab and the `usage_timeline` pushed sub-route in `BottomNavScaffold.kt`, `AppNavigation.kt`, and `MainActivity.kt`.
+- Added unit test suites `DurationFormatTest.kt` and `UsageViewModelTest.kt`.

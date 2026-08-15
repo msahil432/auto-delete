@@ -16,6 +16,7 @@ import com.msahil432.multitool.ui.theme.MultiToolTheme
 fun ErrorState(
   message: String,
   modifier: Modifier = Modifier,
+  actionLabel: String = "Retry",
   onRetry: (() -> Unit)? = null
 ) {
   Column(
@@ -41,7 +42,7 @@ fun ErrorState(
     if (onRetry != null) {
       Spacer(modifier = Modifier.height(20.dp))
       OutlinedButton(onClick = onRetry) {
-        Text("Retry")
+        Text(actionLabel)
       }
     }
   }

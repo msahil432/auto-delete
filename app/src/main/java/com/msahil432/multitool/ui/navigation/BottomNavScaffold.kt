@@ -29,10 +29,14 @@ import com.msahil432.multitool.ui.screens.PermissionCheckScreen
 import com.msahil432.multitool.ui.screens.UsageHomeScreen
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
+import com.msahil432.multitool.data.UsageRepository
+import com.msahil432.multitool.ui.screens.UsageTimelineScreen
+
 @Composable
 fun BottomNavScaffold(
   settingsRepository: SettingsRepository,
-  appDao: AppDao
+  appDao: AppDao,
+  usageRepository: UsageRepository
 ) {
   val navController = rememberNavController()
   val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -101,7 +105,17 @@ fun BottomNavScaffold(
 
       // ── Usage tab ────────────────────────────────────────────────────────────
       composable(TopLevelDest.USAGE.route) {
-        UsageHomeScreen(innerPadding = innerPadding)
+        UsageHomeScreen(
+          usageRepository = usageRepository,
+          innerPadding = innerPadding,
+          onNavigateToTimeline = { navController.navigate("usage_timeline") }
+        )
+      }
+      composable("usage_timeline") {
+        UsageTimelineScreen(
+          usageRepository = usageRepository,
+          onBack = { navController.popBackStack() }
+        )
       }
 
       // ── Blocking tab ─────────────────────────────────────────────────────────
