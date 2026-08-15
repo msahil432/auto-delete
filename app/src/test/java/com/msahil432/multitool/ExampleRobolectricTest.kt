@@ -1,7 +1,8 @@
-﻿package com.msahil432.multitool
+package com.msahil432.multitool
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.msahil432.multitool.R
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -16,6 +17,6 @@ class ExampleRobolectricTest {
   fun `read string from context`() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     val appName = context.getString(R.string.app_name)
-    assertEquals("Auto Delete", appName)
+    assertEquals("Multi Tool", appName)
   }
 }
