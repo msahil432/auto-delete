@@ -1,4 +1,4 @@
-﻿package com.msahil432.multitool.ui.screens
+package com.msahil432.multitool.ui.screens
 
 import android.Manifest
 import android.content.Context
@@ -41,6 +41,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.msahil432.multitool.data.AppDao
 import com.msahil432.multitool.data.DEFAULT_EXCLUSION_RULES
 import com.msahil432.multitool.data.DEFAULT_TIME_PRESETS
@@ -49,6 +52,7 @@ import com.msahil432.multitool.data.FolderConfig
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.encodeFilterRules
 import com.msahil432.multitool.data.encodeTimePeriodPresets
+import com.msahil432.multitool.util.UsageAccess
 import kotlinx.coroutines.launch
 
 // ─── Permission model ────────────────────────────────────────────────────────
@@ -101,6 +105,15 @@ fun buildPermissionList(): List<AppPermission> = listOf(
         }
     ),
     AppPermission(
+        id = "usage_access",
+        title = "Usage access",
+        subtitle = "Lets Multi Tool measure your screen time, app launches, and build your activity timeline. Data stays on your device.",
+        icon = Icons.Default.BarChart,
+        isRequired = false,
+        isGranted = { ctx -> UsageAccess.isGranted(ctx) },
+        grant = { ctx, _ -> UsageAccess.openSettings(ctx) }
+    ),
+    AppPermission(
         id = "overlay",
         title = "Display Over Other Apps",
         subtitle = "Show a floating prompt when a new file is detected — faster than a notification.",
@@ -135,8 +148,6 @@ fun buildPermissionList(): List<AppPermission> = listOf(
 
 // ─── Onboarding screen ───────────────────────────────────────────────────────
 
-private val TOTAL_STEPS = 7   // Welcome + 4 permissions + DefaultConfig + Done
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingScreen(
@@ -149,6 +160,7 @@ fun OnboardingScreen(
     var step by remember { mutableIntStateOf(0) }
 
     val permissions = remember { buildPermissionList() }
+    val totalSteps = permissions.size + 3 // Welcome + N permissions + DefaultConfig + Done
 
     Box(
         modifier = Modifier
@@ -157,7 +169,7 @@ fun OnboardingScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // ── Top progress bar ──────────────────────────────────────────────
-            OnboardingProgressBar(step = step, total = TOTAL_STEPS)
+            OnboardingProgressBar(step = step, total = totalSteps)
 
             // ── Step content ──────────────────────────────────────────────────
             Box(
@@ -177,12 +189,12 @@ fun OnboardingScreen(
                 ) { currentStep ->
                     when (currentStep) {
                         0 -> WelcomeStep(onNext = { step = 1 })
-                        in 1..4 -> PermissionStep(
+                        in 1..permissions.size -> PermissionStep(
                             permission = permissions[currentStep - 1],
                             stepIndex = currentStep,
                             onNext = { step++ }
                         )
-                        5 -> DefaultConfigStep(
+                        permissions.size + 1 -> DefaultConfigStep(
                             onNext = { mode, keepAction ->
                                 coroutineScope.launch {
                                     val defaultPresets = encodeTimePeriodPresets(DEFAULT_TIME_PRESETS)
@@ -210,7 +222,7 @@ fun OnboardingScreen(
                                         )
                                     )
                                     settingsRepository.setOnboardingComplete(true)
-                                    step = 6
+                                    step = permissions.size + 2
                                 }
                             }
                         )
@@ -355,6 +367,19 @@ private fun PermissionStep(
     // Re-check status every time this composable is recomposed (e.g. after returning from Settings)
     var granted by remember { mutableStateOf(permission.isGranted(context)) }
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                granted = permission.isGranted(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     // For the notification permission we need the accompanist launcher path
     val notifLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -475,6 +500,15 @@ private fun PermissionStep(
                                     )
                                 }
                             } else onNext()
+                        }
+                        "usage_access" -> {
+                            try {
+                                settingsLauncher.launch(
+                                    Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                                )
+                            } catch (_: Exception) {
+                                UsageAccess.openSettings(context)
+                            }
                         }
                         "overlay" -> settingsLauncher.launch(
                             Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -652,6 +686,20 @@ private fun AllSetStep(
     onDone: () -> Unit
 ) {
     val context = LocalContext.current
+    var refreshKey by remember { mutableIntStateOf(0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshKey++
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -694,8 +742,11 @@ private fun AllSetStep(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            permissions.forEach { perm ->
-                val granted = perm.isGranted(context)
+            val grantedStates = remember(refreshKey) {
+                permissions.map { it.isGranted(context) }
+            }
+            permissions.forEachIndexed { idx, perm ->
+                val granted = grantedStates[idx]
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -756,6 +807,19 @@ fun PermissionCheckScreen(onBack: () -> Unit) {
 
     // Trigger recomposition when returning from a Settings screen
     var refreshKey by remember { mutableIntStateOf(0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshKey++
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     val notifLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -865,6 +929,15 @@ fun PermissionCheckScreen(onBack: () -> Unit) {
                                             Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
                                         )
                                     }
+                                }
+                            }
+                            "usage_access" -> {
+                                try {
+                                    settingsLauncher.launch(
+                                        Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                                    )
+                                } catch (_: Exception) {
+                                    UsageAccess.openSettings(context)
                                 }
                             }
                             "overlay" -> settingsLauncher.launch(

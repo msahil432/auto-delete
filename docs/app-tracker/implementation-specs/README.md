@@ -44,7 +44,7 @@ These specs decompose that document into buildable units. Where the two disagree
 | Foundation | `02-navigation-hub.md` | 01, 25 | ✅ Done |
 | Usage data | `03-usage-data-entities.md` | 01 | ✅ Done |
 | Usage data | `04-usage-repository.md` | 03 | ✅ Done |
-| Usage track | `05-usage-permission.md` | 02, 25 | 🔲 Not Started |
+| Usage track | `05-usage-permission.md` | 02, 25 | ✅ Done |
 | Usage track | `06-usage-stats-collector.md` | 04, 05 | 🔲 Not Started |
 | Usage track | `07-unlock-tracker.md` | 04 | 🔲 Not Started |
 | Usage track | `08-usage-ui.md` | 04, 06, 07, 25 | 🔲 Not Started |

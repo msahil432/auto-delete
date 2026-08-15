@@ -1,6 +1,6 @@
 # 05 — Usage Access Permission Flow
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Complete
 
 Prerequisites: `02-navigation-hub.md`, `25-design-system.md`.
 
@@ -75,3 +75,11 @@ cannot be requested with `requestPermissions`. You must:
 ## Out of scope
 
 - Actually reading usage stats — that is `06-usage-stats-collector.md`.
+
+## Implementation Decisions
+
+- Added `android.permission.PACKAGE_USAGE_STATS` with `tools:ignore="ProtectedPermissions"` in `app/src/main/AndroidManifest.xml`.
+- Created `app/src/main/java/com/msahil432/multitool/util/UsageAccess.kt` supporting API version fallback for `AppOpsManager` check (`unsafeCheckOpNoThrow` vs `checkOpNoThrow`) and intent creation/launching.
+- Extended `buildPermissionList()` in `OnboardingScreen.kt` with `usage_access` using `Icons.Default.BarChart` (aligning with `TopLevelDest.USAGE` and avoiding extended icons dependencies), `isRequired = false`.
+- Made `totalSteps` dynamic (`permissions.size + 3`) in `OnboardingScreen` so permission steps dynamically size without hardcoded step counts.
+- Added `LifecycleEventObserver` listening for `Lifecycle.Event.ON_RESUME` in `PermissionStep`, `AllSetStep`, and `PermissionCheckScreen` to instantly re-check and display updated permission state when the user navigates back from system Settings.
