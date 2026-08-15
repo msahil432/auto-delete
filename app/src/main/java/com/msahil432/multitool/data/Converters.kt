@@ -20,4 +20,16 @@ class Converters {
 
     @TypeConverter
     fun toLogAction(value: String): LogAction = LogAction.valueOf(value)
+
+    @TypeConverter
+    fun fromUnlockType(value: UnlockType): String = value.name
+
+    @TypeConverter
+    fun toUnlockType(value: String): UnlockType = UnlockType.valueOf(value)
+
+    @TypeConverter
+    fun fromTimelineEventType(value: TimelineEventType): String = value.name
+
+    @TypeConverter
+    fun toTimelineEventType(value: String): TimelineEventType = TimelineEventType.valueOf(value)
 }

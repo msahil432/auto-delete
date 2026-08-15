@@ -169,9 +169,85 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
     }
 }
 
+/**
+ * Migration from version 5 → 6:
+ *  - Adds `usage_daily_stats` table and unique index
+ *  - Adds `app_launch_events` table and indices
+ *  - Adds `unlock_events` table and index
+ *  - Adds `timeline_events` table and index
+ */
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS usage_daily_stats (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                dateEpochDay INTEGER NOT NULL,
+                packageName TEXT NOT NULL,
+                foregroundMillis INTEGER NOT NULL,
+                launchCount INTEGER NOT NULL,
+                lastUpdated INTEGER NOT NULL
+            )
+        """.trimIndent())
+        db.execSQL("""
+            CREATE UNIQUE INDEX IF NOT EXISTS index_usage_daily_stats_dateEpochDay_packageName
+            ON usage_daily_stats(dateEpochDay, packageName)
+        """.trimIndent())
+
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS app_launch_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                packageName TEXT NOT NULL,
+                timestamp INTEGER NOT NULL
+            )
+        """.trimIndent())
+        db.execSQL("""
+            CREATE INDEX IF NOT EXISTS index_app_launch_events_timestamp
+            ON app_launch_events(timestamp)
+        """.trimIndent())
+        db.execSQL("""
+            CREATE INDEX IF NOT EXISTS index_app_launch_events_packageName
+            ON app_launch_events(packageName)
+        """.trimIndent())
+
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS unlock_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                type TEXT NOT NULL
+            )
+        """.trimIndent())
+        db.execSQL("""
+            CREATE INDEX IF NOT EXISTS index_unlock_events_timestamp
+            ON unlock_events(timestamp)
+        """.trimIndent())
+
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS timeline_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                packageName TEXT NOT NULL,
+                eventType TEXT NOT NULL,
+                durationMillis INTEGER
+            )
+        """.trimIndent())
+        db.execSQL("""
+            CREATE INDEX IF NOT EXISTS index_timeline_events_timestamp
+            ON timeline_events(timestamp)
+        """.trimIndent())
+    }
+}
+
 @Database(
-    entities = [FolderConfig::class, PendingAction::class, ActivityLogEntry::class],
-    version = 5,
+    entities = [
+        FolderConfig::class,
+        PendingAction::class,
+        ActivityLogEntry::class,
+        UsageDailyStat::class,
+        AppLaunchEvent::class,
+        UnlockEvent::class,
+        TimelineEvent::class
+    ],
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

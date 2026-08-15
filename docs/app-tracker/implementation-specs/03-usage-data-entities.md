@@ -1,6 +1,6 @@
 # 03 — Usage Tracking: Room Entities
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Complete
 
 Prerequisites: `01-rename-package.md`. Follow the Room rules in `00-conventions.md`.
 
@@ -92,3 +92,9 @@ expectations (INTEGER for Long/Int/Boolean, TEXT for String/enum).
 ## Out of scope
 
 - DAOs / repository (see `04-usage-repository.md`). Collection logic (06/07).
+
+## Implementation Decisions
+
+- Added `@TypeConverter` methods for `UnlockType` and `TimelineEventType` in `data/Converters.kt` following the existing `Converters` pattern for enum persistence in Room.
+- Created `data/UsageEntities.kt` containing `UsageDailyStat`, `AppLaunchEvent`, `UnlockEvent`, `UnlockType`, `TimelineEvent`, and `TimelineEventType`.
+- Added `MIGRATION_5_6` in `data/AppDatabase.kt` and registered it in `MultiToolApp.kt` database builder with database version bumped to `6`.

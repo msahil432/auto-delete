@@ -42,7 +42,7 @@ These specs decompose that document into buildable units. Where the two disagree
 | Foundation | `01-rename-package.md` | 00 | ✅ Done |
 | Foundation | `24-remove-firebase-ai.md` | 00 | ✅ Done |
 | Foundation | `02-navigation-hub.md` | 01, 25 | ✅ Done |
-| Usage data | `03-usage-data-entities.md` | 01 | 🔲 Not Started |
+| Usage data | `03-usage-data-entities.md` | 01 | ✅ Done |
 | Usage data | `04-usage-repository.md` | 03 | 🔲 Not Started |
 | Usage track | `05-usage-permission.md` | 02, 25 | 🔲 Not Started |
 | Usage track | `06-usage-stats-collector.md` | 04, 05 | 🔲 Not Started |
