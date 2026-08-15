@@ -42,6 +42,18 @@
                 android:value="Monitors specific directories for new files to trigger auto-deletion." />
         </service>
         
+        <service
+            android:name=".accessibility.MultiToolAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
         <receiver android:name=".service.ActionReceiver" android:exported="false" />
         
         <receiver android:name=".service.BootReceiver" android:exported="true">
@@ -52,3 +64,4 @@
     </application>
 
 </manifest>
+

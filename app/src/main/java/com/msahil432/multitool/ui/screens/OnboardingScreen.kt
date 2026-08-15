@@ -44,6 +44,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.msahil432.multitool.accessibility.AccessibilityUtil
+
 import com.msahil432.multitool.data.AppDao
 import com.msahil432.multitool.data.DEFAULT_EXCLUSION_RULES
 import com.msahil432.multitool.data.DEFAULT_TIME_PRESETS
@@ -52,8 +54,10 @@ import com.msahil432.multitool.data.FolderConfig
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.encodeFilterRules
 import com.msahil432.multitool.data.encodeTimePeriodPresets
+import com.msahil432.multitool.ui.components.ConfirmDialog
 import com.msahil432.multitool.util.UsageAccess
 import kotlinx.coroutines.launch
+
 
 // ─── Permission model ────────────────────────────────────────────────────────
 
@@ -114,6 +118,15 @@ fun buildPermissionList(): List<AppPermission> = listOf(
         grant = { ctx, _ -> UsageAccess.openSettings(ctx) }
     ),
     AppPermission(
+        id = "accessibility",
+        title = "Accessibility Service",
+        subtitle = "Detects which app is open to enforce focus blocks, session limits, and video filters. Data never leaves your device.",
+        icon = Icons.Default.AccessibilityNew,
+        isRequired = false,
+        isGranted = { ctx -> com.msahil432.multitool.accessibility.AccessibilityUtil.isEnabled(ctx) },
+        grant = { ctx, _ -> com.msahil432.multitool.accessibility.AccessibilityUtil.openSettings(ctx) }
+    ),
+    AppPermission(
         id = "overlay",
         title = "Display Over Other Apps",
         subtitle = "Show a floating prompt when a new file is detected — faster than a notification.",
@@ -127,6 +140,7 @@ fun buildPermissionList(): List<AppPermission> = listOf(
             )
         }
     ),
+
     AppPermission(
         id = "battery",
         title = "Battery Optimization Exemption",
@@ -366,6 +380,20 @@ private fun PermissionStep(
 
     // Re-check status every time this composable is recomposed (e.g. after returning from Settings)
     var granted by remember { mutableStateOf(permission.isGranted(context)) }
+    var showAccessibilityDisclosure by remember { mutableStateOf(false) }
+
+    if (showAccessibilityDisclosure) {
+        ConfirmDialog(
+            title = "Accessibility Disclosure",
+            text = "Multi Tool uses Accessibility to detect which app is open so it can enforce your focus blocks and short-form video filters. It does not collect the contents of your screen or send data off your device.",
+            confirmLabel = "Continue to Settings",
+            onConfirm = {
+                showAccessibilityDisclosure = false
+                AccessibilityUtil.openSettings(context)
+            },
+            onDismiss = { showAccessibilityDisclosure = false }
+        )
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -429,7 +457,7 @@ private fun PermissionStep(
         // Required / Optional badge
         Surface(
             shape = RoundedCornerShape(50),
-            color = if (permission.isRequired) MaterialTheme.colorScheme.errorContainer
+            color = if (permission.isRequired) MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
                     else MaterialTheme.colorScheme.surfaceVariant,
             contentColor = if (permission.isRequired) MaterialTheme.colorScheme.error
                            else MaterialTheme.colorScheme.onSurfaceVariant
@@ -438,13 +466,14 @@ private fun PermissionStep(
                 if (permission.isRequired) "Required" else "Optional",
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.Medium
             )
         }
 
+        // Title and description
         Text(
             permission.title,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
@@ -509,6 +538,9 @@ private fun PermissionStep(
                             } catch (_: Exception) {
                                 UsageAccess.openSettings(context)
                             }
+                        }
+                        "accessibility" -> {
+                            showAccessibilityDisclosure = true
                         }
                         "overlay" -> settingsLauncher.launch(
                             Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -905,6 +937,21 @@ fun PermissionCheckScreen(onBack: () -> Unit) {
                 }
             }
 
+            var showAccessibilityDisclosure by remember { mutableStateOf(false) }
+
+            if (showAccessibilityDisclosure) {
+                ConfirmDialog(
+                    title = "Accessibility Disclosure",
+                    text = "Multi Tool uses Accessibility to detect which app is open so it can enforce your focus blocks and short-form video filters. It does not collect the contents of your screen or send data off your device.",
+                    confirmLabel = "Continue to Settings",
+                    onConfirm = {
+                        showAccessibilityDisclosure = false
+                        AccessibilityUtil.openSettings(context)
+                    },
+                    onDismiss = { showAccessibilityDisclosure = false }
+                )
+            }
+
             permissions.forEachIndexed { idx, perm ->
                 val granted = grantedStates[idx]
                 PermissionCard(
@@ -940,6 +987,9 @@ fun PermissionCheckScreen(onBack: () -> Unit) {
                                     UsageAccess.openSettings(context)
                                 }
                             }
+                            "accessibility" -> {
+                                showAccessibilityDisclosure = true
+                            }
                             "overlay" -> settingsLauncher.launch(
                                 Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                     Uri.parse("package:${context.packageName}"))
@@ -955,6 +1005,7 @@ fun PermissionCheckScreen(onBack: () -> Unit) {
         }
     }
 }
+
 
 @Composable
 private fun PermissionCard(

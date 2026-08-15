@@ -1,8 +1,9 @@
 # 11 — Accessibility Service Core
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Done
 
 Prerequisites: `09-blocking-entities.md`, `25-design-system.md`.
+
 
 ## Goal
 

@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Multi Tool</string>
+    <string name="accessibility_service_desc">Enables real-time app detection for blocking distractions, enforcing usage quotas, and short-form video filtering. Privacy protected: all processing occurs entirely on your device.</string>
 </resources>
+
