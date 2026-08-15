@@ -142,7 +142,7 @@ class RecursiveFileObserver(
     private val rootPath: String,
     private val config: FolderConfig,
     private val onFileCreated: (String) -> Unit
-) : FileObserver(rootPath, CREATE or MOVED_TO) {
+) : FileObserver(java.io.File(rootPath), CREATE or MOVED_TO) {
 
     // Decode filter rules once at construction time for efficiency
     private val excludeRules: List<FilterRule> = decodeFilterRules(config.fileTypeExcludeList)

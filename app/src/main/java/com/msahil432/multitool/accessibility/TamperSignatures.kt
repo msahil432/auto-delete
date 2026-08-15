@@ -112,7 +112,6 @@ object TamperSignatures {
             val child = try { node.getChild(i) } catch (_: Exception) { null }
             if (child != null) {
                 val found = scanNodeHierarchyForText(child, targets, depth + 1)
-                try { child.recycle() } catch (_: Exception) {}
                 if (found) return true
             }
         }

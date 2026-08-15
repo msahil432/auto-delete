@@ -1,4 +1,4 @@
-﻿package com.msahil432.multitool.ui.screens
+package com.msahil432.multitool.ui.screens
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -17,6 +17,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -326,7 +328,7 @@ fun DeletionModeSection(
             val (label, description, icon) = when (mode) {
                 DeletionMode.TRASH    -> Triple("Move to Trash", "Recoverable from system trash", Icons.Default.Delete)
                 DeletionMode.DELETE   -> Triple("Delete Permanently", "Cannot be recovered", Icons.Default.DeleteForever)
-                DeletionMode.ASK_AGAIN -> Triple("Ask Again", "Remind me to decide later", Icons.Default.HelpOutline)
+                DeletionMode.ASK_AGAIN -> Triple("Ask Again", "Remind me to decide later", Icons.AutoMirrored.Filled.HelpOutline)
             }
             DeletionModeRow(
                 label = label,
@@ -581,7 +583,7 @@ fun AddTimePeriodDialog(
                             readOnly = true,
                             label = { Text("Unit") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                            modifier = Modifier.menuAnchor(),
+                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable),
                             shape = RoundedCornerShape(12.dp)
                         )
                         ExposedDropdownMenu(
@@ -1078,7 +1080,7 @@ fun MoveRuleSection(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
-                Icons.Default.DriveFileMove,
+                Icons.AutoMirrored.Filled.DriveFileMove,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)

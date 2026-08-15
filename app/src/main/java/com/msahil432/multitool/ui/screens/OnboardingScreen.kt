@@ -27,6 +27,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -350,7 +353,7 @@ private fun WelcomeStep(onNext: () -> Unit) {
         listOf(
             Triple(Icons.Default.FolderOpen, "Monitor any folder", "Screenshots, Downloads, or custom directories"),
             Triple(Icons.Default.Timer, "Scheduled cleanup", "Delete or move files after a time delay you choose"),
-            Triple(Icons.Default.DriveFileMove, "Google Photos safe", "Move to a backup folder instead of deleting")
+            Triple(Icons.AutoMirrored.Filled.DriveFileMove, "Google Photos safe", "Move to a backup folder instead of deleting")
         ).forEach { (icon, title, sub) ->
             Row(
                 modifier = Modifier
@@ -620,7 +623,7 @@ private fun PermissionStep(
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp)
             ) {
-                Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Grant Permission", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             }
@@ -933,7 +936,7 @@ fun PermissionCheckScreen(onBack: () -> Unit) {
                 title = { Text("Permissions", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -1212,7 +1215,7 @@ private fun PermissionCard(
                 else
                     ButtonDefaults.filledTonalButtonColors()
             ) {
-                Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Grant in Settings", fontWeight = FontWeight.Medium)
             }
