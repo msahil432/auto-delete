@@ -26,6 +26,7 @@ class MainActivity : ComponentActivity() {
         val blockingRepository = com.msahil432.multitool.data.BlockingRepository(appDatabase.blockingDao())
         val browsingRepository = com.msahil432.multitool.data.BrowsingRepository(appDatabase.browsingDao())
         val notificationRepository = com.msahil432.multitool.data.NotificationRepository(appDatabase.notificationDao())
+        val geofenceRepository = com.msahil432.multitool.data.GeofenceRepository(appDatabase.geofenceDao())
         
         // Start foreground service if possible
         val serviceIntent = Intent(this, FileMonitorService::class.java)
@@ -51,7 +52,8 @@ class MainActivity : ComponentActivity() {
                         usageRepository = usageRepository,
                         blockingRepository = blockingRepository,
                         browsingRepository = browsingRepository,
-                        notificationRepository = notificationRepository
+                        notificationRepository = notificationRepository,
+                        geofenceRepository = geofenceRepository
                     )
                 }
             }

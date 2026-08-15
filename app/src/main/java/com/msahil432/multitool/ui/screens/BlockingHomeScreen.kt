@@ -29,12 +29,15 @@ import com.msahil432.multitool.ui.components.LoadingState
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 import kotlinx.coroutines.launch
 
+import androidx.compose.material.icons.filled.Place
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BlockingHomeScreen(
   blockingRepository: BlockingRepository,
   innerPadding: PaddingValues,
-  onNavigateToGroup: (Long) -> Unit
+  onNavigateToGroup: (Long) -> Unit,
+  onNavigateToGeofences: (() -> Unit)? = null
 ) {
   val coroutineScope = rememberCoroutineScope()
   val groups by blockingRepository.groups().collectAsState(initial = null)
@@ -43,7 +46,17 @@ fun BlockingHomeScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text("Blocking", style = MaterialTheme.typography.headlineSmall) }
+        title = { Text("Blocking", style = MaterialTheme.typography.headlineSmall) },
+        actions = {
+          if (onNavigateToGeofences != null) {
+            IconButton(onClick = onNavigateToGeofences) {
+              Icon(
+                imageVector = Icons.Default.Place,
+                contentDescription = "Location Profiles"
+              )
+            }
+          }
+        }
       )
     },
     floatingActionButton = {

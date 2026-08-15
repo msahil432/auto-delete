@@ -1,6 +1,13 @@
 # 17 — Geofenced Location Profiles
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Completed
+
+## Implementation Decisions & Notes
+- **Staged Permission Flow:** Foreground location (`ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`) is requested first. When granted on Android 10+ (API 29+), a prominent disclosure dialog explains why background location is needed before requesting `ACCESS_BACKGROUND_LOCATION`.
+- **Transition Behavior:** Entering a geofence enables `onEnterGroupIds` and disables `onExitGroupIds`; exiting enables `onExitGroupIds` and disables `onEnterGroupIds`.
+- **Timeline Logging:** Geofence transition events are recorded with `TimelineEventType.GEOFENCE_ENTER` and `TimelineEventType.GEOFENCE_EXIT`.
+- **Boot Persistence:** `BootReceiver` calls `GeofenceManager.reRegisterAll` upon `BOOT_COMPLETED`.
+- **Room Migration:** `MIGRATION_9_10` created to add `geofence_profiles` table, bumping database version from 9 to 10.
 
 Prerequisites: `09-blocking-entities.md`, `25-design-system.md`.
 

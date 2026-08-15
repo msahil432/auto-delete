@@ -56,7 +56,7 @@ These specs decompose that document into buildable units. Where the two disagree
 | Shortform | `14-shortform-blocker.md` | 11 | ✅ Done |
 | Browser | `15-browser-url-tracker.md` | 04, 11 | ✅ Done |
 | Notifications | `16-notification-listener.md` | 01, 25 | ✅ Done |
-| Geofence | `17-geofence-profiles.md` | 09, 25 | 🔲 Not Started |
+| Geofence | `17-geofence-profiles.md` | 09, 25 | ✅ Done |
 | Strict mode | `18-device-admin.md` | 01 | 🔲 Not Started |
 | Strict mode | `19-strict-mode-controller.md` | 09, 18 | 🔲 Not Started |
 | Strict mode | `20-friction-challenges.md` | 19, 25 | 🔲 Not Started |

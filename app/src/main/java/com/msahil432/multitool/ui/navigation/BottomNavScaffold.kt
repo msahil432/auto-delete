@@ -29,10 +29,13 @@ import com.msahil432.multitool.ui.screens.PermissionCheckScreen
 import com.msahil432.multitool.ui.screens.UsageHomeScreen
 import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.BrowsingRepository
+import com.msahil432.multitool.data.GeofenceRepository
 import com.msahil432.multitool.data.NotificationRepository
 import com.msahil432.multitool.data.UsageRepository
 import com.msahil432.multitool.ui.screens.BlockGroupEditScreen
 import com.msahil432.multitool.ui.screens.BrowsingHistoryScreen
+import com.msahil432.multitool.ui.screens.GeofenceEditScreen
+import com.msahil432.multitool.ui.screens.GeofenceProfilesScreen
 import com.msahil432.multitool.ui.screens.NotificationVaultScreen
 import com.msahil432.multitool.ui.screens.UsageTimelineScreen
 
@@ -43,7 +46,8 @@ fun BottomNavScaffold(
   usageRepository: UsageRepository,
   blockingRepository: BlockingRepository,
   browsingRepository: BrowsingRepository,
-  notificationRepository: NotificationRepository
+  notificationRepository: NotificationRepository,
+  geofenceRepository: GeofenceRepository
 ) {
   val navController = rememberNavController()
   val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -130,7 +134,8 @@ fun BottomNavScaffold(
         BlockingHomeScreen(
           blockingRepository = blockingRepository,
           innerPadding = innerPadding,
-          onNavigateToGroup = { groupId -> navController.navigate("block_group/$groupId") }
+          onNavigateToGroup = { groupId -> navController.navigate("block_group/$groupId") },
+          onNavigateToGeofences = { navController.navigate("geofence_profiles") }
         )
       }
       composable("block_group/{groupId}") { backStackEntry ->
@@ -142,7 +147,24 @@ fun BottomNavScaffold(
           onBack = { navController.popBackStack() }
         )
       }
-
+      composable("geofence_profiles") {
+        GeofenceProfilesScreen(
+          geofenceRepository = geofenceRepository,
+          blockingRepository = blockingRepository,
+          onBack = { navController.popBackStack() },
+          onNavigateToEdit = { profileId -> navController.navigate("geofence_edit/$profileId") }
+        )
+      }
+      composable("geofence_edit/{profileId}") { backStackEntry ->
+        val profileId = backStackEntry.arguments?.getString("profileId")?.toLongOrNull()
+          ?: return@composable
+        GeofenceEditScreen(
+          profileId = profileId,
+          geofenceRepository = geofenceRepository,
+          blockingRepository = blockingRepository,
+          onBack = { navController.popBackStack() }
+        )
+      }
 
       // ── Settings tab ─────────────────────────────────────────────────────────
       composable(TopLevelDest.SETTINGS.route) {
@@ -151,7 +173,8 @@ fun BottomNavScaffold(
           innerPadding = innerPadding,
           onNavigateToPermissions = { navController.navigate("permissions") },
           onNavigateToBrowsingHistory = { navController.navigate("browsing_history") },
-          onNavigateToNotificationVault = { navController.navigate("notification_vault") }
+          onNavigateToNotificationVault = { navController.navigate("notification_vault") },
+          onNavigateToGeofences = { navController.navigate("geofence_profiles") }
         )
       }
       composable("permissions") {

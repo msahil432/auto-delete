@@ -35,6 +35,9 @@ interface BlockingDao {
   @Query("SELECT * FROM block_groups WHERE enabled = 1")
   suspend fun getEnabledGroups(): List<BlockGroup>
 
+  @Query("UPDATE block_groups SET enabled = :enabled WHERE id IN (:ids)")
+  suspend fun setGroupsEnabled(ids: List<Long>, enabled: Boolean)
+
   // ── Block Rules ──
   @Query("SELECT * FROM block_rules WHERE groupId = :groupId")
   fun getRulesForGroup(groupId: Long): Flow<List<BlockRule>>

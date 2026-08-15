@@ -51,4 +51,4 @@ data class TimelineEvent(
   val durationMillis: Long? = null  // set when a foreground segment ends
 )
 
-enum class TimelineEventType { APP_FOREGROUND, APP_BACKGROUND, UNLOCK, BLOCK_INTERCEPT }
+enum class TimelineEventType { APP_FOREGROUND, APP_BACKGROUND, UNLOCK, BLOCK_INTERCEPT, GEOFENCE_ENTER, GEOFENCE_EXIT }

@@ -351,6 +351,27 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
     }
 }
 
+/**
+ * Migration from version 9 → 10:
+ *  - Adds `geofence_profiles` table
+ */
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS geofence_profiles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                latitude REAL NOT NULL,
+                longitude REAL NOT NULL,
+                radiusMeters REAL NOT NULL,
+                onEnterGroupIds TEXT NOT NULL,
+                onExitGroupIds TEXT NOT NULL,
+                enabled INTEGER NOT NULL
+            )
+        """.trimIndent())
+    }
+}
+
 @Database(
     entities = [
         FolderConfig::class,
@@ -365,9 +386,10 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
         BlockInterception::class,
         BlockCounter::class,
         BrowsingEvent::class,
-        VaultedNotification::class
+        VaultedNotification::class,
+        GeofenceProfile::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -377,6 +399,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun blockingDao(): BlockingDao
     abstract fun browsingDao(): BrowsingDao
     abstract fun notificationDao(): NotificationDao
+    abstract fun geofenceDao(): GeofenceDao
 }
+
 
 

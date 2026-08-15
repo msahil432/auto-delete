@@ -17,6 +17,13 @@ class BlockingRepository(private val dao: BlockingDao) {
 
   suspend fun upsertGroup(g: BlockGroup): Long = dao.insertGroup(g)
 
+  suspend fun setGroupsEnabled(groupIds: Collection<Long>, enabled: Boolean) {
+    val ids = groupIds.toList()
+    if (ids.isNotEmpty()) {
+      dao.setGroupsEnabled(ids, enabled)
+    }
+  }
+
   suspend fun deleteGroup(g: BlockGroup) {
     dao.deleteRulesForGroup(g.id)
     dao.deleteCountersForGroup(g.id)

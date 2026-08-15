@@ -29,7 +29,8 @@ fun AppSettingsScreen(
   innerPadding: PaddingValues,
   onNavigateToPermissions: () -> Unit,
   onNavigateToBrowsingHistory: (() -> Unit)? = null,
-  onNavigateToNotificationVault: (() -> Unit)? = null
+  onNavigateToNotificationVault: (() -> Unit)? = null,
+  onNavigateToGeofences: (() -> Unit)? = null
 ) {
   val context = androidx.compose.ui.platform.LocalContext.current
   val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -84,6 +85,16 @@ fun AppSettingsScreen(
         onClick = onNavigateToPermissions
       )
       HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+
+      if (onNavigateToGeofences != null) {
+        SettingRow(
+          title = "Location Profiles",
+          subtitle = "Configure geofences to toggle focus profiles by location",
+          leadingIcon = androidx.compose.material.icons.filled.Place,
+          onClick = onNavigateToGeofences
+        )
+        HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+      }
 
       // ── Notification Interception & Vault ─────────────────────────────────
       SectionHeader(title = "Notification Interception & Vault")

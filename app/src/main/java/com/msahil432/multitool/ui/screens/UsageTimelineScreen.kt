@@ -10,6 +10,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.LocationOff
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -120,10 +122,11 @@ fun UsageTimelineScreenContent(
 
           items(eventsInHour, key = { it.id }) { event ->
             val meta = appMetaCache[event.packageName]
-            val appLabel = if (event.eventType == TimelineEventType.UNLOCK) {
-              "Device Unlocked"
-            } else {
-              meta?.label ?: event.packageName
+            val appLabel = when (event.eventType) {
+              TimelineEventType.UNLOCK -> "Device Unlocked"
+              TimelineEventType.GEOFENCE_ENTER -> "Entered Geofence: ${event.packageName}"
+              TimelineEventType.GEOFENCE_EXIT -> "Exited Geofence: ${event.packageName}"
+              else -> meta?.label ?: event.packageName
             }
             val eventTime = timeFormat.format(Date(event.timestamp))
             val durationText = event.durationMillis?.toHms()
@@ -186,6 +189,16 @@ private fun TimelineEventRow(
       Icons.Default.Block,
       MaterialTheme.colorScheme.error,
       "Block intercepted"
+    )
+    TimelineEventType.GEOFENCE_ENTER -> Triple(
+      Icons.Default.LocationOn,
+      MaterialTheme.colorScheme.primary,
+      "Geofence entered"
+    )
+    TimelineEventType.GEOFENCE_EXIT -> Triple(
+      Icons.Default.LocationOff,
+      MaterialTheme.colorScheme.outline,
+      "Geofence exited"
     )
   }
 

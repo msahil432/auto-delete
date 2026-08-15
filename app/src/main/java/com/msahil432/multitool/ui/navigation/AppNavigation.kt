@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import com.msahil432.multitool.data.AppDao
 import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.BrowsingRepository
+import com.msahil432.multitool.data.GeofenceRepository
 import com.msahil432.multitool.data.NotificationRepository
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.UsageRepository
@@ -24,7 +25,8 @@ fun AppNavigation(
   usageRepository: UsageRepository,
   blockingRepository: BlockingRepository,
   browsingRepository: BrowsingRepository,
-  notificationRepository: NotificationRepository
+  notificationRepository: NotificationRepository,
+  geofenceRepository: GeofenceRepository
 ) {
   val navController = rememberNavController()
   val onboardingComplete by settingsRepository.onboardingComplete.collectAsState(initial = false)
@@ -53,7 +55,8 @@ fun AppNavigation(
         usageRepository = usageRepository,
         blockingRepository = blockingRepository,
         browsingRepository = browsingRepository,
-        notificationRepository = notificationRepository
+        notificationRepository = notificationRepository,
+        geofenceRepository = geofenceRepository
       )
     }
   }
