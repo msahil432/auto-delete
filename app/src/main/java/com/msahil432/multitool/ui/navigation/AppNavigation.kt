@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.msahil432.multitool.data.AppDao
+import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.UsageRepository
 import com.msahil432.multitool.ui.screens.OnboardingScreen
@@ -18,7 +19,8 @@ private const val ROUTE_HUB = "hub"
 fun AppNavigation(
   settingsRepository: SettingsRepository,
   appDao: AppDao,
-  usageRepository: UsageRepository
+  usageRepository: UsageRepository,
+  blockingRepository: BlockingRepository
 ) {
   val navController = rememberNavController()
   val onboardingComplete by settingsRepository.onboardingComplete.collectAsState(initial = false)
@@ -44,8 +46,10 @@ fun AppNavigation(
       BottomNavScaffold(
         settingsRepository = settingsRepository,
         appDao = appDao,
-        usageRepository = usageRepository
+        usageRepository = usageRepository,
+        blockingRepository = blockingRepository
       )
     }
   }
 }
+

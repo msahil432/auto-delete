@@ -23,6 +23,7 @@ class MainActivity : ComponentActivity() {
         val settingsRepository = SettingsRepository(dataStore)
         val appDatabase = (application as MultiToolApp).database
         val usageRepository = com.msahil432.multitool.data.UsageRepository(appDatabase.usageDao())
+        val blockingRepository = com.msahil432.multitool.data.BlockingRepository(appDatabase.blockingDao())
         
         // Start foreground service if possible
         val serviceIntent = Intent(this, FileMonitorService::class.java)
@@ -45,10 +46,12 @@ class MainActivity : ComponentActivity() {
                     AppNavigation(
                         settingsRepository = settingsRepository,
                         appDao = appDatabase.appDao(),
-                        usageRepository = usageRepository
+                        usageRepository = usageRepository,
+                        blockingRepository = blockingRepository
                     )
                 }
             }
         }
     }
 }
+

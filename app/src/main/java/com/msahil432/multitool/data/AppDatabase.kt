@@ -327,5 +327,7 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
 abstract class AppDatabase : RoomDatabase() {
     abstract fun appDao(): AppDao
     abstract fun usageDao(): UsageDao
+    abstract fun blockingDao(): BlockingDao
 }
+
 

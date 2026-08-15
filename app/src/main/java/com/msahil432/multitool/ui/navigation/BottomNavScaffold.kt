@@ -29,14 +29,17 @@ import com.msahil432.multitool.ui.screens.PermissionCheckScreen
 import com.msahil432.multitool.ui.screens.UsageHomeScreen
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
+import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.UsageRepository
+import com.msahil432.multitool.ui.screens.BlockGroupEditScreen
 import com.msahil432.multitool.ui.screens.UsageTimelineScreen
 
 @Composable
 fun BottomNavScaffold(
   settingsRepository: SettingsRepository,
   appDao: AppDao,
-  usageRepository: UsageRepository
+  usageRepository: UsageRepository,
+  blockingRepository: BlockingRepository
 ) {
   val navController = rememberNavController()
   val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -120,8 +123,22 @@ fun BottomNavScaffold(
 
       // ── Blocking tab ─────────────────────────────────────────────────────────
       composable(TopLevelDest.BLOCKING.route) {
-        BlockingHomeScreen(innerPadding = innerPadding)
+        BlockingHomeScreen(
+          blockingRepository = blockingRepository,
+          innerPadding = innerPadding,
+          onNavigateToGroup = { groupId -> navController.navigate("block_group/$groupId") }
+        )
       }
+      composable("block_group/{groupId}") { backStackEntry ->
+        val groupId = backStackEntry.arguments?.getString("groupId")?.toLongOrNull()
+          ?: return@composable
+        BlockGroupEditScreen(
+          groupId = groupId,
+          blockingRepository = blockingRepository,
+          onBack = { navController.popBackStack() }
+        )
+      }
+
 
       // ── Settings tab ─────────────────────────────────────────────────────────
       composable(TopLevelDest.SETTINGS.route) {
