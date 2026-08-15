@@ -214,7 +214,7 @@ object StrictModeController {
     /**
      * Initiates deactivation. Returns the required [DeactivationFlow].
      */
-    fun requestDeactivation(): DeactivationFlow {
+    fun requestDeactivation(cooldownMinutes: Int = 15): DeactivationFlow {
         val current = _state.value
         if (!current.isActive) {
             return DeactivationFlow.NotActive
@@ -228,8 +228,9 @@ object StrictModeController {
 
         if (current.unlockMethod == UnlockMethod.COOLDOWN) {
             if (current.pendingDeactivationAt == 0L) {
-                // Start cooldown delay timer (default 15 mins if not set)
-                val cooldownTarget = now + (15 * 60_000L)
+                // Start cooldown delay timer
+                val targetMinutes = cooldownMinutes.coerceAtLeast(1)
+                val cooldownTarget = now + (targetMinutes * 60_000L)
                 val updatedState = current.copy(pendingDeactivationAt = cooldownTarget)
                 _state.value = updatedState
                 scope.launch {
@@ -238,12 +239,6 @@ object StrictModeController {
                 return DeactivationFlow.ChallengeRequired(
                     method = UnlockMethod.COOLDOWN,
                     pendingDeactivationAt = cooldownTarget
-                )
-            } else if (now >= current.pendingDeactivationAt) {
-                // Cooldown elapsed
-                return DeactivationFlow.ChallengeRequired(
-                    method = UnlockMethod.COOLDOWN,
-                    pendingDeactivationAt = current.pendingDeactivationAt
                 )
             } else {
                 return DeactivationFlow.ChallengeRequired(
@@ -257,6 +252,20 @@ object StrictModeController {
             method = current.unlockMethod,
             pendingDeactivationAt = current.pendingDeactivationAt
         )
+    }
+
+    /**
+     * Cancels any pending deactivation countdown and keeps strict mode active.
+     */
+    fun cancelPendingDeactivation() {
+        val current = _state.value
+        if (current.pendingDeactivationAt > 0L) {
+            val updatedState = current.copy(pendingDeactivationAt = 0L)
+            _state.value = updatedState
+            scope.launch {
+                repository?.setStrictPendingDeactivationAt(0L)
+            }
+        }
     }
 
     /**

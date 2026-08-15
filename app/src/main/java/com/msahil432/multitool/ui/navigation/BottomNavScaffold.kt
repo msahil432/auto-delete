@@ -169,6 +169,7 @@ fun BottomNavScaffold(
       }
       composable("strict_mode") {
         StrictModeScreen(
+          settingsRepository = settingsRepository,
           onBack = { navController.popBackStack() }
         )
       }

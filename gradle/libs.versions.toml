@@ -37,6 +37,7 @@ datastorePreferences = "1.1.7"
 workRuntimeKtx = "2.10.0"
 robolectric = "4.16.1"
 roborazzi = "1.59.0"
+mlkitBarcode = "17.3.0"
 
 
 [libraries]
@@ -86,6 +87,7 @@ robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "
 roborazzi = { group = "io.github.takahirom.roborazzi", name = "roborazzi", version.ref = "roborazzi" }
 roborazzi-compose = { group = "io.github.takahirom.roborazzi", name = "roborazzi-compose", version.ref = "roborazzi" }
 roborazzi-junit-rule = { group = "io.github.takahirom.roborazzi", name = "roborazzi-junit-rule", version.ref = "roborazzi" }
+mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
 
 
 [plugins]

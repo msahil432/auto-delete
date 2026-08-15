@@ -1,6 +1,6 @@
 # 20 — Friction Unlock Challenges
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Complete
 
 Prerequisites: `19-strict-mode-controller.md`, `25-design-system.md`.
 
@@ -10,25 +10,53 @@ Implement the high-friction unlock challenges required to deactivate strict mode
 bypass a block: long text match, PIN/master password, enforced cooldown delay, and
 physical QR-code scan.
 
+## Implementation Decisions
+
+1. **Salted Password Hashing (`PasswordSecurity`)**:
+   - Implemented PBKDF2 with SHA-256 (10,000 iterations) using 16-byte secure random salts.
+   - Stored in DataStore as `<saltHex>:<hashHex>`. Plaintext passcodes are never persisted or logged.
+   - Verification uses `MessageDigest.isEqual` for constant-time comparison against timing attacks.
+
+2. **Paste Prevention in Text Match (`TextMatchChallenge`)**:
+   - Rejects bulk text additions where `newValue.length > oldValue.length + 1` in `onValueChange`, enforcing character-by-character typing.
+   - Hides live progress / tolerance indicators per zero-tolerance specification; checks match on submit.
+
+3. **PIN Lockout Rate-Limiting (`PinChallenge`)**:
+   - Limits failed attempts to 5 before triggering a 30-second lockout timer.
+
+4. **Persistent Cooldown Delay (`CooldownChallenge`)**:
+   - Stores `strict_pending_deactivation_at` in DataStore via `StrictModeController.requestDeactivation(cooldownMinutes)`.
+   - "Cancel" invokes `StrictModeController.cancelPendingDeactivation()` to safely reset the request while keeping strict mode active.
+
+5. **CameraX & ML Kit Integration (`QrChallenge`)**:
+   - Enabled CameraX (`camera-camera2`, `camera-lifecycle`, `camera-view`, `camera-core`) and `com.google.mlkit:barcode-scanning`.
+   - Added runtime `CAMERA` permission check, viewfinder reticle, and torch/flashlight toggle.
+
+6. **Host Routing (`ChallengeHost`)**:
+   - Container composable routing to the active challenge method and executing `StrictModeController.completeDeactivation()` upon verified success.
+
 ## Dependencies
 
 - QR scanning uses **ML Kit barcode scanning** + CameraX. Add to the version catalog
   and `app/build.gradle.kts`:
   - `com.google.mlkit:barcode-scanning`
   - CameraX: `androidx.camera:camera-camera2`, `camera-lifecycle`, `camera-view`
-    (catalog entries already exist, currently commented — enable them).
-- Add `CAMERA` permission (runtime) to the manifest.
+    (catalog entries enabled).
+- Added `CAMERA` permission (runtime) to the manifest.
 
-## Files to create / modify
+## Files created / modified
 
-- Create `ui/screens/challenge/TextMatchChallenge.kt`
-- Create `ui/screens/challenge/PinChallenge.kt`
-- Create `ui/screens/challenge/CooldownChallenge.kt`
-- Create `ui/screens/challenge/QrChallenge.kt`
-- Create `ui/screens/challenge/ChallengeHost.kt` — routes to the configured method
-  and calls `StrictModeController.completeDeactivation()` on success.
-- Settings/DataStore: `master_password_hash` (store a salted hash, never plaintext),
-  `qr_expected_value`, `cooldown_minutes`, `text_challenge_length`.
+- Created `util/PasswordSecurity.kt`
+- Created `ui/screens/challenge/TextMatchChallenge.kt`
+- Created `ui/screens/challenge/PinChallenge.kt`
+- Created `ui/screens/challenge/CooldownChallenge.kt`
+- Created `ui/screens/challenge/QrChallenge.kt`
+- Created `ui/screens/challenge/ChallengeHost.kt`
+- Modified `blocking/StrictModeController.kt`
+- Modified `ui/screens/StrictModeScreen.kt`
+- Modified `ui/navigation/BottomNavScaffold.kt`
+- Modified `app/build.gradle.kts`, `gradle/libs.versions.toml`, `app/src/main/AndroidManifest.xml`
+- Created `util/PasswordSecurityTest.kt`, updated `StrictModeControllerTest.kt`
 
 ## Challenge specs
 

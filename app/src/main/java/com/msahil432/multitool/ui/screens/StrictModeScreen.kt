@@ -21,34 +21,48 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.msahil432.multitool.blocking.StrictModeController
 import com.msahil432.multitool.data.DeactivationFlow
+import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.StrictModeState
 import com.msahil432.multitool.data.UnlockMethod
 import com.msahil432.multitool.data.UnlockParams
+import com.msahil432.multitool.dataStore
 import com.msahil432.multitool.ui.components.ConfirmDialog
+import com.msahil432.multitool.ui.screens.challenge.ChallengeHost
 import com.msahil432.multitool.ui.theme.MultiToolTheme
+import com.msahil432.multitool.util.PasswordSecurity
+import java.security.SecureRandom
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StrictModeScreen(
     onBack: () -> Unit,
+    settingsRepository: SettingsRepository? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val repo = remember(settingsRepository, context) {
+        settingsRepository ?: SettingsRepository(context.dataStore)
+    }
+
     val strictState by StrictModeController.state.collectAsState()
 
     var selectedMethod by remember { mutableStateOf(UnlockMethod.TEXT) }
@@ -56,9 +70,11 @@ fun StrictModeScreen(
     var customTextLength by remember { mutableIntStateOf(100) }
     var pinValue by remember { mutableStateOf("") }
     var cooldownMinutes by remember { mutableIntStateOf(15) }
+    var qrSecretValue by remember {
+        mutableStateOf("STRICT-UNLOCK-" + generateRandomSecret(8))
+    }
 
     var showConfirmDialog by remember { mutableStateOf(false) }
-    var showChallengePlaceholderDialog by remember { mutableStateOf(false) }
     var activeChallengeMethod by remember { mutableStateOf<UnlockMethod?>(null) }
 
     Scaffold(
@@ -86,14 +102,13 @@ fun StrictModeScreen(
                 ActiveStrictModeContent(
                     state = strictState,
                     onDeactivateClick = {
-                        val flow = StrictModeController.requestDeactivation()
+                        val flow = StrictModeController.requestDeactivation(cooldownMinutes)
                         when (flow) {
                             is DeactivationFlow.TimeExpired -> {
                                 Toast.makeText(context, "Session expired. Strict mode deactivated.", Toast.LENGTH_LONG).show()
                             }
                             is DeactivationFlow.ChallengeRequired -> {
                                 activeChallengeMethod = flow.method
-                                showChallengePlaceholderDialog = true
                             }
                             is DeactivationFlow.NotActive -> {
                                 Toast.makeText(context, "Strict mode is not active.", Toast.LENGTH_SHORT).show()
@@ -114,6 +129,8 @@ fun StrictModeScreen(
                     onPinChanged = { pinValue = it },
                     cooldownMinutes = cooldownMinutes,
                     onCooldownChanged = { cooldownMinutes = it },
+                    qrSecretValue = qrSecretValue,
+                    onQrSecretChanged = { qrSecretValue = it },
                     onActivateClick = { showConfirmDialog = true }
                 )
             }
@@ -134,10 +151,16 @@ fun StrictModeScreen(
                 } else {
                     0L
                 }
+                val passwordHash = if (selectedMethod == UnlockMethod.PIN && pinValue.isNotBlank()) {
+                    PasswordSecurity.hashPassword(pinValue)
+                } else {
+                    null
+                }
                 val params = UnlockParams(
                     textLength = customTextLength,
-                    masterPasswordHash = if (pinValue.isNotBlank()) pinValue.hashCode().toString() else null,
-                    cooldownMinutes = cooldownMinutes
+                    masterPasswordHash = passwordHash,
+                    cooldownMinutes = cooldownMinutes,
+                    qrExpectedValue = if (selectedMethod == UnlockMethod.QR) qrSecretValue else null
                 )
                 StrictModeController.activate(
                     method = selectedMethod,
@@ -150,43 +173,35 @@ fun StrictModeScreen(
         )
     }
 
-    // ── Challenge Placeholder Dialog (until Spec 20) ──
-    if (showChallengePlaceholderDialog) {
-        val method = activeChallengeMethod ?: strictState.unlockMethod
-        AlertDialog(
-            onDismissRequest = { showChallengePlaceholderDialog = false },
-            icon = { Icon(Icons.Default.LockOpen, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-            title = { Text(method.displayName()) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Deactivation requires completing the ${method.displayName()} challenge.")
-                    if (method == UnlockMethod.COOLDOWN) {
-                        val remainingSec = ((strictState.pendingDeactivationAt - System.currentTimeMillis()) / 1000L).coerceAtLeast(0L)
-                        if (remainingSec > 0) {
-                            Text("Cooldown timer active: ${remainingSec / 60}m ${remainingSec % 60}s remaining.")
-                        } else {
-                            Text("Cooldown completed! You can now finalize deactivation.")
-                        }
-                    }
-                }
+    // ── Active Challenge Full-Screen Modal ──
+    if (activeChallengeMethod != null) {
+        Dialog(
+            onDismissRequest = {
+                activeChallengeMethod = null
             },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showChallengePlaceholderDialog = false
-                        StrictModeController.completeDeactivation()
-                        Toast.makeText(context, "Strict mode deactivated.", Toast.LENGTH_SHORT).show()
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = true,
+                dismissOnClickOutside = false
+            )
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                ChallengeHost(
+                    settingsRepository = repo,
+                    targetMethod = activeChallengeMethod,
+                    onSuccess = {
+                        activeChallengeMethod = null
+                        Toast.makeText(context, "Strict Mode deactivated successfully.", Toast.LENGTH_SHORT).show()
+                    },
+                    onCancel = {
+                        activeChallengeMethod = null
                     }
-                ) {
-                    Text(if (method == UnlockMethod.COOLDOWN && strictState.pendingDeactivationAt > System.currentTimeMillis()) "Force Complete (Dev)" else "Pass Challenge & Unlock")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showChallengePlaceholderDialog = false }) {
-                    Text("Cancel")
-                }
+                )
             }
-        )
+        }
     }
 }
 
@@ -313,8 +328,13 @@ private fun SetupStrictModeContent(
     onPinChanged: (String) -> Unit,
     cooldownMinutes: Int,
     onCooldownChanged: (Int) -> Unit,
+    qrSecretValue: String,
+    onQrSecretChanged: (String) -> Unit,
     onActivateClick: () -> Unit
 ) {
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
+
     // ── 1. Explanation Banner ──
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -489,11 +509,30 @@ private fun SetupStrictModeContent(
             }
         }
         UnlockMethod.QR -> {
-            Text(
-                text = "A physical QR code scan will be required to unlock. Print or place a QR code in another room for maximum friction.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "A physical QR code scan will be required to unlock. Print or encode this secret code into a QR code and place it in another room:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = qrSecretValue,
+                    onValueChange = onQrSecretChanged,
+                    label = { Text("Expected QR Key / Secret") },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            clipboardManager.setText(AnnotatedString(qrSecretValue))
+                            Toast.makeText(context, "QR secret copied to clipboard", Toast.LENGTH_SHORT).show()
+                        }) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy QR Secret")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
         }
     }
 
@@ -536,6 +575,12 @@ private fun DetailRow(
     }
 }
 
+private fun generateRandomSecret(length: Int): String {
+    val chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+    val rnd = SecureRandom()
+    return (1..length).map { chars[rnd.nextInt(chars.length)] }.joinToString("")
+}
+
 @Preview(showBackground = true, name = "Strict Mode Inactive")
 @Composable
 private fun StrictModeScreenInactivePreview() {
@@ -551,6 +596,8 @@ private fun StrictModeScreenInactivePreview() {
             onPinChanged = {},
             cooldownMinutes = 15,
             onCooldownChanged = {},
+            qrSecretValue = "STRICT-UNLOCK-DEMO",
+            onQrSecretChanged = {},
             onActivateClick = {}
         )
     }

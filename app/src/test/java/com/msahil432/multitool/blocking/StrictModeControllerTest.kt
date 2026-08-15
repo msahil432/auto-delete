@@ -251,4 +251,39 @@ class StrictModeControllerTest {
         assertEquals(0L, StrictModeController.state.value.startedAt)
         assertEquals(0L, StrictModeController.state.value.endAt)
     }
+
+    @Test
+    fun testCancelPendingDeactivation() {
+        StrictModeController.resetForTesting(
+            state = StrictModeState(
+                isActive = true,
+                startedAt = 1000L,
+                endAt = 0L,
+                unlockMethod = UnlockMethod.COOLDOWN,
+                pendingDeactivationAt = 60_000L
+            )
+        )
+        assertEquals(60_000L, StrictModeController.state.value.pendingDeactivationAt)
+
+        StrictModeController.cancelPendingDeactivation()
+        assertEquals(0L, StrictModeController.state.value.pendingDeactivationAt)
+        assertTrue(StrictModeController.isActive.value)
+    }
+
+    @Test
+    fun testCustomCooldownMinutes() {
+        StrictModeController.resetForTesting(
+            state = StrictModeState(
+                isActive = true,
+                startedAt = 1_000L,
+                endAt = 0L,
+                unlockMethod = UnlockMethod.COOLDOWN,
+                pendingDeactivationAt = 0L
+            ),
+            clockProvider = { 10_000L }
+        )
+        val flow = StrictModeController.requestDeactivation(cooldownMinutes = 30)
+        assertTrue(flow is DeactivationFlow.ChallengeRequired)
+        assertEquals(10_000L + (30 * 60_000L), (flow as DeactivationFlow.ChallengeRequired).pendingDeactivationAt)
+    }
 }
