@@ -1,5 +1,7 @@
 # 06 — Usage Stats Collector
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `04-usage-repository.md`, `05-usage-permission.md`.
 
 ## Goal

@@ -1,5 +1,7 @@
 # 14 — Short-Form Video Blocker (Shorts / Reels)
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `11-accessibility-core.md`.
 
 ## Goal

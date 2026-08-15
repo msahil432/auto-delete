@@ -30,34 +30,39 @@ These specs decompose that document into buildable units. Where the two disagree
 
 ## Phase / dependency order
 
-| # | Spec | Depends on |
-|---|------|-----------|
-| Foundation | `00-conventions.md` | — |
-| Foundation | `25-design-system.md` | 00 |
-| Foundation | `01-rename-package.md` | 00 |
-| Foundation | `24-remove-firebase-ai.md` | 00 |
-| Foundation | `02-navigation-hub.md` | 01, 25 |
-| Usage data | `03-usage-data-entities.md` | 01 |
-| Usage data | `04-usage-repository.md` | 03 |
-| Usage track | `05-usage-permission.md` | 02, 25 |
-| Usage track | `06-usage-stats-collector.md` | 04, 05 |
-| Usage track | `07-unlock-tracker.md` | 04 |
-| Usage track | `08-usage-ui.md` | 04, 06, 07, 25 |
-| Blocking | `09-blocking-entities.md` | 01 |
-| Blocking | `10-blocking-rules-ui.md` | 09, 25 |
-| Blocking | `11-accessibility-core.md` | 09, 25 |
-| Blocking | `12-block-overlay.md` | 11, 25 |
-| Blocking | `13-block-enforcement.md` | 04, 11, 12 |
-| Shortform | `14-shortform-blocker.md` | 11 |
-| Browser | `15-browser-url-tracker.md` | 04, 11 |
-| Notifications | `16-notification-listener.md` | 01, 25 |
-| Geofence | `17-geofence-profiles.md` | 09, 25 |
-| Strict mode | `18-device-admin.md` | 01 |
-| Strict mode | `19-strict-mode-controller.md` | 09, 18 |
-| Strict mode | `20-friction-challenges.md` | 19, 25 |
-| Strict mode | `21-tamper-alarm.md` | 11, 18 |
-| Resilience | `22-boot-persistence.md` | 01 |
-| Compliance | `23-play-compliance.md` | 11, 18 |
+**Status legend:** 🔲 Not Started · 🔶 In Progress · ✅ Done
+
+> When a spec is completed, update its status both here **and** in the
+> `> **Status:**` line at the top of that spec file.
+
+| # | Spec | Depends on | Status |
+|---|------|-----------|--------|
+| Foundation | `00-conventions.md` | — | 🔲 Not Started |
+| Foundation | `25-design-system.md` | 00 | 🔲 Not Started |
+| Foundation | `01-rename-package.md` | 00 | 🔲 Not Started |
+| Foundation | `24-remove-firebase-ai.md` | 00 | 🔲 Not Started |
+| Foundation | `02-navigation-hub.md` | 01, 25 | 🔲 Not Started |
+| Usage data | `03-usage-data-entities.md` | 01 | 🔲 Not Started |
+| Usage data | `04-usage-repository.md` | 03 | 🔲 Not Started |
+| Usage track | `05-usage-permission.md` | 02, 25 | 🔲 Not Started |
+| Usage track | `06-usage-stats-collector.md` | 04, 05 | 🔲 Not Started |
+| Usage track | `07-unlock-tracker.md` | 04 | 🔲 Not Started |
+| Usage track | `08-usage-ui.md` | 04, 06, 07, 25 | 🔲 Not Started |
+| Blocking | `09-blocking-entities.md` | 01 | 🔲 Not Started |
+| Blocking | `10-blocking-rules-ui.md` | 09, 25 | 🔲 Not Started |
+| Blocking | `11-accessibility-core.md` | 09, 25 | 🔲 Not Started |
+| Blocking | `12-block-overlay.md` | 11, 25 | 🔲 Not Started |
+| Blocking | `13-block-enforcement.md` | 04, 11, 12 | 🔲 Not Started |
+| Shortform | `14-shortform-blocker.md` | 11 | 🔲 Not Started |
+| Browser | `15-browser-url-tracker.md` | 04, 11 | 🔲 Not Started |
+| Notifications | `16-notification-listener.md` | 01, 25 | 🔲 Not Started |
+| Geofence | `17-geofence-profiles.md` | 09, 25 | 🔲 Not Started |
+| Strict mode | `18-device-admin.md` | 01 | 🔲 Not Started |
+| Strict mode | `19-strict-mode-controller.md` | 09, 18 | 🔲 Not Started |
+| Strict mode | `20-friction-challenges.md` | 19, 25 | 🔲 Not Started |
+| Strict mode | `21-tamper-alarm.md` | 11, 18 | 🔲 Not Started |
+| Resilience | `22-boot-persistence.md` | 01 | 🔲 Not Started |
+| Compliance | `23-play-compliance.md` | 11, 18 | 🔲 Not Started |
 
 ## Capability coverage (app-tracker.md §8)
 

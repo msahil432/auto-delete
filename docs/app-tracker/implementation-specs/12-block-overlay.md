@@ -1,5 +1,7 @@
 # 12 — Block Overlay Screen
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `11-accessibility-core.md`, `25-design-system.md`.
 
 ## Goal

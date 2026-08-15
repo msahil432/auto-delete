@@ -1,5 +1,7 @@
 # 03 — Usage Tracking: Room Entities
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `01-rename-package.md`. Follow the Room rules in `00-conventions.md`.
 
 ## Goal

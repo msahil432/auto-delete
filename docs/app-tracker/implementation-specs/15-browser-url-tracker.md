@@ -1,5 +1,7 @@
 # 15 — Browser URL & Search Query Tracker
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `04-usage-repository.md`, `11-accessibility-core.md`.
 
 ## Goal

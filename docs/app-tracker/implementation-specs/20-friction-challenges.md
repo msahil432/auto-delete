@@ -1,5 +1,7 @@
 # 20 — Friction Unlock Challenges
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `19-strict-mode-controller.md`, `25-design-system.md`.
 
 ## Goal

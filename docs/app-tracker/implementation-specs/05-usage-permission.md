@@ -1,5 +1,7 @@
 # 05 — Usage Access Permission Flow
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `02-navigation-hub.md`, `25-design-system.md`.
 
 ## Goal

@@ -1,5 +1,7 @@
 # 22 — Boot Persistence & Background Survival
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `01-rename-package.md`.
 
 ## Goal

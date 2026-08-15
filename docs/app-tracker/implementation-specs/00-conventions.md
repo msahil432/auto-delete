@@ -1,5 +1,7 @@
 # 00 — Conventions & Architecture (READ FIRST)
 
+> **Status:** 🔲 Not Started
+
 Every other spec assumes the rules in this file. Do not repeat them elsewhere.
 
 ## App identity

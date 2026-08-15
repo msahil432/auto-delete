@@ -1,5 +1,7 @@
 # 17 — Geofenced Location Profiles
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `09-blocking-entities.md`, `25-design-system.md`.
 
 ## Goal

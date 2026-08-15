@@ -1,5 +1,7 @@
 # 23 — Play Store Compliance & Disclosures
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `11-accessibility-core.md`, `18-device-admin.md`. This is a
 review/checklist spec plus a few concrete artifacts; it produces no major feature
 code.

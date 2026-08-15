@@ -1,5 +1,7 @@
 # 19 — Strict Mode Controller
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `09-blocking-entities.md`, `18-device-admin.md`.
 
 ## Goal

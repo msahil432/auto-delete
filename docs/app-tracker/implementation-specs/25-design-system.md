@@ -1,5 +1,7 @@
 # 25 — Design System & UX Baseline
 
+> **Status:** 🔲 Not Started
+
 **Read this before any spec that builds UI.** It is the single source of visual and
 interaction truth. Prerequisites: `00-conventions.md`.
 

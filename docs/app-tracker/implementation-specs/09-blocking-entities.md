@@ -1,5 +1,7 @@
 # 09 — Blocking Engine: Room Entities
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `01-rename-package.md`. Follow Room rules in `00-conventions.md`.
 
 ## Goal

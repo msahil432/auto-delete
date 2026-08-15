@@ -1,5 +1,7 @@
 # 13 — Block Enforcement Engine
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `04-usage-repository.md`, `09-blocking-entities.md`,
 `11-accessibility-core.md`, `12-block-overlay.md`.
 

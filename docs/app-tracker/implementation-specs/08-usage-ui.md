@@ -1,5 +1,7 @@
 # 08 — Usage Dashboard UI
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `04-usage-repository.md`, `06-usage-stats-collector.md`,
 `07-unlock-tracker.md`, `25-design-system.md`.
 

@@ -1,5 +1,7 @@
 # 02 — Navigation Hub (Bottom Nav)
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `01-rename-package.md`, `25-design-system.md`.
 
 ## Goal

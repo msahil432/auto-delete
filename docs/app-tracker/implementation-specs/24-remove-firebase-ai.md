@@ -1,5 +1,7 @@
 # 24 — Remove Firebase AI (Gemini)
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `00-conventions.md`. Can run in parallel with `01-rename-package.md`,
 but if both touch `app/build.gradle.kts`, apply them sequentially.
 

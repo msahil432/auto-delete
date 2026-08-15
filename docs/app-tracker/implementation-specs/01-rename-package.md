@@ -1,5 +1,7 @@
 # 01 — Rename App & Package (Auto Delete → Multi Tool)
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `00-conventions.md`. The app was never published, so a hard rename
 is safe. Do this before adding new features so new code lands in the right package.
 

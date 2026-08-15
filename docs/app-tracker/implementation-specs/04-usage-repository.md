@@ -1,5 +1,7 @@
 # 04 — Usage Tracking: DAO & Repository
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `03-usage-data-entities.md`.
 
 ## Goal

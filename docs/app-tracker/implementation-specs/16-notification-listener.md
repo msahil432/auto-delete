@@ -1,5 +1,7 @@
 # 16 — Notification Interception & Vault
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `01-rename-package.md`, `25-design-system.md`.
 
 ## Goal

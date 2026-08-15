@@ -1,5 +1,7 @@
 # 21 — Tamper Alarm
 
+> **Status:** 🔲 Not Started
+
 Prerequisites: `11-accessibility-core.md`, `18-device-admin.md`.
 
 ## Goal
