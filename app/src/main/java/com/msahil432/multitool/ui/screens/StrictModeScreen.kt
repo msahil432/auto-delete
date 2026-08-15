@@ -64,6 +64,8 @@ fun StrictModeScreen(
     }
 
     val strictState by StrictModeController.state.collectAsState()
+    val tamperAlarmEnabled by repo.tamperAlarmEnabled.collectAsState(initial = false)
+    val coroutineScope = rememberCoroutineScope()
 
     var selectedMethod by remember { mutableStateOf(UnlockMethod.TEXT) }
     var selectedDurationHours by remember { mutableIntStateOf(0) } // 0 = indefinite
@@ -101,6 +103,7 @@ fun StrictModeScreen(
                 // ── Active Strict Mode Card ──
                 ActiveStrictModeContent(
                     state = strictState,
+                    tamperAlarmEnabled = tamperAlarmEnabled,
                     onDeactivateClick = {
                         val flow = StrictModeController.requestDeactivation(cooldownMinutes)
                         when (flow) {
@@ -131,6 +134,10 @@ fun StrictModeScreen(
                     onCooldownChanged = { cooldownMinutes = it },
                     qrSecretValue = qrSecretValue,
                     onQrSecretChanged = { qrSecretValue = it },
+                    tamperAlarmEnabled = tamperAlarmEnabled,
+                    onTamperAlarmChanged = { enabled ->
+                        coroutineScope.launch { repo.setTamperAlarmEnabled(enabled) }
+                    },
                     onActivateClick = { showConfirmDialog = true }
                 )
             }
@@ -208,6 +215,7 @@ fun StrictModeScreen(
 @Composable
 private fun ActiveStrictModeContent(
     state: StrictModeState,
+    tamperAlarmEnabled: Boolean,
     onDeactivateClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -287,6 +295,11 @@ private fun ActiveStrictModeContent(
                     value = state.unlockMethod.displayName()
                 )
 
+                DetailRow(
+                    label = "Tamper Siren Alarm",
+                    value = if (tamperAlarmEnabled) "Armed (Siren enabled)" else "Disabled"
+                )
+
                 if (state.pendingDeactivationAt > 0) {
                     val remainingMinutes = ((state.pendingDeactivationAt - System.currentTimeMillis()) / 60_000L).coerceAtLeast(0L)
                     DetailRow(
@@ -330,6 +343,8 @@ private fun SetupStrictModeContent(
     onCooldownChanged: (Int) -> Unit,
     qrSecretValue: String,
     onQrSecretChanged: (String) -> Unit,
+    tamperAlarmEnabled: Boolean,
+    onTamperAlarmChanged: (Boolean) -> Unit,
     onActivateClick: () -> Unit
 ) {
     val clipboardManager = LocalClipboardManager.current
@@ -536,9 +551,51 @@ private fun SetupStrictModeContent(
         }
     }
 
+    // ── 5. Tamper Alarm Option ──
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                Icons.Default.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Tamper Alarm Siren",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Sound a loud siren if system settings (App Info, Accessibility, Device Admin) are opened during strict mode.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = tamperAlarmEnabled,
+                onCheckedChange = onTamperAlarmChanged,
+                modifier = Modifier.semantics {
+                    contentDescription = "Toggle Tamper Alarm Siren"
+                }
+            )
+        }
+    }
+
     Spacer(modifier = Modifier.height(8.dp))
 
-    // ── 5. Activate Button ──
+    // ── 6. Activate Button ──
     Button(
         onClick = onActivateClick,
         modifier = Modifier
@@ -598,6 +655,8 @@ private fun StrictModeScreenInactivePreview() {
             onCooldownChanged = {},
             qrSecretValue = "STRICT-UNLOCK-DEMO",
             onQrSecretChanged = {},
+            tamperAlarmEnabled = false,
+            onTamperAlarmChanged = {},
             onActivateClick = {}
         )
     }
@@ -615,6 +674,7 @@ private fun StrictModeScreenActivePreview() {
                 unlockMethod = UnlockMethod.COOLDOWN,
                 pendingDeactivationAt = 0L
             ),
+            tamperAlarmEnabled = true,
             onDeactivateClick = {}
         )
     }

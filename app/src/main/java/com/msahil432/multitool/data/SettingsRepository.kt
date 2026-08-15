@@ -30,6 +30,19 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val QR_EXPECTED_VALUE = stringPreferencesKey("qr_expected_value")
         val COOLDOWN_MINUTES = intPreferencesKey("cooldown_minutes")
         val TEXT_CHALLENGE_LENGTH = intPreferencesKey("text_challenge_length")
+
+        // Tamper alarm preference
+        val TAMPER_ALARM_ENABLED = booleanPreferencesKey("tamper_alarm_enabled")
+    }
+
+    val tamperAlarmEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[TAMPER_ALARM_ENABLED] ?: false
+    }
+
+    suspend fun setTamperAlarmEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[TAMPER_ALARM_ENABLED] = enabled
+        }
     }
 
     val strictModeState: Flow<StrictModeState> = dataStore.data.map { preferences ->

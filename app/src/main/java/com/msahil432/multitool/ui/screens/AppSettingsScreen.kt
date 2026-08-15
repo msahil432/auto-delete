@@ -50,6 +50,7 @@ fun AppSettingsScreen(
   val trackBrowserUrls by settingsRepository.trackBrowserUrls.collectAsState(initial = false)
   val notificationVaultEnabled by settingsRepository.notificationVaultEnabled.collectAsState(initial = false)
   val notificationBlockedPackages by settingsRepository.notificationBlockedPackages.collectAsState(initial = emptySet())
+  val tamperAlarmEnabled by settingsRepository.tamperAlarmEnabled.collectAsState(initial = false)
 
   var isListenerGranted by remember { mutableStateOf(com.msahil432.multitool.util.NotificationAccess.isGranted(context)) }
   var isAdminActive by remember { mutableStateOf(DeviceAdminHelper.isActive(context)) }
@@ -308,6 +309,28 @@ fun AppSettingsScreen(
           } else {
             showAdminDeactivateConfirm = true
           }
+        }
+      )
+      HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+
+      SettingRow(
+        title = "Tamper alarm",
+        subtitle = if (tamperAlarmEnabled) {
+          "Sounds an audible siren if protected system settings are opened during strict mode"
+        } else {
+          "Disabled — sounds siren if tampering is detected during strict mode"
+        },
+        leadingIcon = androidx.compose.material.icons.filled.Warning,
+        trailing = {
+          Switch(
+            checked = tamperAlarmEnabled,
+            onCheckedChange = { checked ->
+              coroutineScope.launch { settingsRepository.setTamperAlarmEnabled(checked) }
+            },
+            modifier = Modifier.semantics {
+              contentDescription = "Toggle Tamper alarm"
+            }
+          )
         }
       )
       HorizontalDivider(modifier = Modifier.padding(start = 56.dp))

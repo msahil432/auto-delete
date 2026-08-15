@@ -1,6 +1,6 @@
 # 21 — Tamper Alarm
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Complete
 
 Prerequisites: `11-accessibility-core.md`, `18-device-admin.md`.
 
@@ -16,14 +16,22 @@ Use the AccessibilityService (spec 11) to detect when a protected system screen 
 this app's package appears in the foreground, then play a loud alarm until the user
 navigates away or passes a challenge.
 
-## Files to create / modify
+## Files created / modified
 
-- Create `accessibility/TamperHandler.kt` implementing `AccessibilityHandler`.
-- Create `service/TamperAlarm.kt` — plays/stops the siren.
-- Add a raw sound resource `res/raw/siren.ogg` (or use
-  `RingtoneManager.TYPE_ALARM`).
-- Settings/DataStore: `tamper_alarm_enabled` (default false), only meaningful while
-  strict mode active.
+- Created `accessibility/TamperSignatures.kt` containing known settings packages and danger keywords/classes.
+- Created `accessibility/TamperHandler.kt` implementing `AccessibilityHandler` to detect tampering when strict mode and tamper alarm are active.
+- Created `service/TamperAlarm.kt` — plays/stops the siren on `AudioAttributes.USAGE_ALARM` with safety auto-stop.
+- Updated `accessibility/MultiToolAccessibilityService.kt` — registered `TamperHandler`.
+- Updated `data/SettingsRepository.kt` — added `tamper_alarm_enabled` key and flow.
+- Updated `ui/screens/AppSettingsScreen.kt` & `ui/screens/StrictModeScreen.kt` — added Tamper Alarm switch toggles and descriptions.
+- Created `accessibility/TamperHandlerTest.kt` & `service/TamperAlarmTest.kt` — automated test suites.
+
+## Implementation Decisions & Key Design Details
+
+1. **Audio Output & Stream**: `TamperAlarm` uses `RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)` configured with `AudioAttributes.USAGE_ALARM` / `CONTENT_TYPE_SONIFICATION` for high-priority audible alerting.
+2. **Runaway Noise Safety Cutoff**: `TamperAlarm` automatically stops playback after a maximum duration safety timeout (30 seconds) via a Looper handler to avoid indefinite runaway noise.
+3. **Detection Heuristic**: `TamperHandler` detects foreground system settings (`com.android.settings` and common OEM settings packages) and inspects `AccessibilityNodeInfo` hierarchy and event classes for app references (`com.msahil432.multitool` or app title) paired with protected controls (App Info / Force Stop / Uninstall / Accessibility Service toggle / Device Admin deactivation).
+4. **Arming Preconditions**: Alarm only triggers when both `strict_mode_active` and `tamper_alarm_enabled` are true. Navigating away immediately stops playback and dismisses the block overlay.
 
 ## Detection signatures
 

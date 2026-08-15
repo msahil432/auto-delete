@@ -14,6 +14,7 @@ class MultiToolAccessibilityService : AccessibilityService() {
 
   private var shortFormHandler: ShortFormHandler? = null
   private var browserUrlHandler: BrowserUrlHandler? = null
+  private var tamperHandler: TamperHandler? = null
 
   override fun onServiceConnected() {
     super.onServiceConnected()
@@ -40,6 +41,12 @@ class MultiToolAccessibilityService : AccessibilityService() {
       )
       browserUrlHandler = bHandler
       Dispatcher.register(bHandler)
+
+      val tHandler = TamperHandler(
+        settingsRepository = settingsRepo
+      )
+      tamperHandler = tHandler
+      Dispatcher.register(tHandler)
     } catch (_: Exception) {}
   }
 
@@ -69,6 +76,12 @@ class MultiToolAccessibilityService : AccessibilityService() {
       Dispatcher.unregister(handler)
     }
     browserUrlHandler = null
+
+    tamperHandler?.let { handler ->
+      Dispatcher.unregister(handler)
+      handler.cleanup()
+    }
+    tamperHandler = null
   }
 }
 
