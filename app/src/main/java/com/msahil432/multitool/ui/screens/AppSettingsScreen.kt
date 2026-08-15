@@ -24,6 +24,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import kotlinx.coroutines.launch
 
+import androidx.compose.material.icons.filled.Lock
+import com.msahil432.multitool.blocking.StrictModeController
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppSettingsScreen(
@@ -32,11 +35,13 @@ fun AppSettingsScreen(
   onNavigateToPermissions: () -> Unit,
   onNavigateToBrowsingHistory: (() -> Unit)? = null,
   onNavigateToNotificationVault: (() -> Unit)? = null,
-  onNavigateToGeofences: (() -> Unit)? = null
+  onNavigateToGeofences: (() -> Unit)? = null,
+  onNavigateToStrictMode: (() -> Unit)? = null
 ) {
   val context = androidx.compose.ui.platform.LocalContext.current
   val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
   val coroutineScope = rememberCoroutineScope()
+  val isStrictModeActive by StrictModeController.isActive.collectAsState()
   val globalDeletionMode by settingsRepository.globalDeletionMode.collectAsState(initial = "TRASH")
   val globalDefaultPool by settingsRepository.globalDefaultPool.collectAsState(initial = "")
   val blockYtShorts by settingsRepository.blockYtShorts.collectAsState(initial = false)
@@ -264,11 +269,20 @@ fun AppSettingsScreen(
       // ── Strict Mode & Anti-Uninstall Protection ───────────────────────────
       SectionHeader(title = "Strict Mode & Protection")
       Text(
-        text = "Prevents uninstalling the app while a strict-mode focus session is active.",
+        text = "Prevents weakening or deleting focus rules and prevents uninstalling the app during active focus sessions.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
       )
+      if (onNavigateToStrictMode != null) {
+        SettingRow(
+          title = "Strict Mode",
+          subtitle = if (isStrictModeActive) "Active — focus rules are locked" else "Inactive — tap to configure asymmetric lock-in",
+          leadingIcon = Icons.Default.Lock,
+          onClick = onNavigateToStrictMode
+        )
+        HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+      }
       SettingRow(
         title = "Anti-uninstall protection",
         subtitle = if (isAdminActive) "Active (Device Admin enabled)" else "Inactive — tap to enable",

@@ -36,5 +36,8 @@ class MultiToolApp : Application() {
 
 
         UsageCollectorWorker.schedule(this)
+
+        val settingsRepo = com.msahil432.multitool.data.SettingsRepository(dataStore)
+        com.msahil432.multitool.blocking.StrictModeController.init(this, settingsRepo)
     }
 }

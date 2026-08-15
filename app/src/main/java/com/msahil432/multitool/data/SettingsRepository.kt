@@ -17,6 +17,101 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val TRACK_BROWSER_URLS = booleanPreferencesKey("track_browser_urls")
         val NOTIFICATION_VAULT_ENABLED = booleanPreferencesKey("notification_vault_enabled")
         val NOTIFICATION_BLOCKED_PACKAGES = stringSetPreferencesKey("notification_blocked_packages")
+
+        // Strict Mode preferences
+        val STRICT_MODE_ACTIVE = booleanPreferencesKey("strict_mode_active")
+        val STRICT_MODE_STARTED_AT = longPreferencesKey("strict_mode_started_at")
+        val STRICT_MODE_END_AT = longPreferencesKey("strict_mode_end_at")
+        val STRICT_UNLOCK_METHOD = stringPreferencesKey("strict_unlock_method")
+        val STRICT_PENDING_DEACTIVATION_AT = longPreferencesKey("strict_pending_deactivation_at")
+
+        // Challenge configuration
+        val MASTER_PASSWORD_HASH = stringPreferencesKey("master_password_hash")
+        val QR_EXPECTED_VALUE = stringPreferencesKey("qr_expected_value")
+        val COOLDOWN_MINUTES = intPreferencesKey("cooldown_minutes")
+        val TEXT_CHALLENGE_LENGTH = intPreferencesKey("text_challenge_length")
+    }
+
+    val strictModeState: Flow<StrictModeState> = dataStore.data.map { preferences ->
+        val rawMethod = preferences[STRICT_UNLOCK_METHOD] ?: UnlockMethod.TEXT.name
+        val method = try {
+            UnlockMethod.valueOf(rawMethod)
+        } catch (_: Exception) {
+            UnlockMethod.TEXT
+        }
+        StrictModeState(
+            isActive = preferences[STRICT_MODE_ACTIVE] ?: false,
+            startedAt = preferences[STRICT_MODE_STARTED_AT] ?: 0L,
+            endAt = preferences[STRICT_MODE_END_AT] ?: 0L,
+            unlockMethod = method,
+            pendingDeactivationAt = preferences[STRICT_PENDING_DEACTIVATION_AT] ?: 0L
+        )
+    }
+
+    suspend fun setStrictModeState(state: StrictModeState) {
+        dataStore.edit { preferences ->
+            preferences[STRICT_MODE_ACTIVE] = state.isActive
+            preferences[STRICT_MODE_STARTED_AT] = state.startedAt
+            preferences[STRICT_MODE_END_AT] = state.endAt
+            preferences[STRICT_UNLOCK_METHOD] = state.unlockMethod.name
+            preferences[STRICT_PENDING_DEACTIVATION_AT] = state.pendingDeactivationAt
+        }
+    }
+
+    val strictModeActive: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[STRICT_MODE_ACTIVE] ?: false
+    }
+
+    suspend fun setStrictModeActive(active: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[STRICT_MODE_ACTIVE] = active
+        }
+    }
+
+    suspend fun setStrictPendingDeactivationAt(timestamp: Long) {
+        dataStore.edit { preferences ->
+            preferences[STRICT_PENDING_DEACTIVATION_AT] = timestamp
+        }
+    }
+
+    val masterPasswordHash: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[MASTER_PASSWORD_HASH]
+    }
+
+    suspend fun setMasterPasswordHash(hash: String) {
+        dataStore.edit { preferences ->
+            preferences[MASTER_PASSWORD_HASH] = hash
+        }
+    }
+
+    val qrExpectedValue: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[QR_EXPECTED_VALUE]
+    }
+
+    suspend fun setQrExpectedValue(value: String) {
+        dataStore.edit { preferences ->
+            preferences[QR_EXPECTED_VALUE] = value
+        }
+    }
+
+    val cooldownMinutes: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[COOLDOWN_MINUTES] ?: 15
+    }
+
+    suspend fun setCooldownMinutes(minutes: Int) {
+        dataStore.edit { preferences ->
+            preferences[COOLDOWN_MINUTES] = minutes
+        }
+    }
+
+    val textChallengeLength: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[TEXT_CHALLENGE_LENGTH] ?: 100
+    }
+
+    suspend fun setTextChallengeLength(length: Int) {
+        dataStore.edit { preferences ->
+            preferences[TEXT_CHALLENGE_LENGTH] = length
+        }
     }
 
     val notificationVaultEnabled: Flow<Boolean> = dataStore.data.map { preferences ->

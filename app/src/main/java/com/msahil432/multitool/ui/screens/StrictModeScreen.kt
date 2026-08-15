@@ -1,0 +1,574 @@
+package com.msahil432.multitool.ui.screens
+
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.msahil432.multitool.blocking.StrictModeController
+import com.msahil432.multitool.data.DeactivationFlow
+import com.msahil432.multitool.data.StrictModeState
+import com.msahil432.multitool.data.UnlockMethod
+import com.msahil432.multitool.data.UnlockParams
+import com.msahil432.multitool.ui.components.ConfirmDialog
+import com.msahil432.multitool.ui.theme.MultiToolTheme
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StrictModeScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val strictState by StrictModeController.state.collectAsState()
+
+    var selectedMethod by remember { mutableStateOf(UnlockMethod.TEXT) }
+    var selectedDurationHours by remember { mutableIntStateOf(0) } // 0 = indefinite
+    var customTextLength by remember { mutableIntStateOf(100) }
+    var pinValue by remember { mutableStateOf("") }
+    var cooldownMinutes by remember { mutableIntStateOf(15) }
+
+    var showConfirmDialog by remember { mutableStateOf(false) }
+    var showChallengePlaceholderDialog by remember { mutableStateOf(false) }
+    var activeChallengeMethod by remember { mutableStateOf<UnlockMethod?>(null) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Strict Mode", style = MaterialTheme.typography.titleLarge) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            if (strictState.isActive) {
+                // ── Active Strict Mode Card ──
+                ActiveStrictModeContent(
+                    state = strictState,
+                    onDeactivateClick = {
+                        val flow = StrictModeController.requestDeactivation()
+                        when (flow) {
+                            is DeactivationFlow.TimeExpired -> {
+                                Toast.makeText(context, "Session expired. Strict mode deactivated.", Toast.LENGTH_LONG).show()
+                            }
+                            is DeactivationFlow.ChallengeRequired -> {
+                                activeChallengeMethod = flow.method
+                                showChallengePlaceholderDialog = true
+                            }
+                            is DeactivationFlow.NotActive -> {
+                                Toast.makeText(context, "Strict mode is not active.", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                )
+            } else {
+                // ── Inactive / Setup View ──
+                SetupStrictModeContent(
+                    selectedMethod = selectedMethod,
+                    onMethodSelected = { selectedMethod = it },
+                    selectedDurationHours = selectedDurationHours,
+                    onDurationSelected = { selectedDurationHours = it },
+                    customTextLength = customTextLength,
+                    onTextLengthChanged = { customTextLength = it },
+                    pinValue = pinValue,
+                    onPinChanged = { pinValue = it },
+                    cooldownMinutes = cooldownMinutes,
+                    onCooldownChanged = { cooldownMinutes = it },
+                    onActivateClick = { showConfirmDialog = true }
+                )
+            }
+        }
+    }
+
+    // ── Confirmation Dialog before Activation ──
+    if (showConfirmDialog) {
+        ConfirmDialog(
+            title = "Activate Strict Mode?",
+            text = "Once activated, you cannot delete, weaken, or disable any focus rules until the session ends or you pass the ${selectedMethod.displayName()} challenge.",
+            confirmLabel = "Activate Now",
+            onConfirm = {
+                showConfirmDialog = false
+                val now = System.currentTimeMillis()
+                val endAt = if (selectedDurationHours > 0) {
+                    now + (selectedDurationHours * 3600_000L)
+                } else {
+                    0L
+                }
+                val params = UnlockParams(
+                    textLength = customTextLength,
+                    masterPasswordHash = if (pinValue.isNotBlank()) pinValue.hashCode().toString() else null,
+                    cooldownMinutes = cooldownMinutes
+                )
+                StrictModeController.activate(
+                    method = selectedMethod,
+                    endAt = endAt,
+                    params = params
+                )
+                Toast.makeText(context, "Strict Mode is now active.", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = { showConfirmDialog = false }
+        )
+    }
+
+    // ── Challenge Placeholder Dialog (until Spec 20) ──
+    if (showChallengePlaceholderDialog) {
+        val method = activeChallengeMethod ?: strictState.unlockMethod
+        AlertDialog(
+            onDismissRequest = { showChallengePlaceholderDialog = false },
+            icon = { Icon(Icons.Default.LockOpen, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text(method.displayName()) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Deactivation requires completing the ${method.displayName()} challenge.")
+                    if (method == UnlockMethod.COOLDOWN) {
+                        val remainingSec = ((strictState.pendingDeactivationAt - System.currentTimeMillis()) / 1000L).coerceAtLeast(0L)
+                        if (remainingSec > 0) {
+                            Text("Cooldown timer active: ${remainingSec / 60}m ${remainingSec % 60}s remaining.")
+                        } else {
+                            Text("Cooldown completed! You can now finalize deactivation.")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showChallengePlaceholderDialog = false
+                        StrictModeController.completeDeactivation()
+                        Toast.makeText(context, "Strict mode deactivated.", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Text(if (method == UnlockMethod.COOLDOWN && strictState.pendingDeactivationAt > System.currentTimeMillis()) "Force Complete (Dev)" else "Pass Challenge & Unlock")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showChallengePlaceholderDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun ActiveStrictModeContent(
+    state: StrictModeState,
+    onDeactivateClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val formatter = remember { DateTimeFormatter.ofPattern("MMM dd, hh:mm a") }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Lock,
+                        contentDescription = "Active Strict Mode",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+                Column {
+                    Text(
+                        text = "Strict Mode is Active",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Rules cannot be weakened or deleted",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+            // Details rows
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                DetailRow(
+                    label = "Session Started",
+                    value = if (state.startedAt > 0) {
+                        LocalDateTime.ofInstant(Instant.ofEpochMilli(state.startedAt), ZoneId.systemDefault()).format(formatter)
+                    } else {
+                        "Active"
+                    }
+                )
+
+                DetailRow(
+                    label = "Scheduled End",
+                    value = if (state.endAt > 0) {
+                        LocalDateTime.ofInstant(Instant.ofEpochMilli(state.endAt), ZoneId.systemDefault()).format(formatter)
+                    } else {
+                        "Until manually unlocked"
+                    }
+                )
+
+                DetailRow(
+                    label = "Unlock Challenge",
+                    value = state.unlockMethod.displayName()
+                )
+
+                if (state.pendingDeactivationAt > 0) {
+                    val remainingMinutes = ((state.pendingDeactivationAt - System.currentTimeMillis()) / 60_000L).coerceAtLeast(0L)
+                    DetailRow(
+                        label = "Cooldown Pending",
+                        value = if (remainingMinutes > 0) "$remainingMinutes minutes left" else "Ready to deactivate"
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = onDeactivateClick,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                ),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+            ) {
+                Icon(Icons.Default.LockOpen, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Deactivate Strict Mode", style = MaterialTheme.typography.titleMedium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SetupStrictModeContent(
+    selectedMethod: UnlockMethod,
+    onMethodSelected: (UnlockMethod) -> Unit,
+    selectedDurationHours: Int,
+    onDurationSelected: (Int) -> Unit,
+    customTextLength: Int,
+    onTextLengthChanged: (Int) -> Unit,
+    pinValue: String,
+    onPinChanged: (String) -> Unit,
+    cooldownMinutes: Int,
+    onCooldownChanged: (Int) -> Unit,
+    onActivateClick: () -> Unit
+) {
+    // ── 1. Explanation Banner ──
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.Default.Shield,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Asymmetric Lock-In Guarantee",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Text(
+                text = "While strict mode is active, focus rules can be made stricter at any time, but never weakened, reduced, or deleted. Device Admin protection will prevent premature uninstalling.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    // ── 2. Duration / End Time ──
+    Text(
+        text = "Session Duration",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold
+    )
+
+    val durationOptions = listOf(
+        0 to "Indefinite",
+        1 to "1 Hour",
+        4 to "4 Hours",
+        8 to "8 Hours",
+        24 to "24 Hours"
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        durationOptions.forEach { (hours, label) ->
+            FilterChip(
+                selected = selectedDurationHours == hours,
+                onClick = { onDurationSelected(hours) },
+                label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                shape = RoundedCornerShape(10.dp)
+            )
+        }
+    }
+
+    // ── 3. Unlock Method Selector ──
+    Text(
+        text = "Unlock Challenge Method",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        UnlockMethod.entries.forEach { method ->
+            val isSelected = method == selectedMethod
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onMethodSelected(method) },
+                shape = RoundedCornerShape(14.dp),
+                border = if (isSelected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isSelected) {
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    }
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    RadioButton(
+                        selected = isSelected,
+                        onClick = { onMethodSelected(method) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Select ${method.displayName()}"
+                        }
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = method.displayName(),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = method.description(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // ── 4. Method-specific Customization ──
+    when (selectedMethod) {
+        UnlockMethod.TEXT -> {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Challenge Text Length: $customTextLength characters",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(50, 100, 200, 500).forEach { len ->
+                        FilterChip(
+                            selected = customTextLength == len,
+                            onClick = { onTextLengthChanged(len) },
+                            label = { Text("$len chars") },
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                    }
+                }
+            }
+        }
+        UnlockMethod.PIN -> {
+            OutlinedTextField(
+                value = pinValue,
+                onValueChange = onPinChanged,
+                label = { Text("Set Master PIN / Passcode") },
+                placeholder = { Text("e.g., 1234") },
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp)
+            )
+        }
+        UnlockMethod.COOLDOWN -> {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Cooldown Delay: $cooldownMinutes minutes",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(5, 15, 30, 60).forEach { mins ->
+                        FilterChip(
+                            selected = cooldownMinutes == mins,
+                            onClick = { onCooldownChanged(mins) },
+                            label = { Text("${mins}m") },
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                    }
+                }
+            }
+        }
+        UnlockMethod.QR -> {
+            Text(
+                text = "A physical QR code scan will be required to unlock. Print or place a QR code in another room for maximum friction.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    // ── 5. Activate Button ──
+    Button(
+        onClick = onActivateClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Icon(Icons.Default.Lock, contentDescription = null)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text("Activate Strict Mode", style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+@Composable
+private fun DetailRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Strict Mode Inactive")
+@Composable
+private fun StrictModeScreenInactivePreview() {
+    MultiToolTheme {
+        SetupStrictModeContent(
+            selectedMethod = UnlockMethod.TEXT,
+            onMethodSelected = {},
+            selectedDurationHours = 4,
+            onDurationSelected = {},
+            customTextLength = 100,
+            onTextLengthChanged = {},
+            pinValue = "",
+            onPinChanged = {},
+            cooldownMinutes = 15,
+            onCooldownChanged = {},
+            onActivateClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Strict Mode Active")
+@Composable
+private fun StrictModeScreenActivePreview() {
+    MultiToolTheme {
+        ActiveStrictModeContent(
+            state = StrictModeState(
+                isActive = true,
+                startedAt = System.currentTimeMillis() - 3600_000L,
+                endAt = System.currentTimeMillis() + 7200_000L,
+                unlockMethod = UnlockMethod.COOLDOWN,
+                pendingDeactivationAt = 0L
+            ),
+            onDeactivateClick = {}
+        )
+    }
+}

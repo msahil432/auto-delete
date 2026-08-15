@@ -39,6 +39,8 @@ import com.msahil432.multitool.ui.components.SectionHeader
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 import kotlinx.coroutines.launch
 
+import com.msahil432.multitool.blocking.StrictModeController
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BlockGroupEditScreen(
@@ -47,11 +49,15 @@ fun BlockGroupEditScreen(
   onBack: () -> Unit
 ) {
   val coroutineScope = rememberCoroutineScope()
+  val isStrictModeActive by StrictModeController.isActive.collectAsState()
   var isLoaded by remember { mutableStateOf(groupId == 0L) }
   var name by remember { mutableStateOf("") }
   var enabled by remember { mutableStateOf(true) }
   var selectedPackages by remember { mutableStateOf<Set<String>>(emptySet()) }
+  var initialPackages by remember { mutableStateOf<Set<String>>(emptySet()) }
   var rules by remember { mutableStateOf<List<BlockRule>>(emptyList()) }
+  var initialRulesMap by remember { mutableStateOf<Map<Long, BlockRule>>(emptyMap()) }
+  var initialGroup by remember { mutableStateOf<BlockGroup?>(null) }
   var nextTempRuleId by remember { mutableLongStateOf(-1L) }
 
   var showDeleteGroupDialog by remember { mutableStateOf(false) }
@@ -64,14 +70,18 @@ fun BlockGroupEditScreen(
     if (groupId != 0L) {
       val existingGroup = blockingRepository.getGroupById(groupId)
       if (existingGroup != null) {
+        initialGroup = existingGroup
         name = existingGroup.name
         enabled = existingGroup.enabled
-        selectedPackages = existingGroup.packageNames
+        val pkgs = existingGroup.packageNames
           .split(';')
           .filter { it.isNotBlank() }
           .toSet()
+        selectedPackages = pkgs
+        initialPackages = pkgs
         val existingRules = blockingRepository.getRulesForGroupSync(groupId)
         rules = existingRules
+        initialRulesMap = existingRules.associateBy { it.id }
       }
       isLoaded = true
     }
@@ -111,11 +121,15 @@ fun BlockGroupEditScreen(
         },
         actions = {
           if (groupId != 0L) {
-            IconButton(onClick = { showDeleteGroupDialog = true }) {
+            val canDelete = StrictModeController.canDeleteGroup()
+            IconButton(
+              onClick = { if (canDelete) showDeleteGroupDialog = true },
+              enabled = canDelete
+            ) {
               Icon(
-                Icons.Default.Delete,
-                contentDescription = "Delete group",
-                tint = MaterialTheme.colorScheme.error
+                if (canDelete) Icons.Default.Delete else Icons.Default.Lock,
+                contentDescription = if (canDelete) "Delete group" else "Locked by strict mode",
+                tint = if (canDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
               )
             }
           }
@@ -131,6 +145,9 @@ fun BlockGroupEditScreen(
         .padding(horizontal = 16.dp, vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+      if (isStrictModeActive) {
+        StrictModeActiveBanner()
+      }
       // ── 1. Group Name & Enabled Toggle ──
       OutlinedTextField(
         value = name,
@@ -151,7 +168,7 @@ fun BlockGroupEditScreen(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
       ) {
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
           Text(
             text = "Group Enabled",
             style = MaterialTheme.typography.bodyLarge,
@@ -163,10 +180,25 @@ fun BlockGroupEditScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
           )
         }
-        Switch(
-          checked = enabled,
-          onCheckedChange = { enabled = it }
-        )
+        val canDisableGroup = !isStrictModeActive || !enabled
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+          if (!canDisableGroup) {
+            Icon(
+              Icons.Default.Lock,
+              contentDescription = "Locked by strict mode",
+              tint = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.size(18.dp)
+            )
+          }
+          Switch(
+            checked = enabled,
+            enabled = canDisableGroup,
+            onCheckedChange = { enabled = it }
+          )
+        }
       }
 
       // ── 2. Target Apps Section ──
@@ -310,13 +342,25 @@ fun BlockGroupEditScreen(
         }
       } else {
         rules.forEach { rule ->
+          val initialRule = initialRulesMap[rule.id]
+          val canDeleteRule = !isStrictModeActive || initialRule == null
+          val canToggleRule = !isStrictModeActive || !rule.enabled || initialRule == null
+
           RuleEditorCard(
             rule = rule,
+            canDelete = canDeleteRule,
+            canToggleEnabled = canToggleRule,
             onRuleUpdated = { updated ->
+              if (isStrictModeActive && initialRule != null && !StrictModeController.canWeakenRule(initialRule, updated)) {
+                // Weakening existing rule while strict mode is active is prohibited
+                return@RuleEditorCard
+              }
               rules = rules.map { if (it.id == rule.id) updated else it }
             },
             onDeleteRule = {
-              ruleToDelete = rule
+              if (canDeleteRule) {
+                ruleToDelete = rule
+              }
             },
             onPickGoalApps = {
               pickingGoalRuleId = rule.id
@@ -328,7 +372,22 @@ fun BlockGroupEditScreen(
       Spacer(modifier = Modifier.height(16.dp))
 
       // ── 4. Save Button ──
-      val canSave = name.isNotBlank() && selectedPackages.isNotEmpty()
+      val isGroupWeakened = remember(name, selectedPackages, enabled, initialGroup, isStrictModeActive) {
+        if (isStrictModeActive && initialGroup != null) {
+          val candidate = BlockGroup(
+            id = groupId,
+            name = name.trim(),
+            packageNames = selectedPackages.joinToString(";"),
+            enabled = enabled,
+            createdAt = initialGroup!!.createdAt
+          )
+          !StrictModeController.canWeakenGroup(initialGroup!!, candidate)
+        } else {
+          false
+        }
+      }
+
+      val canSave = name.isNotBlank() && selectedPackages.isNotEmpty() && !isGroupWeakened
       Button(
         onClick = {
           coroutineScope.launch {
@@ -367,6 +426,7 @@ fun BlockGroupEditScreen(
         val hint = when {
           name.isBlank() -> "Enter a group name to save"
           selectedPackages.isEmpty() -> "Select at least 1 target app to save"
+          isGroupWeakened -> "Cannot weaken group or remove target apps while strict mode is active"
           else -> ""
         }
         Text(
@@ -387,7 +447,11 @@ fun BlockGroupEditScreen(
       initialSelectedPackages = selectedPackages,
       onDismiss = { showAppPicker = false },
       onConfirm = { updated ->
-        selectedPackages = updated
+        selectedPackages = if (isStrictModeActive) {
+          updated + initialPackages
+        } else {
+          updated
+        }
         showAppPicker = false
       }
     )
@@ -510,6 +574,8 @@ private fun RulesHeaderWithAddMenu(
 @Composable
 fun RuleEditorCard(
   rule: BlockRule,
+  canDelete: Boolean = true,
+  canToggleEnabled: Boolean = true,
   onRuleUpdated: (BlockRule) -> Unit,
   onDeleteRule: () -> Unit,
   onPickGoalApps: () -> Unit,
@@ -555,8 +621,17 @@ fun RuleEditorCard(
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+          if (!canToggleEnabled) {
+            Icon(
+              Icons.Default.Lock,
+              contentDescription = "Locked by strict mode",
+              tint = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.size(16.dp)
+            )
+          }
           Switch(
             checked = rule.enabled,
+            enabled = canToggleEnabled,
             onCheckedChange = { onRuleUpdated(rule.copy(enabled = it)) },
             modifier = Modifier.semantics {
               contentDescription = "Toggle ${rule.type.displayName()}"
@@ -564,12 +639,13 @@ fun RuleEditorCard(
           )
           IconButton(
             onClick = onDeleteRule,
+            enabled = canDelete,
             modifier = Modifier.size(36.dp)
           ) {
             Icon(
-              Icons.Default.DeleteOutline,
-              contentDescription = "Delete rule",
-              tint = MaterialTheme.colorScheme.error,
+              if (canDelete) Icons.Default.DeleteOutline else Icons.Default.Lock,
+              contentDescription = if (canDelete) "Delete rule" else "Locked by strict mode",
+              tint = if (canDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
               modifier = Modifier.size(20.dp)
             )
           }

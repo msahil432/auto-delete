@@ -29,7 +29,9 @@ import com.msahil432.multitool.ui.components.LoadingState
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 import kotlinx.coroutines.launch
 
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Place
+import com.msahil432.multitool.blocking.StrictModeController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,17 +39,28 @@ fun BlockingHomeScreen(
   blockingRepository: BlockingRepository,
   innerPadding: PaddingValues,
   onNavigateToGroup: (Long) -> Unit,
-  onNavigateToGeofences: (() -> Unit)? = null
+  onNavigateToGeofences: (() -> Unit)? = null,
+  onNavigateToStrictMode: (() -> Unit)? = null
 ) {
   val coroutineScope = rememberCoroutineScope()
   val groups by blockingRepository.groups().collectAsState(initial = null)
   val allRules by blockingRepository.allRules().collectAsState(initial = emptyList())
+  val isStrictModeActive by StrictModeController.isActive.collectAsState()
 
   Scaffold(
     topBar = {
       TopAppBar(
         title = { Text("Blocking", style = MaterialTheme.typography.headlineSmall) },
         actions = {
+          if (onNavigateToStrictMode != null) {
+            IconButton(onClick = onNavigateToStrictMode) {
+              Icon(
+                imageVector = if (isStrictModeActive) Icons.Default.Lock else Icons.Default.LockOpen,
+                contentDescription = "Strict Mode",
+                tint = if (isStrictModeActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+              )
+            }
+          }
           if (onNavigateToGeofences != null) {
             IconButton(onClick = onNavigateToGeofences) {
               Icon(
@@ -77,8 +90,14 @@ fun BlockingHomeScreen(
       groups = groups,
       allRules = allRules,
       paddingValues = combinedPadding,
+      isStrictModeActive = isStrictModeActive,
       onNavigateToGroup = onNavigateToGroup,
+      onNavigateToStrictMode = onNavigateToStrictMode,
       onToggleGroupEnabled = { group, enabled ->
+        if (isStrictModeActive && group.enabled && !enabled) {
+          // Weakening by disabling is blocked while strict mode is active
+          return@BlockingHomeScreenContent
+        }
         coroutineScope.launch {
           blockingRepository.upsertGroup(group.copy(enabled = enabled))
         }
@@ -92,7 +111,9 @@ fun BlockingHomeScreenContent(
   groups: List<BlockGroup>?,
   allRules: List<BlockRule>,
   paddingValues: PaddingValues,
+  isStrictModeActive: Boolean = false,
   onNavigateToGroup: (Long) -> Unit,
+  onNavigateToStrictMode: (() -> Unit)? = null,
   onToggleGroupEnabled: (BlockGroup, Boolean) -> Unit,
   modifier: Modifier = Modifier
 ) {
@@ -122,11 +143,19 @@ fun BlockingHomeScreenContent(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
       ) {
+        if (isStrictModeActive) {
+          item(key = "strict_mode_banner") {
+            StrictModeActiveBanner(onClick = onNavigateToStrictMode)
+          }
+        }
+
         items(groups, key = { it.id }) { group ->
           val groupRules = rulesByGroup[group.id] ?: emptyList()
+          val canDisable = !isStrictModeActive || !group.enabled
           BlockGroupCard(
             group = group,
             rules = groupRules,
+            canToggle = canDisable,
             onClick = { onNavigateToGroup(group.id) },
             onToggleEnabled = { isChecked -> onToggleGroupEnabled(group, isChecked) }
           )
@@ -137,9 +166,64 @@ fun BlockingHomeScreenContent(
 }
 
 @Composable
+fun StrictModeActiveBanner(
+  onClick: (() -> Unit)? = null,
+  modifier: Modifier = Modifier
+) {
+  Card(
+    modifier = modifier
+      .fillMaxWidth()
+      .clip(RoundedCornerShape(16.dp))
+      .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+    colors = CardDefaults.cardColors(
+      containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+    )
+  ) {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 12.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.weight(1f)
+      ) {
+        Icon(
+          Icons.Default.Lock,
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.primary
+        )
+        Column {
+          Text(
+            text = "Strict mode active",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold
+          )
+          Text(
+            text = "Rules are locked and cannot be weakened",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+        }
+      }
+
+      if (onClick != null) {
+        TextButton(onClick = onClick) {
+          Text("Manage")
+        }
+      }
+    }
+  }
+}
+
+@Composable
 fun BlockGroupCard(
   group: BlockGroup,
   rules: List<BlockRule>,
+  canToggle: Boolean = true,
   onClick: () -> Unit,
   onToggleEnabled: (Boolean) -> Unit,
   modifier: Modifier = Modifier
@@ -188,13 +272,28 @@ fun BlockGroupCard(
           )
         }
 
-        Switch(
-          checked = group.enabled,
-          onCheckedChange = onToggleEnabled,
-          modifier = Modifier.semantics {
-            contentDescription = "Toggle ${group.name}"
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+          if (!canToggle) {
+            Icon(
+              Icons.Default.Lock,
+              contentDescription = "Locked by strict mode",
+              tint = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.size(16.dp)
+            )
           }
-        )
+
+          Switch(
+            checked = group.enabled,
+            enabled = canToggle,
+            onCheckedChange = onToggleEnabled,
+            modifier = Modifier.semantics {
+              contentDescription = "Toggle ${group.name}"
+            }
+          )
+        }
       }
 
       HorizontalDivider(

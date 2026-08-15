@@ -56,7 +56,8 @@ class FileMonitorService : Service() {
             scope = coroutineScope,
             engine = blockEngine,
             blockingRepo = blockingRepo,
-            usageRepo = usageRepo
+            usageRepo = usageRepo,
+            isStrictAllowFriction = { com.msahil432.multitool.blocking.StrictModeController.isActive.value }
         )
         blockController.start(this)
 

@@ -37,6 +37,7 @@ import com.msahil432.multitool.ui.screens.BrowsingHistoryScreen
 import com.msahil432.multitool.ui.screens.GeofenceEditScreen
 import com.msahil432.multitool.ui.screens.GeofenceProfilesScreen
 import com.msahil432.multitool.ui.screens.NotificationVaultScreen
+import com.msahil432.multitool.ui.screens.StrictModeScreen
 import com.msahil432.multitool.ui.screens.UsageTimelineScreen
 
 @Composable
@@ -135,7 +136,8 @@ fun BottomNavScaffold(
           blockingRepository = blockingRepository,
           innerPadding = innerPadding,
           onNavigateToGroup = { groupId -> navController.navigate("block_group/$groupId") },
-          onNavigateToGeofences = { navController.navigate("geofence_profiles") }
+          onNavigateToGeofences = { navController.navigate("geofence_profiles") },
+          onNavigateToStrictMode = { navController.navigate("strict_mode") }
         )
       }
       composable("block_group/{groupId}") { backStackEntry ->
@@ -165,6 +167,11 @@ fun BottomNavScaffold(
           onBack = { navController.popBackStack() }
         )
       }
+      composable("strict_mode") {
+        StrictModeScreen(
+          onBack = { navController.popBackStack() }
+        )
+      }
 
       // ── Settings tab ─────────────────────────────────────────────────────────
       composable(TopLevelDest.SETTINGS.route) {
@@ -174,7 +181,8 @@ fun BottomNavScaffold(
           onNavigateToPermissions = { navController.navigate("permissions") },
           onNavigateToBrowsingHistory = { navController.navigate("browsing_history") },
           onNavigateToNotificationVault = { navController.navigate("notification_vault") },
-          onNavigateToGeofences = { navController.navigate("geofence_profiles") }
+          onNavigateToGeofences = { navController.navigate("geofence_profiles") },
+          onNavigateToStrictMode = { navController.navigate("strict_mode") }
         )
       }
       composable("permissions") {

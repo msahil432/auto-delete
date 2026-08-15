@@ -1,8 +1,28 @@
 # 19 — Strict Mode Controller
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Done
 
 Prerequisites: `09-blocking-entities.md`, `18-device-admin.md`.
+
+## Implementation Decisions & Details
+
+1. **State & Persistence:**
+   - Created `StrictModeState.kt` containing `StrictModeState`, `UnlockMethod`, `UnlockParams`, and `DeactivationFlow`.
+   - DataStore persistence handled via `SettingsRepository` with keys `strict_mode_active`, `strict_mode_started_at`, `strict_mode_end_at`, `strict_unlock_method`, and `strict_pending_deactivation_at`.
+2. **Asymmetric Lock-In Controller:**
+   - Implemented `StrictModeController` singleton with state observation and guard checks:
+     - `canDeleteGroup()` and `canDisableGroup()` block deletions/deactivations while active.
+     - `canWeakenGroup(old, new)` prevents removing apps or disabling.
+     - `canWeakenRule(old, new)` evaluates quota increases, launch cap increases, session duration increases, cooldown reductions, schedule day removals or window span reductions, and goal requirement relaxations.
+     - Automatic expiry check for timed sessions (`endAt > 0`).
+     - Device admin integration: requests activation on `activate()` and deactivates on `completeDeactivation()`.
+3. **UI Integration:**
+   - Created `StrictModeScreen.kt` featuring setup flow with duration presets, unlock method selector cards, challenge configuration, and active session management with deactivation flow.
+   - Integrated persistent `StrictModeActiveBanner` in `BlockingHomeScreen` and `BlockGroupEditScreen`.
+   - Wired navigation route `"strict_mode"` across `BottomNavScaffold`, `BlockingHomeScreen`, and `AppSettingsScreen`.
+4. **Unit Testing:**
+   - Full suite in `StrictModeControllerTest.kt` verifying all rule types, group weakening logic, activation, deactivation, and cooldown flows.
+
 
 ## Goal
 
