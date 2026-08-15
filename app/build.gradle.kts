@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-  namespace = "com.msahil432.autodelete"
+  namespace = "com.msahil432.multitool"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.msahil432.autodelete"
+    applicationId = "com.msahil432.multitool"
     minSdk = 36
     targetSdk = 36
     versionCode = 1

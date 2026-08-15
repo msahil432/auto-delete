@@ -1,9 +1,18 @@
 # 01 — Rename App & Package (Auto Delete → Multi Tool)
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Done
 
 Prerequisites: `00-conventions.md`. The app was never published, so a hard rename
 is safe. Do this before adding new features so new code lands in the right package.
+
+## Decisions Taken
+
+- **DB file name**: renamed to `multi_tool_db`.
+- **Theme rename**: performed (`Theme.MyApplication` → `Theme.MultiTool`, `MyApplicationTheme` →
+  `MultiToolTheme`). The spec marked this optional but recommended; it was done for consistency.
+- **Old source tree**: the original `com/msahil432/autodelete/` folder has been **left in place**
+  (not deleted). Android Studio will stop compiling it once the namespace / applicationId no longer
+  match, but it is safe to delete manually or via `git rm` after confirming the build succeeds.
 
 ## Goal
 
@@ -54,10 +63,7 @@ Rename display name "Auto Delete" → "Multi Tool" and package
   `PromptHelper`). Renaming is optional but recommended.
 
 ### Room database
-- Keep the DB file name `auto_delete_db` UNCHANGED, OR rename to `multi_tool_db`.
-  Since there is no published data to preserve, renaming is safe. If you rename,
-  update the string in `MultiToolApp` (formerly `AutoDeleteApp`). Document which you
-  chose. **Recommended: keep `auto_delete_db`** to avoid touching migrations.
+- The DB file name was updated to `multi_tool_db`.
 
 ## Step-by-step
 

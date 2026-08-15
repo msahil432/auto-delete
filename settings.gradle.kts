@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Auto Delete"
+rootProject.name = "Multi Tool"
 
 include(":app")

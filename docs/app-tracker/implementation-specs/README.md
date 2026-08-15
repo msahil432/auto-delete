@@ -39,7 +39,7 @@ These specs decompose that document into buildable units. Where the two disagree
 |---|------|-----------|--------|
 | Foundation | `00-conventions.md` | — | 🔲 Not Started |
 | Foundation | `25-design-system.md` | 00 | 🔲 Not Started |
-| Foundation | `01-rename-package.md` | 00 | 🔲 Not Started |
+| Foundation | `01-rename-package.md` | 00 | ✅ Done |
 | Foundation | `24-remove-firebase-ai.md` | 00 | 🔲 Not Started |
 | Foundation | `02-navigation-hub.md` | 01, 25 | 🔲 Not Started |
 | Usage data | `03-usage-data-entities.md` | 01 | 🔲 Not Started |
