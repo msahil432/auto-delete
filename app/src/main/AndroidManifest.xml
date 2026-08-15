@@ -32,6 +32,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".blocking.BlockActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MultiTool"
+            android:launchMode="singleTop" />
         
         <service
             android:name=".service.FileMonitorService"

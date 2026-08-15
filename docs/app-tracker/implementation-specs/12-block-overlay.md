@@ -1,6 +1,6 @@
 # 12 — Block Overlay Screen
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Done
 
 Prerequisites: `11-accessibility-core.md`, `25-design-system.md`.
 
@@ -12,7 +12,7 @@ blocked and offering only the allowed exits.
 ## Approach
 
 Reuse the overlay technique from `service/PromptHelper.kt` (ComposeView +
-`MyLifecycleOwner` + `WindowManager` with `TYPE_APPLICATION_OVERLAY`). Prefer an
+`BlockLifecycleOwner` + `WindowManager` with `TYPE_APPLICATION_OVERLAY`). Prefer an
 overlay over launching an Activity so it can appear instantly on top of the target
 app. Guard with `Settings.canDrawOverlays`.
 
@@ -20,6 +20,9 @@ app. Guard with `Settings.canDrawOverlays`.
 
 - Create `blocking/BlockOverlayManager.kt` — show/hide the overlay.
 - Create `ui/screens/BlockOverlayContent.kt` — the Compose UI.
+- Create `blocking/BlockActivity.kt` — fallback Activity when overlay permission is missing.
+- Register `BlockActivity` in `AndroidManifest.xml`.
+- Create unit tests in `app/src/test/java/com/msahil432/multitool/blocking/BlockOverlayTest.kt`.
 
 ## API
 
@@ -29,10 +32,13 @@ object BlockOverlayManager {
     val packageName: String,
     val appLabel: String,
     val reason: String,             // "Daily limit reached", schedule name, etc.
-    val allowFriction: Boolean,     // if strict mode offers a challenge
+    val allowFriction: Boolean = false, // if strict mode offers a challenge
+    val usedSeconds: Long? = null,
+    val limitSeconds: Long? = null,
+    val endsAtMillis: Long? = null,
   )
   fun show(context: Context, info: BlockInfo,
-           onClose: () -> Unit, onFriction: (() -> Unit)?)
+           onClose: () -> Unit, onFriction: (() -> Unit)? = null)
   fun hide()
   fun isShowing(): Boolean
 }
@@ -41,6 +47,13 @@ object BlockOverlayManager {
 - Keep a reference to the added view; `hide()` removes it via `WindowManager`.
 - If overlay permission is missing, fall back to launching a full-screen blocking
   Activity (`FLAG_ACTIVITY_NEW_TASK|CLEAR_TASK`).
+
+## Implementation Decisions & Details
+
+1. **`BlockInfo` extensions:** added optional fields `usedSeconds`, `limitSeconds`, and `endsAtMillis` with default null values to power the quota progress bar and countdown card specified in the UX design while maintaining full backwards compatibility.
+2. **Fallback Activity:** Created `BlockActivity` (`.blocking.BlockActivity`) registered in `AndroidManifest.xml` with `singleTop` launch mode and `Theme.MultiTool` theme.
+3. **Accessibility:** Added live region (`LiveRegionMode.Assertive`) to announce block reasons dynamically to TalkBack users.
+4. **Key interception:** Overlaid `ComposeView` intercepts hardware/system back key on `ACTION_UP` to invoke `onClose()`, navigate to home (`Intent.ACTION_MAIN` + `CATEGORY_HOME`), and dismiss the overlay.
 
 ## UX / Screen Design
 

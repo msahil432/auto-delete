@@ -51,7 +51,7 @@ These specs decompose that document into buildable units. Where the two disagree
 | Blocking | `09-blocking-entities.md` | 01 | ✅ Done |
 | Blocking | `10-blocking-rules-ui.md` | 09, 25 | ✅ Done |
 | Blocking | `11-accessibility-core.md` | 09, 25 | ✅ Done |
-| Blocking | `12-block-overlay.md` | 11, 25 | 🔲 Not Started |
+| Blocking | `12-block-overlay.md` | 11, 25 | ✅ Done |
 | Blocking | `13-block-enforcement.md` | 04, 11, 12 | 🔲 Not Started |
 | Shortform | `14-shortform-blocker.md` | 11 | 🔲 Not Started |
 | Browser | `15-browser-url-tracker.md` | 04, 11 | 🔲 Not Started |
