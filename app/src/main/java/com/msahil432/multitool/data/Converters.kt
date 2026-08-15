@@ -38,5 +38,11 @@ class Converters {
 
     @TypeConverter
     fun toBlockRuleType(value: String): BlockRuleType = BlockRuleType.valueOf(value)
+
+    @TypeConverter
+    fun fromBrowsingKind(value: BrowsingKind): String = value.name
+
+    @TypeConverter
+    fun toBrowsingKind(value: String): BrowsingKind = BrowsingKind.valueOf(value)
 }
 

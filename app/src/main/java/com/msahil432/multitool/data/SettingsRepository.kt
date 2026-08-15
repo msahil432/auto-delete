@@ -14,6 +14,17 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val BLOCK_YT_SHORTS = booleanPreferencesKey("block_yt_shorts")
         val BLOCK_IG_REELS = booleanPreferencesKey("block_ig_reels")
         val BLOCK_FB_REELS = booleanPreferencesKey("block_fb_reels")
+        val TRACK_BROWSER_URLS = booleanPreferencesKey("track_browser_urls")
+    }
+
+    val trackBrowserUrls: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[TRACK_BROWSER_URLS] ?: false
+    }
+
+    suspend fun setTrackBrowserUrls(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[TRACK_BROWSER_URLS] = enabled
+        }
     }
 
     val blockYtShorts: Flow<Boolean> = dataStore.data.map { preferences ->

@@ -30,8 +30,10 @@ import com.msahil432.multitool.ui.screens.UsageHomeScreen
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
 import com.msahil432.multitool.data.BlockingRepository
+import com.msahil432.multitool.data.BrowsingRepository
 import com.msahil432.multitool.data.UsageRepository
 import com.msahil432.multitool.ui.screens.BlockGroupEditScreen
+import com.msahil432.multitool.ui.screens.BrowsingHistoryScreen
 import com.msahil432.multitool.ui.screens.UsageTimelineScreen
 
 @Composable
@@ -39,7 +41,8 @@ fun BottomNavScaffold(
   settingsRepository: SettingsRepository,
   appDao: AppDao,
   usageRepository: UsageRepository,
-  blockingRepository: BlockingRepository
+  blockingRepository: BlockingRepository,
+  browsingRepository: BrowsingRepository
 ) {
   val navController = rememberNavController()
   val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -145,11 +148,18 @@ fun BottomNavScaffold(
         AppSettingsScreen(
           settingsRepository = settingsRepository,
           innerPadding = innerPadding,
-          onNavigateToPermissions = { navController.navigate("permissions") }
+          onNavigateToPermissions = { navController.navigate("permissions") },
+          onNavigateToBrowsingHistory = { navController.navigate("browsing_history") }
         )
       }
       composable("permissions") {
         PermissionCheckScreen(onBack = { navController.popBackStack() })
+      }
+      composable("browsing_history") {
+        BrowsingHistoryScreen(
+          browsingRepository = browsingRepository,
+          onBack = { navController.popBackStack() }
+        )
       }
     }
   }

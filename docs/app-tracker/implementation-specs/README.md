@@ -54,7 +54,7 @@ These specs decompose that document into buildable units. Where the two disagree
 | Blocking | `12-block-overlay.md` | 11, 25 | ✅ Done |
 | Blocking | `13-block-enforcement.md` | 04, 11, 12 | ✅ Done |
 | Shortform | `14-shortform-blocker.md` | 11 | ✅ Done |
-| Browser | `15-browser-url-tracker.md` | 04, 11 | 🔲 Not Started |
+| Browser | `15-browser-url-tracker.md` | 04, 11 | ✅ Done |
 | Notifications | `16-notification-listener.md` | 01, 25 | 🔲 Not Started |
 | Geofence | `17-geofence-profiles.md` | 09, 25 | 🔲 Not Started |
 | Strict mode | `18-device-admin.md` | 01 | 🔲 Not Started |

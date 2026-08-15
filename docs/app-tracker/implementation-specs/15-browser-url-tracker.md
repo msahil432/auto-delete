@@ -1,6 +1,6 @@
 # 15 — Browser URL & Search Query Tracker
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Complete
 
 Prerequisites: `04-usage-repository.md`, `11-accessibility-core.md`.
 
@@ -79,3 +79,21 @@ val URL_BAR = mapOf(
 
 - Unsupported browsers may not expose the address bar id; document as best-effort.
 - No message content, no credentials, no network payloads.
+
+## Implementation Decisions & Notes
+
+1. **Database Migration (v7 → v8)**:
+   - `MIGRATION_7_8` added to create table `browsing_events` with indexed `timestamp` column.
+   - `BrowsingEvent` and `BrowsingKind` with Room `TypeConverter` added in `Converters.kt`.
+2. **Repository Architecture**:
+   - `BrowsingDao` and `BrowsingRepository` implemented providing `recentSince`, `recentToday`, `allRecent`, `recordBrowsing`, and `pruneOlderThanDays` methods.
+3. **Browser Signatures**:
+   - Expanded signatures in `BrowserSignatures.kt` to support Chrome, Firefox, Brave, Edge, DuckDuckGo, Opera, and Samsung Internet.
+4. **URL & Query Parsing with Normalization**:
+   - `BrowserUrlHandler.normalizeBrowsingText` parses search engine query parameters (`q`, `p`, `query`, `search_query`, etc.) for known engines (Google, DuckDuckGo, Bing, Yahoo, Ecosia, etc.) into `BrowsingKind.SEARCH_QUERY`, and website URLs into clean domains (`BrowsingKind.URL`), filtering placeholder texts.
+5. **Debouncing & Security**:
+   - Implemented 800ms debounce per browser package with `ConcurrentHashMap` debounce jobs.
+   - Strictly skipped any node where `node.isPassword == true`.
+6. **UI & Navigation**:
+   - Added "Browser Activity Tracker" section to `AppSettingsScreen` with toggle and navigation to `BrowsingHistoryScreen`.
+   - `BrowsingHistoryScreen` displays history with domain/search badge, browser label, timestamp, and empty state.

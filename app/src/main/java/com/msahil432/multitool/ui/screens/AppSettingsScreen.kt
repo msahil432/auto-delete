@@ -15,7 +15,9 @@ import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.ui.components.SectionHeader
 import com.msahil432.multitool.ui.components.SettingRow
 
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.PlayCircleOutline
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import kotlinx.coroutines.launch
@@ -25,7 +27,8 @@ import kotlinx.coroutines.launch
 fun AppSettingsScreen(
   settingsRepository: SettingsRepository,
   innerPadding: PaddingValues,
-  onNavigateToPermissions: () -> Unit
+  onNavigateToPermissions: () -> Unit,
+  onNavigateToBrowsingHistory: (() -> Unit)? = null
 ) {
   val coroutineScope = rememberCoroutineScope()
   val globalDeletionMode by settingsRepository.globalDeletionMode.collectAsState(initial = "TRASH")
@@ -33,6 +36,7 @@ fun AppSettingsScreen(
   val blockYtShorts by settingsRepository.blockYtShorts.collectAsState(initial = false)
   val blockIgReels by settingsRepository.blockIgReels.collectAsState(initial = false)
   val blockFbReels by settingsRepository.blockFbReels.collectAsState(initial = false)
+  val trackBrowserUrls by settingsRepository.trackBrowserUrls.collectAsState(initial = false)
 
   Scaffold(
     topBar = {
@@ -120,6 +124,41 @@ fun AppSettingsScreen(
           )
         }
       )
+      HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+
+      // ── Browser URL & Search Tracker ─────────────────────────────────────
+      SectionHeader(title = "Browser Activity Tracker")
+      Text(
+        text = "Stored only on this device. Passwords are never recorded.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+      )
+      SettingRow(
+        title = "Track browser URLs & searches",
+        subtitle = "Logs visited domains and search queries from supported browsers",
+        leadingIcon = Icons.Default.Public,
+        trailing = {
+          Switch(
+            checked = trackBrowserUrls,
+            onCheckedChange = { checked ->
+              coroutineScope.launch { settingsRepository.setTrackBrowserUrls(checked) }
+            },
+            modifier = Modifier.semantics {
+              contentDescription = "Toggle Track browser URLs & searches"
+            }
+          )
+        }
+      )
+      if (onNavigateToBrowsingHistory != null) {
+        HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+        SettingRow(
+          title = "Browsing Activity Log",
+          subtitle = "View recorded domains and searches",
+          leadingIcon = Icons.Default.Language,
+          onClick = onNavigateToBrowsingHistory
+        )
+      }
       HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
 
       // ── Global defaults (read-only placeholders — editable in future specs) ──

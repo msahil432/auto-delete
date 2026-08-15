@@ -306,6 +306,28 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
     }
 }
 
+/**
+ * Migration from version 7 → 8:
+ *  - Adds `browsing_events` table and index
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS browsing_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                packageName TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                value TEXT NOT NULL
+            )
+        """.trimIndent())
+        db.execSQL("""
+            CREATE INDEX IF NOT EXISTS index_browsing_events_timestamp
+            ON browsing_events(timestamp)
+        """.trimIndent())
+    }
+}
+
 @Database(
     entities = [
         FolderConfig::class,
@@ -318,9 +340,10 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
         BlockGroup::class,
         BlockRule::class,
         BlockInterception::class,
-        BlockCounter::class
+        BlockCounter::class,
+        BrowsingEvent::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -328,6 +351,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun appDao(): AppDao
     abstract fun usageDao(): UsageDao
     abstract fun blockingDao(): BlockingDao
+    abstract fun browsingDao(): BrowsingDao
 }
 
 

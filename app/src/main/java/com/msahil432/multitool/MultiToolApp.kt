@@ -9,6 +9,7 @@ import com.msahil432.multitool.data.MIGRATION_3_4
 import com.msahil432.multitool.data.MIGRATION_4_5
 import com.msahil432.multitool.data.MIGRATION_5_6
 import com.msahil432.multitool.data.MIGRATION_6_7
+import com.msahil432.multitool.data.MIGRATION_7_8
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -28,7 +29,7 @@ class MultiToolApp : Application() {
             AppDatabase::class.java,
             "multi_tool_db" // DB file name kept as-is (see 01-rename-package.md decision)
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             .build()
 
 
