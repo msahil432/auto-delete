@@ -23,7 +23,7 @@ object NotificationDigestScheduler {
         blockingRepo: BlockingRepository,
         blockEngine: BlockEngine
     ) {
-        val allGroups = blockingRepo.allGroups.first()
+        val allGroups = blockingRepo.groups().first()
         var nearestEndMillis: Long? = null
 
         for (group in allGroups) {
