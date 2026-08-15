@@ -10,6 +10,17 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         val GLOBAL_DEFAULT_POOL = stringPreferencesKey("global_default_pool")
         val GLOBAL_DELETION_MODE = stringPreferencesKey("global_deletion_mode")
+        val USAGE_LAST_PROCESSED_TS = longPreferencesKey("usage_last_processed_ts")
+    }
+
+    val usageLastProcessedTs: Flow<Long> = dataStore.data.map { preferences ->
+        preferences[USAGE_LAST_PROCESSED_TS] ?: 0L
+    }
+
+    suspend fun setUsageLastProcessedTs(timestamp: Long) {
+        dataStore.edit { preferences ->
+            preferences[USAGE_LAST_PROCESSED_TS] = timestamp
+        }
     }
 
     val onboardingComplete: Flow<Boolean> = dataStore.data.map { preferences ->

@@ -1,6 +1,6 @@
 # 06 — Usage Stats Collector
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Complete
 
 Prerequisites: `04-usage-repository.md`, `05-usage-permission.md`.
 
@@ -83,3 +83,12 @@ Details:
 ## Out of scope
 
 - Unlock counting (spec 07). UI (spec 08). Blocking (specs 11-13).
+
+## Implementation Decisions
+
+- Added `usage_last_processed_ts` Preferences key to `data/SettingsRepository.kt` along with Flow accessor `usageLastProcessedTs` and updater `setUsageLastProcessedTs`.
+- Created `tracking/UsageStatsReader.kt` wrapping `UsageStatsManager.queryEvents`.
+- Created `tracking/UsageCollectorWorker.kt` which verifies `UsageAccess.isGranted()`, queries events since `usage_last_processed_ts` (defaulting to 24h ago), ignores self-package and launcher/home packages, processes `ACTIVITY_RESUMED` and `ACTIVITY_PAUSED`/`ACTIVITY_STOPPED`, writes records to `UsageRepository`, sets `usage_last_processed_ts = now`, and prunes events older than 90 days.
+- Added `UsageCollectorWorker.schedule(context)` scheduling a 15-minute unique periodic worker (`ExistingPeriodicWorkPolicy.KEEP`) and an immediate one-shot worker (`ExistingWorkPolicy.REPLACE`).
+- Scheduled `UsageCollectorWorker.schedule(this)` in `MultiToolApp.onCreate()`.
+- Added unit tests in `app/src/test/java/com/msahil432/multitool/tracking/UsageStatsCollectorTest.kt`.

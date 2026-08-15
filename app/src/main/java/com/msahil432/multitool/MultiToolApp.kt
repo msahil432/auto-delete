@@ -12,6 +12,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.msahil432.multitool.tracking.UsageCollectorWorker
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
@@ -28,5 +29,7 @@ class MultiToolApp : Application() {
         )
             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
+
+        UsageCollectorWorker.schedule(this)
     }
 }
