@@ -1,0 +1,86 @@
+package com.msahil432.multitool.data
+
+import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
+import java.time.ZoneId
+import java.util.concurrent.TimeUnit
+
+class UsageRepository(private val dao: UsageDao) {
+  fun epochDayNow(): Long = LocalDate.now().toEpochDay()
+
+  fun startOfDayMillisNow(): Long =
+    LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+  fun todayStats(): Flow<List<UsageDailyStat>> = dao.statsForDay(epochDayNow())
+
+  fun totalScreenTimeToday(): Flow<Long?> = dao.totalScreenTime(epochDayNow())
+
+  fun unlocksToday(): Flow<Int> = dao.unlockCountSince(startOfDayMillisNow())
+
+  fun timelineToday(): Flow<List<TimelineEvent>> = dao.timelineSince(startOfDayMillisNow())
+
+  suspend fun recordForeground(pkg: String, addedMillis: Long) {
+    val day = epochDayNow()
+    val now = System.currentTimeMillis()
+    val existing = dao.statFor(day, pkg)
+    val updated = if (existing != null) {
+      existing.copy(
+        foregroundMillis = existing.foregroundMillis + addedMillis,
+        lastUpdated = now
+      )
+    } else {
+      UsageDailyStat(
+        dateEpochDay = day,
+        packageName = pkg,
+        foregroundMillis = addedMillis,
+        launchCount = 0,
+        lastUpdated = now
+      )
+    }
+    dao.upsertDailyStat(updated)
+  }
+
+  suspend fun recordLaunch(pkg: String) {
+    val day = epochDayNow()
+    val now = System.currentTimeMillis()
+    dao.insertLaunch(AppLaunchEvent(packageName = pkg, timestamp = now))
+    val existing = dao.statFor(day, pkg)
+    val updated = if (existing != null) {
+      existing.copy(
+        launchCount = existing.launchCount + 1,
+        lastUpdated = now
+      )
+    } else {
+      UsageDailyStat(
+        dateEpochDay = day,
+        packageName = pkg,
+        foregroundMillis = 0,
+        launchCount = 1,
+        lastUpdated = now
+      )
+    }
+    dao.upsertDailyStat(updated)
+  }
+
+  suspend fun recordUnlock(type: UnlockType) {
+    dao.insertUnlock(UnlockEvent(timestamp = System.currentTimeMillis(), type = type))
+  }
+
+  suspend fun recordTimeline(pkg: String, type: TimelineEventType, durationMillis: Long? = null) {
+    dao.insertTimeline(
+      TimelineEvent(
+        timestamp = System.currentTimeMillis(),
+        packageName = pkg,
+        eventType = type,
+        durationMillis = durationMillis
+      )
+    )
+  }
+
+  suspend fun pruneOlderThanDays(days: Int = 90) {
+    val cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days.toLong())
+    dao.pruneLaunches(cutoff)
+    dao.pruneUnlocks(cutoff)
+    dao.pruneTimeline(cutoff)
+  }
+}

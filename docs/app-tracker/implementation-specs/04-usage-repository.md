@@ -1,6 +1,6 @@
 # 04 — Usage Tracking: DAO & Repository
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Complete
 
 Prerequisites: `03-usage-data-entities.md`.
 
@@ -93,3 +93,10 @@ class UsageRepository(private val dao: UsageDao) {
 ## Out of scope
 
 - Where the data comes from (collectors) — specs 06/07. UI — spec 08.
+
+## Implementation Decisions
+
+- Created `data/UsageDao.kt` containing all daily stat, launch event, unlock event, timeline event queries and retention pruning methods.
+- Added `abstract fun usageDao(): UsageDao` to `data/AppDatabase.kt`.
+- Created `data/UsageRepository.kt` with `epochDayNow()`, `startOfDayMillisNow()`, Flow queries (`todayStats()`, `totalScreenTimeToday()`, `unlocksToday()`, `timelineToday()`), recording methods (`recordForeground`, `recordLaunch`, `recordUnlock`, `recordTimeline`), and `pruneOlderThanDays(days = 90)`.
+- Added unit test suite `UsageRepositoryTest.kt` in `app/src/test/java/com/msahil432/multitool/data/UsageRepositoryTest.kt` with Robolectric and in-memory Room database.

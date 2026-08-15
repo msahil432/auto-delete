@@ -253,4 +253,5 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun appDao(): AppDao
+    abstract fun usageDao(): UsageDao
 }
