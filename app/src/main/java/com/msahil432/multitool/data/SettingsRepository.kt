@@ -11,6 +11,39 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val GLOBAL_DEFAULT_POOL = stringPreferencesKey("global_default_pool")
         val GLOBAL_DELETION_MODE = stringPreferencesKey("global_deletion_mode")
         val USAGE_LAST_PROCESSED_TS = longPreferencesKey("usage_last_processed_ts")
+        val BLOCK_YT_SHORTS = booleanPreferencesKey("block_yt_shorts")
+        val BLOCK_IG_REELS = booleanPreferencesKey("block_ig_reels")
+        val BLOCK_FB_REELS = booleanPreferencesKey("block_fb_reels")
+    }
+
+    val blockYtShorts: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[BLOCK_YT_SHORTS] ?: false
+    }
+
+    suspend fun setBlockYtShorts(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[BLOCK_YT_SHORTS] = enabled
+        }
+    }
+
+    val blockIgReels: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[BLOCK_IG_REELS] ?: false
+    }
+
+    suspend fun setBlockIgReels(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[BLOCK_IG_REELS] = enabled
+        }
+    }
+
+    val blockFbReels: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[BLOCK_FB_REELS] ?: false
+    }
+
+    suspend fun setBlockFbReels(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[BLOCK_FB_REELS] = enabled
+        }
     }
 
     val usageLastProcessedTs: Flow<Long> = dataStore.data.map { preferences ->

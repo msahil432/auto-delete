@@ -1,8 +1,17 @@
 # 14 — Short-Form Video Blocker (Shorts / Reels)
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Done
 
 Prerequisites: `11-accessibility-core.md`.
+
+## Implementation Decisions & Details
+
+1. **Detection Table (`ShortFormSignatures`):** Isolated signatures into `accessibility/ShortFormSignatures.kt`. Includes view ID signatures (`SHORT_FORM`) as well as known activity/fragment class names (`SHORT_FORM_CLASSES`) for YouTube (`com.google.android.youtube`), Instagram (`com.instagram.android`), and Facebook (`com.facebook.katana`).
+2. **Zero-Latency In-Memory State:** `ShortFormHandler` maintains in-memory `@Volatile` boolean flags updated via coroutines from `SettingsRepository`, allowing event evaluation to happen synchronously with zero latency on the accessibility thread.
+3. **Debounce & Dismissal Flow:** Implemented a 1000ms cooldown window to prevent rapid event flooding when navigating away. On detection, executes `GLOBAL_ACTION_BACK`, logs `BlockInterception` and `BLOCK_INTERCEPT` timeline event asynchronously, and re-checks the node hierarchy after 500ms, falling back to home navigation if still trapped in the feed.
+4. **Settings UI:** Added a dedicated "Short-Form Video Blocker" section in `AppSettingsScreen` with toggle switches for YouTube Shorts, Instagram Reels, and Facebook Reels, captioned with "Main feed and search stay available." and labeled accessibility semantics.
+5. **Lifecycle Management:** `MultiToolAccessibilityService` registers `ShortFormHandler` into `Dispatcher` in `onServiceConnected()` and unregisters it in `onDestroy()`.
+
 
 ## Goal
 

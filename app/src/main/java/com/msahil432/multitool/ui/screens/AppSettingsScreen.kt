@@ -15,6 +15,11 @@ import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.ui.components.SectionHeader
 import com.msahil432.multitool.ui.components.SettingRow
 
+import androidx.compose.material.icons.filled.PlayCircleOutline
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import kotlinx.coroutines.launch
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppSettingsScreen(
@@ -22,8 +27,12 @@ fun AppSettingsScreen(
   innerPadding: PaddingValues,
   onNavigateToPermissions: () -> Unit
 ) {
+  val coroutineScope = rememberCoroutineScope()
   val globalDeletionMode by settingsRepository.globalDeletionMode.collectAsState(initial = "TRASH")
   val globalDefaultPool by settingsRepository.globalDefaultPool.collectAsState(initial = "")
+  val blockYtShorts by settingsRepository.blockYtShorts.collectAsState(initial = false)
+  val blockIgReels by settingsRepository.blockIgReels.collectAsState(initial = false)
+  val blockFbReels by settingsRepository.blockFbReels.collectAsState(initial = false)
 
   Scaffold(
     topBar = {
@@ -50,6 +59,66 @@ fun AppSettingsScreen(
         subtitle = "Review and grant required app permissions",
         leadingIcon = Icons.Default.Security,
         onClick = onNavigateToPermissions
+      )
+      HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+
+      // ── Short-Form Video Blocker ──────────────────────────────────────────
+      SectionHeader(title = "Short-Form Video Blocker")
+      Text(
+        text = "Main feed and search stay available.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+      )
+      SettingRow(
+        title = "Block YouTube Shorts",
+        subtitle = "Automatically dismisses YouTube Shorts",
+        leadingIcon = Icons.Default.PlayCircleOutline,
+        trailing = {
+          Switch(
+            checked = blockYtShorts,
+            onCheckedChange = { checked ->
+              coroutineScope.launch { settingsRepository.setBlockYtShorts(checked) }
+            },
+            modifier = Modifier.semantics {
+              contentDescription = "Toggle Block YouTube Shorts"
+            }
+          )
+        }
+      )
+      HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+      SettingRow(
+        title = "Block Instagram Reels",
+        subtitle = "Automatically dismisses Instagram Reels",
+        leadingIcon = Icons.Default.PlayCircleOutline,
+        trailing = {
+          Switch(
+            checked = blockIgReels,
+            onCheckedChange = { checked ->
+              coroutineScope.launch { settingsRepository.setBlockIgReels(checked) }
+            },
+            modifier = Modifier.semantics {
+              contentDescription = "Toggle Block Instagram Reels"
+            }
+          )
+        }
+      )
+      HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+      SettingRow(
+        title = "Block Facebook Reels",
+        subtitle = "Automatically dismisses Facebook Reels",
+        leadingIcon = Icons.Default.PlayCircleOutline,
+        trailing = {
+          Switch(
+            checked = blockFbReels,
+            onCheckedChange = { checked ->
+              coroutineScope.launch { settingsRepository.setBlockFbReels(checked) }
+            },
+            modifier = Modifier.semantics {
+              contentDescription = "Toggle Block Facebook Reels"
+            }
+          )
+        }
       )
       HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
 
