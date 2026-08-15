@@ -7,6 +7,7 @@ import android.os.Build
 import com.msahil432.multitool.MultiToolApp
 import com.msahil432.multitool.data.GeofenceRepository
 import com.msahil432.multitool.location.GeofenceManager
+import com.msahil432.multitool.tracking.UsageCollectorWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -21,6 +22,8 @@ class BootReceiver : BroadcastReceiver() {
                 context.startService(serviceIntent)
             }
 
+            UsageCollectorWorker.schedule(context)
+
             val app = context.applicationContext as? MultiToolApp
             if (app != null) {
                 val pendingResult = goAsync()
@@ -29,6 +32,7 @@ class BootReceiver : BroadcastReceiver() {
                         val geofenceRepo = GeofenceRepository(app.database.geofenceDao())
                         val geofenceManager = GeofenceManager(context)
                         geofenceManager.reRegisterAll(geofenceRepo)
+                    } catch (_: Exception) {
                     } finally {
                         pendingResult.finish()
                     }

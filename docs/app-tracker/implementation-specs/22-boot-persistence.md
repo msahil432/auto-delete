@@ -1,6 +1,6 @@
 # 22 — Boot Persistence & Background Survival
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Complete
 
 Prerequisites: `01-rename-package.md`.
 
@@ -8,6 +8,12 @@ Prerequisites: `01-rename-package.md`.
 
 Ensure monitoring (file monitor, unlock tracker, accessibility-dependent features,
 geofences, blocking) resumes after reboot and survives OEM battery killers.
+
+## Decisions
+
+1. **OEM Auto-Start Queryability**: Standard Android APIs do not expose whether auto-start or background exemption has been granted in proprietary OEM vendor settings (Xiaomi MIUI, Samsung Smart Manager, Huawei Optimizer, ColorOS, vivo). Therefore `isGranted` returns `false` (prompting optional guidance), and `OemAutostart` provides manufacturer-tailored instruction text based on `Build.MANUFACTURER`.
+2. **OEM Intent Candidates & Fallback**: `OemAutostart.open(context)` inspects intent resolution for candidate vendor components across Xiaomi, Samsung, Huawei, Oppo/Realme/OnePlus, and Vivo, launching the first resolvable target within a try/catch, and gracefully falling back to standard `Settings.ACTION_APPLICATION_DETAILS_SETTINGS`.
+3. **Boot Sequence**: `BootReceiver` triggers foreground service startup, enqueues `UsageCollectorWorker.schedule(context)` (with `ExistingPeriodicWorkPolicy.KEEP`), and re-registers all enabled geofences via `GeofenceManager.reRegisterAll()` within a coroutine using `goAsync()`.
 
 ## Files to modify / create
 

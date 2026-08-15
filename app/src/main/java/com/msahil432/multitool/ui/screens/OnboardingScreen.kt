@@ -55,6 +55,8 @@ import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.encodeFilterRules
 import com.msahil432.multitool.data.encodeTimePeriodPresets
 import com.msahil432.multitool.ui.components.ConfirmDialog
+import com.msahil432.multitool.util.BatteryOptimization
+import com.msahil432.multitool.util.OemAutostart
 import com.msahil432.multitool.util.UsageAccess
 import kotlinx.coroutines.launch
 
@@ -157,16 +159,18 @@ fun buildPermissionList(): List<AppPermission> = listOf(
         subtitle = "Prevent Android from killing the monitor service to save battery.",
         icon = Icons.Default.BatteryFull,
         isRequired = false,
-        isGranted = { ctx ->
-            (ctx.getSystemService(Context.POWER_SERVICE) as PowerManager)
-                .isIgnoringBatteryOptimizations(ctx.packageName)
-        },
-        grant = { ctx, _ ->
-            ctx.startActivity(
-                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                    Uri.parse("package:${ctx.packageName}"))
-            )
-        }
+        isGranted = { ctx -> BatteryOptimization.isIgnoring(ctx) },
+        grant = { ctx, _ -> BatteryOptimization.requestIgnore(ctx) }
+    ),
+
+    AppPermission(
+        id = "oem_autostart",
+        title = "Auto-Start & Background",
+        subtitle = "Enable auto-start on ${OemAutostart.detectOem().displayName}: ${OemAutostart.getInstructions()}",
+        icon = Icons.Default.PowerSettingsNew,
+        isRequired = false,
+        isGranted = { false },
+        grant = { ctx, _ -> OemAutostart.open(ctx) }
     )
 )
 
@@ -556,10 +560,19 @@ private fun PermissionStep(
                             Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                 Uri.parse("package:${context.packageName}"))
                         )
-                        "battery" -> settingsLauncher.launch(
-                            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                                Uri.parse("package:${context.packageName}"))
-                        )
+                        "notification_listener" -> {
+                            com.msahil432.multitool.util.NotificationAccess.openSettings(context)
+                        }
+                        "battery" -> {
+                            try {
+                                settingsLauncher.launch(BatteryOptimization.createRequestIntent(context))
+                            } catch (_: Exception) {
+                                BatteryOptimization.requestIgnore(context)
+                            }
+                        }
+                        "oem_autostart" -> {
+                            OemAutostart.open(context)
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -1004,10 +1017,19 @@ fun PermissionCheckScreen(onBack: () -> Unit) {
                                 Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                     Uri.parse("package:${context.packageName}"))
                             )
-                            "battery" -> settingsLauncher.launch(
-                                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                                    Uri.parse("package:${context.packageName}"))
-                            )
+                            "notification_listener" -> {
+                                com.msahil432.multitool.util.NotificationAccess.openSettings(context)
+                            }
+                            "battery" -> {
+                                try {
+                                    settingsLauncher.launch(BatteryOptimization.createRequestIntent(context))
+                                } catch (_: Exception) {
+                                    BatteryOptimization.requestIgnore(context)
+                                }
+                            }
+                            "oem_autostart" -> {
+                                OemAutostart.open(context)
+                            }
                         }
                     }
                 )
