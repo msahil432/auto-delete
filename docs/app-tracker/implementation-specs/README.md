@@ -62,7 +62,7 @@ These specs decompose that document into buildable units. Where the two disagree
 | Strict mode | `20-friction-challenges.md` | 19, 25 | ✅ Done |
 | Strict mode | `21-tamper-alarm.md` | 11, 18 | ✅ Done |
 | Resilience | `22-boot-persistence.md` | 01 | ✅ Done |
-| Compliance | `23-play-compliance.md` | 11, 18 | 🔲 Not Started |
+| Compliance | `23-play-compliance.md` | 11, 18 | ✅ Done |
 
 ## Capability coverage (app-tracker.md §8)
 

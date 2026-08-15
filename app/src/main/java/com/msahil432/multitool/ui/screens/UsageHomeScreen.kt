@@ -70,6 +70,20 @@ fun UsageHomeScreen(
   val perApp by viewModel.perApp.collectAsState()
   val unlocksToday by viewModel.unlocksToday.collectAsState()
   val appMetaCache by viewModel.appMetaCache.collectAsState()
+  var showUsageDisclosure by remember { mutableStateOf(false) }
+
+  if (showUsageDisclosure) {
+    com.msahil432.multitool.ui.components.ConfirmDialog(
+      title = "Usage Access Disclosure",
+      text = "Multi Tool uses Usage Access to measure your screen time, count app launches, and build your activity timeline. All usage statistics are stored and processed entirely on your device and are never sent off the device.",
+      confirmLabel = "Continue to Settings",
+      onConfirm = {
+        showUsageDisclosure = false
+        UsageAccess.openSettings(context)
+      },
+      onDismiss = { showUsageDisclosure = false }
+    )
+  }
 
   Scaffold(
     topBar = {
@@ -92,7 +106,7 @@ fun UsageHomeScreen(
       perApp = perApp,
       appMetaCache = appMetaCache,
       paddingValues = combinedPadding,
-      onGrantPermission = { UsageAccess.openSettings(context) },
+      onGrantPermission = { showUsageDisclosure = true },
       onNavigateToTimeline = onNavigateToTimeline
     )
   }

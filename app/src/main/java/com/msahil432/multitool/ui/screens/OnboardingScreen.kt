@@ -395,6 +395,9 @@ private fun PermissionStep(
     // Re-check status every time this composable is recomposed (e.g. after returning from Settings)
     var granted by remember { mutableStateOf(permission.isGranted(context)) }
     var showAccessibilityDisclosure by remember { mutableStateOf(false) }
+    var showUsageDisclosure by remember { mutableStateOf(false) }
+    var showAllFilesDisclosure by remember { mutableStateOf(false) }
+    var showNotificationDisclosure by remember { mutableStateOf(false) }
 
     if (showAccessibilityDisclosure) {
         ConfirmDialog(
@@ -406,6 +409,60 @@ private fun PermissionStep(
                 AccessibilityUtil.openSettings(context)
             },
             onDismiss = { showAccessibilityDisclosure = false }
+        )
+    }
+
+    if (showUsageDisclosure) {
+        ConfirmDialog(
+            title = "Usage Access Disclosure",
+            text = "Multi Tool uses Usage Access to measure your screen time, count app launches, and build your activity timeline. All usage statistics are stored and processed entirely on your device and are never sent off the device.",
+            confirmLabel = "Continue to Settings",
+            onConfirm = {
+                showUsageDisclosure = false
+                try {
+                    settingsLauncher.launch(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                } catch (_: Exception) {
+                    UsageAccess.openSettings(context)
+                }
+            },
+            onDismiss = { showUsageDisclosure = false }
+        )
+    }
+
+    if (showAllFilesDisclosure) {
+        ConfirmDialog(
+            title = "All Files Access Disclosure",
+            text = "Multi Tool requires All Files Access to monitor folders (such as Screenshots and Downloads) and automatically move or delete files based on your configured cleanup schedules. Your files are processed entirely on-device and are never uploaded or shared.",
+            confirmLabel = "Continue to Settings",
+            onConfirm = {
+                showAllFilesDisclosure = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    try {
+                        settingsLauncher.launch(
+                            Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                                .setData(Uri.parse("package:${context.packageName}"))
+                        )
+                    } catch (_: Exception) {
+                        settingsLauncher.launch(
+                            Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                        )
+                    }
+                }
+            },
+            onDismiss = { showAllFilesDisclosure = false }
+        )
+    }
+
+    if (showNotificationDisclosure) {
+        ConfirmDialog(
+            title = "Notification Access Disclosure",
+            text = "Multi Tool needs notification listener access to silence and vault notifications from restricted apps during active focus schedules. All notification titles and previews are stored exclusively on your device and are never sent anywhere.",
+            confirmLabel = "Continue to Settings",
+            onConfirm = {
+                showNotificationDisclosure = false
+                com.msahil432.multitool.util.NotificationAccess.openSettings(context)
+            },
+            onDismiss = { showNotificationDisclosure = false }
         )
     }
 
@@ -532,26 +589,11 @@ private fun PermissionStep(
                         }
                         "all_files" -> {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                try {
-                                    settingsLauncher.launch(
-                                        Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                                            .setData(Uri.parse("package:${context.packageName}"))
-                                    )
-                                } catch (_: Exception) {
-                                    settingsLauncher.launch(
-                                        Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                                    )
-                                }
+                                showAllFilesDisclosure = true
                             } else onNext()
                         }
                         "usage_access" -> {
-                            try {
-                                settingsLauncher.launch(
-                                    Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-                                )
-                            } catch (_: Exception) {
-                                UsageAccess.openSettings(context)
-                            }
+                            showUsageDisclosure = true
                         }
                         "accessibility" -> {
                             showAccessibilityDisclosure = true
@@ -561,7 +603,7 @@ private fun PermissionStep(
                                 Uri.parse("package:${context.packageName}"))
                         )
                         "notification_listener" -> {
-                            com.msahil432.multitool.util.NotificationAccess.openSettings(context)
+                            showNotificationDisclosure = true
                         }
                         "battery" -> {
                             try {
@@ -961,6 +1003,9 @@ fun PermissionCheckScreen(onBack: () -> Unit) {
             }
 
             var showAccessibilityDisclosure by remember { mutableStateOf(false) }
+            var showUsageDisclosure by remember { mutableStateOf(false) }
+            var showAllFilesDisclosure by remember { mutableStateOf(false) }
+            var showNotificationDisclosure by remember { mutableStateOf(false) }
 
             if (showAccessibilityDisclosure) {
                 ConfirmDialog(
@@ -972,6 +1017,62 @@ fun PermissionCheckScreen(onBack: () -> Unit) {
                         AccessibilityUtil.openSettings(context)
                     },
                     onDismiss = { showAccessibilityDisclosure = false }
+                )
+            }
+
+            if (showUsageDisclosure) {
+                ConfirmDialog(
+                    title = "Usage Access Disclosure",
+                    text = "Multi Tool uses Usage Access to measure your screen time, count app launches, and build your activity timeline. All usage statistics are stored and processed entirely on your device and are never sent off the device.",
+                    confirmLabel = "Continue to Settings",
+                    onConfirm = {
+                        showUsageDisclosure = false
+                        try {
+                            settingsLauncher.launch(
+                                Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                            )
+                        } catch (_: Exception) {
+                            UsageAccess.openSettings(context)
+                        }
+                    },
+                    onDismiss = { showUsageDisclosure = false }
+                )
+            }
+
+            if (showAllFilesDisclosure) {
+                ConfirmDialog(
+                    title = "All Files Access Disclosure",
+                    text = "Multi Tool requires All Files Access to monitor folders (such as Screenshots and Downloads) and automatically move or delete files based on your configured cleanup schedules. Your files are processed entirely on-device and are never uploaded or shared.",
+                    confirmLabel = "Continue to Settings",
+                    onConfirm = {
+                        showAllFilesDisclosure = false
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            try {
+                                settingsLauncher.launch(
+                                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                                        .setData(Uri.parse("package:${context.packageName}"))
+                                )
+                            } catch (_: Exception) {
+                                settingsLauncher.launch(
+                                    Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                                )
+                            }
+                        }
+                    },
+                    onDismiss = { showAllFilesDisclosure = false }
+                )
+            }
+
+            if (showNotificationDisclosure) {
+                ConfirmDialog(
+                    title = "Notification Access Disclosure",
+                    text = "Multi Tool needs notification listener access to silence and vault notifications from restricted apps during active focus schedules. All notification titles and previews are stored exclusively on your device and are never sent anywhere.",
+                    confirmLabel = "Continue to Settings",
+                    onConfirm = {
+                        showNotificationDisclosure = false
+                        com.msahil432.multitool.util.NotificationAccess.openSettings(context)
+                    },
+                    onDismiss = { showNotificationDisclosure = false }
                 )
             }
 
@@ -989,26 +1090,11 @@ fun PermissionCheckScreen(onBack: () -> Unit) {
                             }
                             "all_files" -> {
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                    try {
-                                        settingsLauncher.launch(
-                                            Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                                                .setData(Uri.parse("package:${context.packageName}"))
-                                        )
-                                    } catch (_: Exception) {
-                                        settingsLauncher.launch(
-                                            Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                                        )
-                                    }
+                                    showAllFilesDisclosure = true
                                 }
                             }
                             "usage_access" -> {
-                                try {
-                                    settingsLauncher.launch(
-                                        Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-                                    )
-                                } catch (_: Exception) {
-                                    UsageAccess.openSettings(context)
-                                }
+                                showUsageDisclosure = true
                             }
                             "accessibility" -> {
                                 showAccessibilityDisclosure = true
@@ -1018,7 +1104,7 @@ fun PermissionCheckScreen(onBack: () -> Unit) {
                                     Uri.parse("package:${context.packageName}"))
                             )
                             "notification_listener" -> {
-                                com.msahil432.multitool.util.NotificationAccess.openSettings(context)
+                                showNotificationDisclosure = true
                             }
                             "battery" -> {
                                 try {
