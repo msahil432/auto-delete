@@ -1,6 +1,6 @@
 # 16 — Notification Interception & Vault
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Complete
 
 Prerequisites: `01-rename-package.md`, `25-design-system.md`.
 
@@ -88,3 +88,22 @@ class MultiToolNotificationListener : NotificationListenerService() {
 
 - Reading message contents inside apps (boundary). Only public notification
   title/text is used.
+
+## Implementation Decisions & Notes
+
+1. **Database Migration (v8 → v9)**:
+   - Created table `vaulted_notifications` with indexed `postedAt` column via `MIGRATION_8_9`.
+   - `VaultedNotification` entity and `NotificationDao` with full CRUD/query methods added.
+2. **Repository Architecture**:
+   - `NotificationRepository` provides Flow-based access (`allVaulted`, `undelivered`, `undeliveredCount`) and suspend mutation functions (`vault`, `markAllDelivered`, `deleteById`, `clearAll`).
+3. **Permission & Security**:
+   - `NotificationAccess` helper supports checking permission state via `NotificationManagerCompat` and fallback system secure setting parsing.
+   - Prominent disclosure dialog implemented before routing to system Notification Listener settings.
+   - Ongoing system notifications (calls, media player, navigation) and MultiTool's own notifications are safely excluded from cancellation.
+4. **Digest Delivery System**:
+   - `NotificationDigestWorker` (WorkManager `CoroutineWorker`) aggregates undelivered notifications into an expandable `InboxStyle` digest notification, launching into the Notification Vault screen and marking items delivered.
+   - `NotificationDigestScheduler` dynamically detects schedule end times and schedules delayed delivery.
+5. **UI & Navigation**:
+   - `NotificationVaultScreen` displays vaulted notifications with application icons, names, titles, previews, delivery status badges, item deletion, and "Clear All" with confirmation.
+   - `AppSettingsScreen` includes the "Notification Interception & Vault" section with toggles, app picker modal, permission card, and vault navigation.
+   - Added notification listener permission to `buildPermissionList()` in `OnboardingScreen`.

@@ -15,6 +15,28 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val BLOCK_IG_REELS = booleanPreferencesKey("block_ig_reels")
         val BLOCK_FB_REELS = booleanPreferencesKey("block_fb_reels")
         val TRACK_BROWSER_URLS = booleanPreferencesKey("track_browser_urls")
+        val NOTIFICATION_VAULT_ENABLED = booleanPreferencesKey("notification_vault_enabled")
+        val NOTIFICATION_BLOCKED_PACKAGES = stringSetPreferencesKey("notification_blocked_packages")
+    }
+
+    val notificationVaultEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[NOTIFICATION_VAULT_ENABLED] ?: false
+    }
+
+    suspend fun setNotificationVaultEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[NOTIFICATION_VAULT_ENABLED] = enabled
+        }
+    }
+
+    val notificationBlockedPackages: Flow<Set<String>> = dataStore.data.map { preferences ->
+        preferences[NOTIFICATION_BLOCKED_PACKAGES] ?: emptySet()
+    }
+
+    suspend fun setNotificationBlockedPackages(packages: Set<String>) {
+        dataStore.edit { preferences ->
+            preferences[NOTIFICATION_BLOCKED_PACKAGES] = packages
+        }
     }
 
     val trackBrowserUrls: Flow<Boolean> = dataStore.data.map { preferences ->

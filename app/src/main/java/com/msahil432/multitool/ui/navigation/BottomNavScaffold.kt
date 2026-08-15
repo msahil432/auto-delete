@@ -27,13 +27,13 @@ import com.msahil432.multitool.ui.screens.ActivityLogScreen
 import com.msahil432.multitool.ui.screens.OnboardingScreen
 import com.msahil432.multitool.ui.screens.PermissionCheckScreen
 import com.msahil432.multitool.ui.screens.UsageHomeScreen
-import com.msahil432.multitool.ui.theme.MultiToolTheme
-
 import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.BrowsingRepository
+import com.msahil432.multitool.data.NotificationRepository
 import com.msahil432.multitool.data.UsageRepository
 import com.msahil432.multitool.ui.screens.BlockGroupEditScreen
 import com.msahil432.multitool.ui.screens.BrowsingHistoryScreen
+import com.msahil432.multitool.ui.screens.NotificationVaultScreen
 import com.msahil432.multitool.ui.screens.UsageTimelineScreen
 
 @Composable
@@ -42,7 +42,8 @@ fun BottomNavScaffold(
   appDao: AppDao,
   usageRepository: UsageRepository,
   blockingRepository: BlockingRepository,
-  browsingRepository: BrowsingRepository
+  browsingRepository: BrowsingRepository,
+  notificationRepository: NotificationRepository
 ) {
   val navController = rememberNavController()
   val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -149,7 +150,8 @@ fun BottomNavScaffold(
           settingsRepository = settingsRepository,
           innerPadding = innerPadding,
           onNavigateToPermissions = { navController.navigate("permissions") },
-          onNavigateToBrowsingHistory = { navController.navigate("browsing_history") }
+          onNavigateToBrowsingHistory = { navController.navigate("browsing_history") },
+          onNavigateToNotificationVault = { navController.navigate("notification_vault") }
         )
       }
       composable("permissions") {
@@ -158,6 +160,12 @@ fun BottomNavScaffold(
       composable("browsing_history") {
         BrowsingHistoryScreen(
           browsingRepository = browsingRepository,
+          onBack = { navController.popBackStack() }
+        )
+      }
+      composable("notification_vault") {
+        NotificationVaultScreen(
+          notificationRepository = notificationRepository,
           onBack = { navController.popBackStack() }
         )
       }

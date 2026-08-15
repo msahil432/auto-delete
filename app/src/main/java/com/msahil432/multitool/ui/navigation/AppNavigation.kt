@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import com.msahil432.multitool.data.AppDao
 import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.BrowsingRepository
+import com.msahil432.multitool.data.NotificationRepository
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.UsageRepository
 import com.msahil432.multitool.ui.screens.OnboardingScreen
@@ -22,7 +23,8 @@ fun AppNavigation(
   appDao: AppDao,
   usageRepository: UsageRepository,
   blockingRepository: BlockingRepository,
-  browsingRepository: BrowsingRepository
+  browsingRepository: BrowsingRepository,
+  notificationRepository: NotificationRepository
 ) {
   val navController = rememberNavController()
   val onboardingComplete by settingsRepository.onboardingComplete.collectAsState(initial = false)
@@ -50,7 +52,8 @@ fun AppNavigation(
         appDao = appDao,
         usageRepository = usageRepository,
         blockingRepository = blockingRepository,
-        browsingRepository = browsingRepository
+        browsingRepository = browsingRepository,
+        notificationRepository = notificationRepository
       )
     }
   }

@@ -142,6 +142,16 @@ fun buildPermissionList(): List<AppPermission> = listOf(
     ),
 
     AppPermission(
+        id = "notification_listener",
+        title = "Notification Listener",
+        subtitle = "Silences and vaults notifications from restricted apps during active focus schedules.",
+        icon = Icons.Default.NotificationsPaused,
+        isRequired = false,
+        isGranted = { ctx -> com.msahil432.multitool.util.NotificationAccess.isGranted(ctx) },
+        grant = { ctx, _ -> com.msahil432.multitool.util.NotificationAccess.openSettings(ctx) }
+    ),
+
+    AppPermission(
         id = "battery",
         title = "Battery Optimization Exemption",
         subtitle = "Prevent Android from killing the monitor service to save battery.",

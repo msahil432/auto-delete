@@ -328,6 +328,29 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
     }
 }
 
+/**
+ * Migration from version 8 → 9:
+ *  - Adds `vaulted_notifications` table and index
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS vaulted_notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                packageName TEXT NOT NULL,
+                title TEXT,
+                text TEXT,
+                postedAt INTEGER NOT NULL,
+                delivered INTEGER NOT NULL
+            )
+        """.trimIndent())
+        db.execSQL("""
+            CREATE INDEX IF NOT EXISTS index_vaulted_notifications_postedAt
+            ON vaulted_notifications(postedAt)
+        """.trimIndent())
+    }
+}
+
 @Database(
     entities = [
         FolderConfig::class,
@@ -341,9 +364,10 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
         BlockRule::class,
         BlockInterception::class,
         BlockCounter::class,
-        BrowsingEvent::class
+        BrowsingEvent::class,
+        VaultedNotification::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -352,6 +376,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun usageDao(): UsageDao
     abstract fun blockingDao(): BlockingDao
     abstract fun browsingDao(): BrowsingDao
+    abstract fun notificationDao(): NotificationDao
 }
 
 
