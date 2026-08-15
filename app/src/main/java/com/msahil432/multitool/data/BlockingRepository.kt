@@ -35,7 +35,34 @@ class BlockingRepository(private val dao: BlockingDao) {
 
   suspend fun upsertCounter(counter: BlockCounter) = dao.upsertCounter(counter)
 
+  suspend fun enabledGroupsContaining(pkg: String): List<BlockGroup> {
+    return dao.getEnabledGroups().filter { group ->
+      group.packageNames.split(";").map { it.trim() }.contains(pkg)
+    }
+  }
+
+  suspend fun enabledRules(groupId: Long): List<BlockRule> = dao.getEnabledRulesForGroup(groupId)
+
+  suspend fun counterForToday(groupId: Long, day: Long = java.time.LocalDate.now().toEpochDay()): BlockCounter {
+    val existing = dao.getCounterSync(day, groupId)
+    if (existing != null) return existing
+    val newCounter = BlockCounter(dateEpochDay = day, groupId = groupId)
+    dao.upsertCounter(newCounter)
+    return newCounter
+  }
+
   fun interceptionsSince(since: Long): Flow<List<BlockInterception>> = dao.getInterceptionsSince(since)
 
   suspend fun recordInterception(interception: BlockInterception): Long = dao.insertInterception(interception)
+
+  suspend fun logInterception(packageName: String, ruleId: Long, ruleType: BlockRuleType): Long {
+    return dao.insertInterception(
+      BlockInterception(
+        timestamp = System.currentTimeMillis(),
+        packageName = packageName,
+        ruleId = ruleId,
+        ruleType = ruleType
+      )
+    )
+  }
 }

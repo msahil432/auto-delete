@@ -32,9 +32,15 @@ interface BlockingDao {
   @Query("DELETE FROM block_groups WHERE id = :id")
   suspend fun deleteGroupById(id: Long)
 
+  @Query("SELECT * FROM block_groups WHERE enabled = 1")
+  suspend fun getEnabledGroups(): List<BlockGroup>
+
   // ── Block Rules ──
   @Query("SELECT * FROM block_rules WHERE groupId = :groupId")
   fun getRulesForGroup(groupId: Long): Flow<List<BlockRule>>
+
+  @Query("SELECT * FROM block_rules WHERE groupId = :groupId AND enabled = 1")
+  suspend fun getEnabledRulesForGroup(groupId: Long): List<BlockRule>
 
   @Query("SELECT * FROM block_rules WHERE groupId = :groupId")
   suspend fun getRulesForGroupSync(groupId: Long): List<BlockRule>

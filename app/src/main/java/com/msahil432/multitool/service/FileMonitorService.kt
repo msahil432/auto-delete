@@ -14,6 +14,9 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import androidx.core.app.NotificationCompat
 import com.msahil432.multitool.MultiToolApp
+import com.msahil432.multitool.blocking.BlockEnforcementController
+import com.msahil432.multitool.blocking.BlockEngine
+import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.FolderConfig
 import com.msahil432.multitool.data.FilterRule
 import com.msahil432.multitool.data.TimelineEventType
@@ -28,6 +31,9 @@ class FileMonitorService : Service() {
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val observers = mutableListOf<RecursiveFileObserver>()
     private lateinit var usageRepo: UsageRepository
+    private lateinit var blockingRepo: BlockingRepository
+    private lateinit var blockEngine: BlockEngine
+    private lateinit var blockController: BlockEnforcementController
     private val unlockReceiver = ScreenUnlockReceiver { type ->
         coroutineScope.launch {
             usageRepo.recordUnlock(type)
@@ -44,6 +50,15 @@ class FileMonitorService : Service() {
 
         val db = (application as MultiToolApp).database
         usageRepo = UsageRepository(db.usageDao())
+        blockingRepo = BlockingRepository(db.blockingDao())
+        blockEngine = BlockEngine(blockingRepo, usageRepo)
+        blockController = BlockEnforcementController(
+            scope = coroutineScope,
+            engine = blockEngine,
+            blockingRepo = blockingRepo,
+            usageRepo = usageRepo
+        )
+        blockController.start(this)
 
         val unlockFilter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_ON)
@@ -87,6 +102,7 @@ class FileMonitorService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        blockController.stop()
         observers.forEach { it.stopWatching() }
         try {
             unregisterReceiver(unlockReceiver)

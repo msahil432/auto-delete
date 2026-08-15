@@ -12,6 +12,9 @@ interface UsageDao {
   @Query("SELECT * FROM usage_daily_stats WHERE dateEpochDay = :day ORDER BY foregroundMillis DESC")
   fun statsForDay(day: Long): Flow<List<UsageDailyStat>>
 
+  @Query("SELECT * FROM usage_daily_stats WHERE dateEpochDay = :day ORDER BY foregroundMillis DESC")
+  suspend fun getStatsForDaySync(day: Long): List<UsageDailyStat>
+
   @Query("SELECT * FROM usage_daily_stats WHERE dateEpochDay = :day AND packageName = :pkg LIMIT 1")
   suspend fun statFor(day: Long, pkg: String): UsageDailyStat?
 

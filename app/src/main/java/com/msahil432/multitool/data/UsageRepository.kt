@@ -19,6 +19,13 @@ class UsageRepository(private val dao: UsageDao) {
 
   fun timelineToday(): Flow<List<TimelineEvent>> = dao.timelineSince(startOfDayMillisNow())
 
+  suspend fun getTodayForegroundMinutesFor(packages: List<String>): Long {
+    val day = epochDayNow()
+    val stats = dao.getStatsForDaySync(day)
+    val totalMillis = stats.filter { it.packageName in packages }.sumOf { it.foregroundMillis }
+    return totalMillis / 60_000L
+  }
+
   suspend fun recordForeground(pkg: String, addedMillis: Long) {
     val day = epochDayNow()
     val now = System.currentTimeMillis()

@@ -1,6 +1,6 @@
 # 13 — Block Enforcement Engine
 
-> **Status:** 🔲 Not Started
+> **Status:** ✅ Done
 
 Prerequisites: `04-usage-repository.md`, `09-blocking-entities.md`,
 `11-accessibility-core.md`, `12-block-overlay.md`.
@@ -15,13 +15,16 @@ condition is met, show the block overlay and log an interception.
 - Create `blocking/BlockEngine.kt` — the evaluator.
 - Create `blocking/BlockEnforcementController.kt` — observes `ForegroundAppState` and
   drives the overlay.
-- Register the controller from the foreground service (or start on service create).
+- Register the controller from the foreground service (`FileMonitorService.kt`).
+- Update `BlockingDao.kt`, `BlockingRepository.kt`, `UsageDao.kt`, and `UsageRepository.kt` with required helpers.
+- Create unit tests in `app/src/test/java/com/msahil432/multitool/blocking/BlockEngineTest.kt`.
 
 ## Evaluation logic
 
 ```kotlin
 class BlockEngine(
   private val blockingRepo: BlockingRepository,
+  private val usageRepo: UsageRepository? = null,
   private val clock: () -> Long = System::currentTimeMillis,
 ) {
   // Returns a BlockDecision for the given foreground package, or Allowed.
@@ -31,14 +34,14 @@ class BlockEngine(
       val counter = blockingRepo.counterForToday(g.id)      // create if missing
       for (rule in blockingRepo.enabledRules(g.id)) {
         when (rule.type) {
-          SCHEDULE      -> if (nowWithinSchedule(rule)) return Blocked(rule, "Blocked by schedule")
+          SCHEDULE      -> if (nowWithinSchedule(rule)) return Blocked(rule, "Blocked by schedule", g)
           DAILY_QUOTA   -> if (counter.usedForegroundMillis >= rule.dailyQuotaMinutes*60_000L)
-                             return Blocked(rule, "Daily limit reached")
+                             return Blocked(rule, "Daily limit reached", g)
           LAUNCH_LIMIT  -> if (counter.launchesUsed >= rule.maxLaunchesPerDay)
-                             return Blocked(rule, "Launch limit reached")
+                             return Blocked(rule, "Launch limit reached", g)
           SESSION_LIMIT -> if (clock() < counter.lockedUntil)
-                             return Blocked(rule, "Session cooldown")
-          GOAL_UNLOCK   -> if (!goalMet(rule)) return Blocked(rule, "Finish your goal first")
+                             return Blocked(rule, "Session cooldown", g)
+          GOAL_UNLOCK   -> if (!goalMet(rule)) return Blocked(rule, "Finish your goal first", g)
         }
       }
     }
@@ -47,35 +50,31 @@ class BlockEngine(
 }
 sealed interface BlockDecision
 data object Allowed : BlockDecision
-data class Blocked(val rule: BlockRule, val reason: String) : BlockDecision
+data class Blocked(
+  val rule: BlockRule,
+  val reason: String,
+  val group: BlockGroup? = null,
+  val usedSeconds: Long? = null,
+  val limitSeconds: Long? = null,
+  val endsAtMillis: Long? = null
+) : BlockDecision
 ```
 
-Helpers:
-- `nowWithinSchedule`: check `daysOfWeekMask` for today and minute-of-day in
-  [start,end] (handle wrap past midnight).
-- `goalMet`: sum today's foreground minutes for `goalPackageNames` (via
-  `UsageRepository`) ≥ `goalRequiredMinutes`.
+## Implementation Decisions & Details
 
-## Controller / counters
-
-```kotlin
-class BlockEnforcementController(scope, foregroundState, engine, blockingRepo, usageRepo) {
-  // collect ForegroundAppState:
-  //  - on new pkg: increment launch counter for any group containing it;
-  //    start a session timer.
-  //  - periodically (every ~5s while a blocked-group app is foreground) add elapsed
-  //    to counter.usedForegroundMillis; when a session exceeds maxSessionMinutes,
-  //    set counter.lockedUntil = now + cooldownMinutes and block.
-  //  - after each update, call engine.evaluate(pkg); if Blocked ->
-  //    BlockOverlayManager.show(...) + blockingRepo.logInterception(...) +
-  //    usageRepo.recordTimeline(pkg, BLOCK_INTERCEPT).
-  //  - if Allowed and overlay showing for this pkg -> hide().
-}
-```
-
-- Reset counters at local midnight (compare `dateEpochDay`).
-- Respect `allowFriction` from strict mode (spec 19): pass it into the overlay.
-- Debounce: don't re-show the overlay every tick; track "currently blocking pkg".
+1. **Rule Evaluation Matrix:**
+   - `SCHEDULE`: bitwise day-of-week check (`daysOfWeekMask`) + start/end minute-of-day handling with midnight wrap.
+   - `DAILY_QUOTA`: verifies group's cumulative `usedForegroundMillis` against `dailyQuotaMinutes * 60_000L`.
+   - `LAUNCH_LIMIT`: checks group's `launchesUsed` against `maxLaunchesPerDay`.
+   - `SESSION_LIMIT`: checks `lockedUntil` timestamp cooldown lockout.
+   - `GOAL_UNLOCK`: aggregates today's foreground minutes from `UsageRepository` across `goalPackageNames` and checks against `goalRequiredMinutes`.
+2. **Controller & Real-Time Tracking:**
+   - `BlockEnforcementController` listens to `ForegroundAppState.currentPackage` and runs periodic 5-second ticks.
+   - Updates `BlockCounter` launches and foreground duration incrementally.
+   - Triggers `BlockOverlayManager.show(...)` debounced, inserts `BlockInterception`, and writes `BLOCK_INTERCEPT` timeline event.
+   - Dismisses overlay automatically when foreground app transitions to an `Allowed` state.
+3. **Service Integration:**
+   - Started and stopped directly in `FileMonitorService`.
 
 ## Acceptance criteria
 
