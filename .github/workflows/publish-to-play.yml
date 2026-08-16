@@ -175,7 +175,7 @@ jobs:
       # ── 10. Publish to Google Play ─────────────────────────────────────────
       - name: Publish to Google Play
         if: github.event_name != 'pull_request' && inputs.skip_publishing != true
-        uses: r0adkll/upload-google-play@v1.1.3
+        uses: r0adkll/upload-google-play@v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: ${{ secrets.APP_PACKAGE_NAME }}
