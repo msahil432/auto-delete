@@ -1,9 +1,32 @@
 
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
+  alias(libs.plugins.sentry.android.gradle)
+}
+
+val sentryDsn: String = run {
+  val envDsn = System.getenv("SENTRY_DSN")
+  if (!envDsn.isNullOrBlank()) return@run envDsn
+
+  val propDsn = (project.findProperty("sentry.dsn") as? String)
+    ?: (project.findProperty("SENTRY_DSN") as? String)
+  if (!propDsn.isNullOrBlank()) return@run propDsn
+
+  val localPropertiesFile = rootProject.file("local.properties")
+  if (localPropertiesFile.exists()) {
+    val props = Properties()
+    localPropertiesFile.inputStream().use { stream ->
+      props.load(stream)
+    }
+    props.getProperty("sentry.dsn") ?: props.getProperty("SENTRY_DSN") ?: ""
+  } else {
+    ""
+  }
 }
 
 android {
@@ -20,6 +43,8 @@ android {
     versionName = (project.findProperty("versionName") as? String)
       ?: System.getenv("VERSION_NAME")
       ?: "1.0"
+
+    buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -90,6 +115,7 @@ dependencies {
   implementation(libs.moshi.kotlin)
   implementation(libs.play.services.location)
   implementation(libs.androidx.profileinstaller)
+  implementation(libs.sentry.android)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)
@@ -108,4 +134,21 @@ dependencies {
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
+}
+
+sentry {
+  // Uploads ProGuard/R8 mapping file automatically on release builds
+  // so obfuscated stack traces get de-obfuscated in the Sentry dashboard.
+  autoUploadProguardMapping = true
+
+  // Uploads native (NDK) debug symbols if you ever add native code.
+  uploadNativeSymbols = false
+
+  // Adds breadcrumbs for clicks, fragment lifecycle, etc. automatically.
+  tracingInstrumentation {
+    enabled = true
+  }
+
+  // Recommended: don't let the plugin phone home telemetry about your build.
+  telemetry = false
 }
