@@ -583,7 +583,7 @@ fun AddTimePeriodDialog(
                             readOnly = true,
                             label = { Text("Unit") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
                             shape = RoundedCornerShape(12.dp)
                         )
                         ExposedDropdownMenu(
