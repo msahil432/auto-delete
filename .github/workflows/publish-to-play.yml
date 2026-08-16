@@ -29,6 +29,11 @@ on:
         description: 'Custom Version Code (leave blank to use workflow run number)'
         required: false
         type: string
+      bust_cache:
+        description: 'Bust cache (force fresh build without cache)'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: release-build-${{ github.ref }}
@@ -84,7 +89,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
+
+      # ── 3b. Setup Gradle & Caching ─────────────────────────────────────────
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-disabled: ${{ inputs.bust_cache == true }}
 
       # ── 4. Decode keystore ─────────────────────────────────────────────────
       - name: Decode keystore
@@ -102,7 +112,13 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           VERSION_NAME: ${{ steps.version.outputs.VERSION_NAME }}
           VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
+          BUST_CACHE: ${{ inputs.bust_cache }}
         run: |
+          if [ "$BUST_CACHE" = "true" ]; then
+            echo "Cache busting enabled: running clean and disabling build cache"
+            ./gradlew clean --no-build-cache --rerun-tasks --refresh-dependencies
+          fi
+
           ./gradlew assembleRelease bundleRelease \
             -PversionName="$VERSION_NAME" \
             -PversionCode="$VERSION_CODE"
