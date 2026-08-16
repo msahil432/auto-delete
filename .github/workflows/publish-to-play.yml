@@ -8,6 +8,13 @@ on:
     branches:
       - main
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '.github/**'
+      - 'docs/**'
+      - '**.md'
+      - '.gitignore'
+      - '.env.example'
+      - 'metadata.json'
   workflow_dispatch:
     inputs:
       skip_publishing:
