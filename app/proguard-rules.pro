@@ -71,3 +71,11 @@
 -keep class * extends androidx.work.ListenableWorker {
     public <init>(android.content.Context, androidx.work.WorkerParameters);
 }
+
+# ------------------------------------------------------------------------------
+# 9. Sentry Crash Reporting & Performance Tracing
+# ------------------------------------------------------------------------------
+-keepattributes LineNumberTable,SourceFile
+-dontwarn org.slf4j.**
+-dontwarn io.sentry.**
+

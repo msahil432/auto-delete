@@ -41,6 +41,8 @@ mlkitBarcode = "17.3.0"
 profileinstaller = "1.4.1"
 benchmarkMacroJunit4 = "1.4.1"
 baselineprofile = "1.4.1"
+sentry = "8.47.0"
+sentryGradlePlugin = "6.8.0"
 
 
 [libraries]
@@ -93,6 +95,7 @@ roborazzi = { group = "io.github.takahirom.roborazzi", name = "roborazzi", versi
 roborazzi-compose = { group = "io.github.takahirom.roborazzi", name = "roborazzi-compose", version.ref = "roborazzi" }
 roborazzi-junit-rule = { group = "io.github.takahirom.roborazzi", name = "roborazzi-junit-rule", version.ref = "roborazzi" }
 mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
+sentry-android = { module = "io.sentry:sentry-android", version.ref = "sentry" }
 
 
 [plugins]
@@ -102,3 +105,4 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "googleDevtoolsKsp" }
 roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
 androidx-baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprofile" }
+sentry-android-gradle = { id = "io.sentry.android.gradle", version.ref = "sentryGradlePlugin" }
