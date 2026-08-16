@@ -4,7 +4,10 @@ on:
   push:
     branches:
       - main
-      - master
+
+concurrency:
+  group: play-publish-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-publish:
@@ -40,16 +43,12 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      # ── 4. Grant Gradle execute permission ─────────────────────────────────
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-
-      # ── 5. Decode keystore ─────────────────────────────────────────────────
+      # ── 4. Decode keystore ─────────────────────────────────────────────────
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ github.workspace }}/release.jks
 
-      # ── 6. Build release AAB ───────────────────────────────────────────────
+      # ── 5. Build release AAB ───────────────────────────────────────────────
       # Env var names must match exactly what build.gradle.kts reads via System.getenv():
       #   KEYSTORE_PATH, STORE_PASSWORD, KEY_PASSWORD, KEY_ALIAS
       - name: Build release AAB
@@ -65,12 +64,12 @@ jobs:
             -Pandroid.injected.version.name="$VERSION_NAME" \
             -Pandroid.injected.version.code="$VERSION_CODE"
 
-      # ── 7. Clean up keystore from runner ───────────────────────────────────
+      # ── 6. Clean up keystore from runner ───────────────────────────────────
       - name: Remove keystore
         if: always()
         run: rm -f ${{ github.workspace }}/release.jks
 
-      # ── 8. Upload AAB artifact (optional but useful for debugging) ──────────
+      # ── 7. Upload AAB artifact (optional but useful for debugging) ──────────
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
@@ -78,7 +77,7 @@ jobs:
           path: app/build/outputs/bundle/release/*.aab
           retention-days: 7
 
-      # ── 9. Publish to Google Play (Production track) ───────────────────────
+      # ── 8. Publish to Google Play (Production track) ───────────────────────
       - name: Publish to Google Play — Production
         uses: r0adkll/upload-google-play@v1
         with:
