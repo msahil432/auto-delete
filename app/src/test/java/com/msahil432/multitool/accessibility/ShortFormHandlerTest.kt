@@ -116,7 +116,7 @@ class ShortFormHandlerTest {
         settingsRepo.setBlockYtShorts(true)
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
         event.packageName = "com.unrelated.app"
 
         handler.onEvent(service, event)
@@ -138,7 +138,7 @@ class ShortFormHandlerTest {
         assertFalse(handler.isBlockingEnabledForPackage(ShortFormSignatures.PKG_YOUTUBE))
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
         event.packageName = ShortFormSignatures.PKG_YOUTUBE
         event.className = "com.google.android.apps.youtube.app.extensions.reel.watch.activity.ReelWatchActivity"
 
@@ -162,7 +162,7 @@ class ShortFormHandlerTest {
         assertTrue(handler.isBlockingEnabledForPackage(ShortFormSignatures.PKG_YOUTUBE))
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
         event.packageName = ShortFormSignatures.PKG_YOUTUBE
         event.className = "com.google.android.apps.youtube.app.extensions.reel.watch.activity.ReelWatchActivity"
 
@@ -189,7 +189,7 @@ class ShortFormHandlerTest {
         )
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
         event.packageName = ShortFormSignatures.PKG_INSTAGRAM
         event.className = "com.instagram.clips.viewer.ClipsViewerActivity"
 

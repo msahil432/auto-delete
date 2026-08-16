@@ -96,7 +96,7 @@ class TamperHandlerTest {
         )
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
         event.packageName = "com.android.settings"
         event.className = "com.android.settings.applications.InstalledAppDetails"
         event.text.add("Multi Tool")
@@ -123,7 +123,7 @@ class TamperHandlerTest {
         )
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
         event.packageName = "com.android.settings"
         event.className = "com.android.settings.applications.InstalledAppDetails"
         event.text.add("Multi Tool")
@@ -150,7 +150,7 @@ class TamperHandlerTest {
         )
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
         event.packageName = "com.android.settings"
         event.className = "com.android.settings.applications.InstalledAppDetails"
         event.text.add("Multi Tool")
@@ -179,7 +179,7 @@ class TamperHandlerTest {
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
 
         // 1. Tamper screen triggers alarm
-        val tamperEvent = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+        val tamperEvent = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
         tamperEvent.packageName = "com.android.settings"
         tamperEvent.className = "com.android.settings.applications.InstalledAppDetails"
         tamperEvent.text.add("Multi Tool")
@@ -189,7 +189,7 @@ class TamperHandlerTest {
         assertTrue(TamperAlarm.isPlaying())
 
         // 2. User navigates away to Launcher or another app
-        val navAwayEvent = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+        val navAwayEvent = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
         navAwayEvent.packageName = "com.google.android.apps.nexuslauncher"
 
         handler.onEvent(service, navAwayEvent)

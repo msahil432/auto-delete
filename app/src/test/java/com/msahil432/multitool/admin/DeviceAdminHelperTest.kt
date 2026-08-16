@@ -4,6 +4,7 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import androidx.core.content.IntentCompat
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -71,7 +72,7 @@ class DeviceAdminHelperTest {
         val startedIntent = shadowApp.nextStartedActivity
         assertNotNull(startedIntent)
         assertEquals(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN, startedIntent.action)
-        assertEquals(adminComponent, startedIntent.getParcelableExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN))
+        assertEquals(adminComponent, IntentCompat.getParcelableExtra(startedIntent, DevicePolicyManager.EXTRA_DEVICE_ADMIN, ComponentName::class.java))
         assertNotNull(startedIntent.getStringExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION))
         assertTrue((startedIntent.flags and Intent.FLAG_ACTIVITY_NEW_TASK) != 0)
     }

@@ -159,7 +159,7 @@ class BrowserUrlHandlerTest {
         assertFalse(handler.trackBrowserUrls)
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
         event.packageName = BrowserSignatures.PKG_CHROME
 
         handler.onEvent(service, event)
@@ -182,7 +182,7 @@ class BrowserUrlHandlerTest {
         assertTrue(handler.trackBrowserUrls)
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
         event.packageName = "com.unsupported.browser"
 
         handler.onEvent(service, event)
