@@ -111,8 +111,35 @@ jobs:
 
       # ── 4. Decode keystore ─────────────────────────────────────────────────
       - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ github.workspace }}/release.jks
+          # Validate required secrets
+          MISSING=""
+          [ -z "$KEYSTORE_BASE64" ] && MISSING="$MISSING KEYSTORE_BASE64"
+          [ -z "$KEY_ALIAS" ] && MISSING="$MISSING KEY_ALIAS"
+          [ -z "$STORE_PASSWORD" ] && MISSING="$MISSING STORE_PASSWORD"
+          [ -z "$KEY_PASSWORD" ] && MISSING="$MISSING KEY_PASSWORD"
+
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing required signing secrets in GitHub repository:$MISSING"
+            echo "Please configure them in Repository Settings -> Secrets and variables -> Actions"
+            exit 1
+          fi
+
+          # Strip any certutil/PEM headers, newlines, and whitespace before decoding
+          CLEAN_BASE64=$(echo "$KEYSTORE_BASE64" | sed -e 's/-----BEGIN.*-----//g' -e 's/-----END.*-----//g' | tr -d '\r\n[:space:]')
+          echo "$CLEAN_BASE64" | base64 -d > "${{ github.workspace }}/release.jks"
+
+          # Verify non-empty file
+          if [ ! -s "${{ github.workspace }}/release.jks" ]; then
+            echo "::error::Decoded release.jks is empty. Check your KEYSTORE_BASE64 secret format."
+            exit 1
+          fi
+          echo "Keystore decoded successfully ($(wc -c < "${{ github.workspace }}/release.jks") bytes)."
 
       # ── 5. Build signed release APK and AAB ────────────────────────────────
       # Env var names and project properties read by build.gradle.kts:
