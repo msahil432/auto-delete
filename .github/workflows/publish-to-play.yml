@@ -96,6 +96,7 @@ jobs:
         with:
           cache-disabled: ${{ inputs.bust_cache == true }}
           cache-read-only: false  # Allows writing cache on workflow runs
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       # ── 4. Decode keystore ─────────────────────────────────────────────────
       - name: Decode keystore
