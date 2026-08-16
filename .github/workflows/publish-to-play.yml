@@ -216,5 +216,6 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: ${{ secrets.APP_PACKAGE_NAME }}
           releaseFiles: app/build/outputs/bundle/release/*.aab
-          track: ${{ inputs.track || 'internal' }}
+          mappingFile: app/build/outputs/mapping/release/mapping.txt
+          tracks: ${{ inputs.track || 'internal' }}
           status: completed

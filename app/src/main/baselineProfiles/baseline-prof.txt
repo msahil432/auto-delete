@@ -1,0 +1,59 @@
+# Baseline Profile for Multi Tool
+# Compiled classes for startup and critical path optimization
+
+# Core Application & Entry Points
+Lcom/msahil432/multitool/MainActivity;
+Lcom/msahil432/multitool/MainActivityKt;
+HSPLcom/msahil432/multitool/MainActivity;-><init>()V
+HSPLcom/msahil432/multitool/MainActivity;->onCreate(Landroid/os/Bundle;)V
+
+# Navigation & Scaffolding
+Lcom/msahil432/multitool/ui/navigation/AppNavigationKt;
+Lcom/msahil432/multitool/ui/navigation/BottomNavScaffoldKt;
+Lcom/msahil432/multitool/ui/navigation/TopLevelDest;
+
+# Theme & Core UI
+Lcom/msahil432/multitool/ui/theme/ColorKt;
+Lcom/msahil432/multitool/ui/theme/ThemeKt;
+Lcom/msahil432/multitool/ui/theme/TypeKt;
+Lcom/msahil432/multitool/ui/components/AppListItemKt;
+Lcom/msahil432/multitool/ui/components/StatCardKt;
+Lcom/msahil432/multitool/ui/components/SectionHeaderKt;
+Lcom/msahil432/multitool/ui/components/LoadingStateKt;
+Lcom/msahil432/multitool/ui/components/EmptyStateKt;
+Lcom/msahil432/multitool/ui/components/ErrorStateKt;
+Lcom/msahil432/multitool/ui/components/ModuleActivationCardKt;
+Lcom/msahil432/multitool/ui/components/PermissionTileKt;
+
+# Primary Startup Screens
+Lcom/msahil432/multitool/ui/screens/FilesHomeScreenKt;
+Lcom/msahil432/multitool/ui/screens/UsageHomeScreenKt;
+Lcom/msahil432/multitool/ui/screens/UsageViewModel;
+Lcom/msahil432/multitool/ui/screens/BlockingHomeScreenKt;
+Lcom/msahil432/multitool/ui/screens/NotificationVaultScreenKt;
+Lcom/msahil432/multitool/ui/screens/SettingsScreenKt;
+
+# Data Layer & Database
+Lcom/msahil432/multitool/data/AppDatabase;
+Lcom/msahil432/multitool/data/AppDatabase_Impl;
+Lcom/msahil432/multitool/data/SettingsRepository;
+Lcom/msahil432/multitool/data/UsageRepository;
+Lcom/msahil432/multitool/data/BlockingRepository;
+Lcom/msahil432/multitool/data/NotificationRepository;
+Lcom/msahil432/multitool/data/GeofenceRepository;
+Lcom/msahil432/multitool/data/BrowsingRepository;
+
+# Background Services & Receivers
+Lcom/msahil432/multitool/service/BootReceiver;
+Lcom/msahil432/multitool/service/FileMonitorService;
+Lcom/msahil432/multitool/tracking/ScreenUnlockReceiver;
+Lcom/msahil432/multitool/location/GeofenceBroadcastReceiver;
+
+# System Utilities
+Lcom/msahil432/multitool/util/UsageAccessKt;
+Lcom/msahil432/multitool/util/NotificationAccessKt;
+Lcom/msahil432/multitool/util/BatteryOptimizationKt;
+Lcom/msahil432/multitool/util/OemAutostartKt;
+Lcom/msahil432/multitool/util/PasswordSecurityKt;
+Lcom/msahil432/multitool/util/SecureScreenKt;
+Lcom/msahil432/multitool/util/DurationFormatKt;
