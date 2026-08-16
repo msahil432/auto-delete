@@ -2,8 +2,24 @@ name: Build & Publish to Google Play
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Play Store track to publish to'
+        required: true
+        default: 'internal'
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+      custom_version_name:
+        description: 'Custom Version Name (leave blank to auto-detect from tag/git)'
+        required: false
+        type: string
 
 concurrency:
   group: play-publish-${{ github.ref }}
@@ -25,10 +41,18 @@ jobs:
       - name: Resolve versionName and versionCode
         id: version
         run: |
-          # versionName = most recent git tag (e.g. v1.2.3); fallback to "0.0.1"
-          VERSION_NAME=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.1")
-          # Strip leading 'v' if present
-          VERSION_NAME="${VERSION_NAME#v}"
+          CUSTOM_VERSION="${{ inputs.custom_version_name }}"
+          # If a custom version is specified in manual dispatch, use it
+          if [[ -n "$CUSTOM_VERSION" ]]; then
+            VERSION_NAME="${CUSTOM_VERSION#v}"
+          # If triggered by a tag (e.g. v1.0.0), strip leading 'v'
+          elif [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION_NAME="${GITHUB_REF_NAME#v}"
+          # Otherwise fallback to git describe or 0.0.1
+          else
+            VERSION_NAME=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.1")
+            VERSION_NAME="${VERSION_NAME#v}"
+          fi
           # versionCode = GitHub Actions run number (always increasing)
           VERSION_CODE=${{ github.run_number }}
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
@@ -77,12 +101,12 @@ jobs:
           path: app/build/outputs/bundle/release/*.aab
           retention-days: 7
 
-      # ── 8. Publish to Google Play (Production track) ───────────────────────
-      - name: Publish to Google Play — Production
+      # ── 8. Publish to Google Play ──────────────────────────────────────────
+      - name: Publish to Google Play
         uses: r0adkll/upload-google-play@v1.1.3
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: ${{ secrets.APP_PACKAGE_NAME }}
           releaseFiles: app/build/outputs/bundle/release/*.aab
-          track: production
+          track: ${{ inputs.track || 'internal' }}
           status: completed
