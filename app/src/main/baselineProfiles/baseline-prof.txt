@@ -1,0 +1,58 @@
+# Baseline Profile for Multi Tool
+# Generated for AOT compilation and DEX layout optimization
+
+# Core Application & Activities
+HSPLcom/msahil432/multitool/MainActivity;-><init>()V
+HSPLcom/msahil432/multitool/MainActivity;->onCreate(Landroid/os/Bundle;)V
+HSPLcom/msahil432/multitool/MainActivityKt;->*
+
+# Navigation & Scaffolds
+HSPLcom/msahil432/multitool/ui/navigation/AppNavigationKt;->*
+HSPLcom/msahil432/multitool/ui/navigation/BottomNavScaffoldKt;->*
+HSPLcom/msahil432/multitool/ui/navigation/TopLevelDest;->*
+
+# Theme & Compose UI Components
+HSPLcom/msahil432/multitool/ui/theme/ThemeKt;->*
+HSPLcom/msahil432/multitool/ui/theme/ColorKt;->*
+HSPLcom/msahil432/multitool/ui/theme/TypeKt;->*
+HSPLcom/msahil432/multitool/ui/components/AppListItemKt;->*
+HSPLcom/msahil432/multitool/ui/components/StatCardKt;->*
+HSPLcom/msahil432/multitool/ui/components/SectionHeaderKt;->*
+HSPLcom/msahil432/multitool/ui/components/LoadingStateKt;->*
+HSPLcom/msahil432/multitool/ui/components/EmptyStateKt;->*
+HSPLcom/msahil432/multitool/ui/components/ErrorStateKt;->*
+HSPLcom/msahil432/multitool/ui/components/ModuleActivationCardKt;->*
+HSPLcom/msahil432/multitool/ui/components/PermissionTileKt;->*
+
+# Primary Startup Screens & ViewModels
+HSPLcom/msahil432/multitool/ui/screens/FilesHomeScreenKt;->*
+HSPLcom/msahil432/multitool/ui/screens/UsageHomeScreenKt;->*
+HSPLcom/msahil432/multitool/ui/screens/UsageViewModel;->*
+HSPLcom/msahil432/multitool/ui/screens/BlockingHomeScreenKt;->*
+HSPLcom/msahil432/multitool/ui/screens/NotificationVaultScreenKt;->*
+HSPLcom/msahil432/multitool/ui/screens/SettingsScreenKt;->*
+
+# Data Layer, Room & Repositories
+HSPLcom/msahil432/multitool/data/AppDatabase;->*
+HSPLcom/msahil432/multitool/data/AppDatabase_Impl;->*
+HSPLcom/msahil432/multitool/data/SettingsRepository;->*
+HSPLcom/msahil432/multitool/data/UsageRepository;->*
+HSPLcom/msahil432/multitool/data/BlockingRepository;->*
+HSPLcom/msahil432/multitool/data/NotificationRepository;->*
+HSPLcom/msahil432/multitool/data/GeofenceRepository;->*
+HSPLcom/msahil432/multitool/data/BrowsingRepository;->*
+
+# Background Services & Receivers
+HSPLcom/msahil432/multitool/service/BootReceiver;->*
+HSPLcom/msahil432/multitool/service/FileMonitorService;->*
+HSPLcom/msahil432/multitool/tracking/ScreenUnlockReceiver;->*
+HSPLcom/msahil432/multitool/location/GeofenceBroadcastReceiver;->*
+
+# Utilities
+HSPLcom/msahil432/multitool/util/UsageAccessKt;->*
+HSPLcom/msahil432/multitool/util/NotificationAccessKt;->*
+HSPLcom/msahil432/multitool/util/BatteryOptimizationKt;->*
+HSPLcom/msahil432/multitool/util/OemAutostartKt;->*
+HSPLcom/msahil432/multitool/util/PasswordSecurityKt;->*
+HSPLcom/msahil432/multitool/util/SecureScreenKt;->*
+HSPLcom/msahil432/multitool/util/DurationFormatKt;->*

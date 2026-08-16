@@ -37,9 +37,9 @@ android {
   buildTypes {
     release {
       isCrunchPngs = false
-      isMinifyEnabled = true
-      isShrinkResources = true
-      proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      optimization {
+        enable = true
+      }
       signingConfig = signingConfigs.getByName("release")
     }
     debug { signingConfig = signingConfigs.getByName("debug") }
@@ -89,6 +89,7 @@ dependencies {
   implementation(libs.kotlinx.coroutines.core)
   implementation(libs.moshi.kotlin)
   implementation(libs.play.services.location)
+  implementation(libs.androidx.profileinstaller)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)
