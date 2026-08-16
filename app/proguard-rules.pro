@@ -20,11 +20,13 @@
 }
 
 # ------------------------------------------------------------------------------
-# 3. Room Database & TypeConverters
+# 3. Room Database, DAOs & TypeConverters
 # ------------------------------------------------------------------------------
 -keepclassmembers class * extends androidx.room.RoomDatabase {
     public void <init>();
 }
+-keep class * extends androidx.room.RoomDatabase { *; }
+-keep class com.msahil432.multitool.data.** { *; }
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class * { *; }
 -keep @androidx.room.Dao class * { *; }
