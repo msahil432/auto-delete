@@ -1,4 +1,4 @@
-name: Build & Publish to Google Play
+name: Build & Release (APK / AAB)
 
 on:
   push:
@@ -6,9 +6,14 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
-      track:
-        description: 'Play Store track to publish to'
+      publish_to_play:
+        description: 'Publish to Google Play Store'
         required: true
+        default: true
+        type: boolean
+      track:
+        description: 'Play Store track (if publishing to Play Store)'
+        required: false
         default: 'internal'
         type: choice
         options:
@@ -20,14 +25,21 @@ on:
         description: 'Custom Version Name (leave blank to auto-detect from tag/git)'
         required: false
         type: string
+      custom_version_code:
+        description: 'Custom Version Code (leave blank to use workflow run number)'
+        required: false
+        type: string
 
 concurrency:
-  group: play-publish-${{ github.ref }}
+  group: release-build-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
-  build-and-publish:
-    name: Build Release AAB & Publish to Play Store
+  build-and-release:
+    name: Build Signed APK & Release
     runs-on: ubuntu-latest
 
     steps:
@@ -53,8 +65,15 @@ jobs:
             VERSION_NAME=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.1")
             VERSION_NAME="${VERSION_NAME#v}"
           fi
-          # versionCode = GitHub Actions run number (always increasing)
-          VERSION_CODE=${{ github.run_number }}
+
+          CUSTOM_VERSION_CODE="${{ inputs.custom_version_code }}"
+          if [[ -n "$CUSTOM_VERSION_CODE" ]]; then
+            VERSION_CODE="$CUSTOM_VERSION_CODE"
+          else
+            # versionCode = GitHub Actions run number (always increasing workflow run count)
+            VERSION_CODE=${{ github.run_number }}
+          fi
+
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
           echo "versionName=$VERSION_NAME  versionCode=$VERSION_CODE"
@@ -72,10 +91,10 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ github.workspace }}/release.jks
 
-      # ── 5. Build release AAB ───────────────────────────────────────────────
-      # Env var names must match exactly what build.gradle.kts reads via System.getenv():
-      #   KEYSTORE_PATH, STORE_PASSWORD, KEY_PASSWORD, KEY_ALIAS
-      - name: Build release AAB
+      # ── 5. Build signed release APK and AAB ────────────────────────────────
+      # Env var names and project properties read by build.gradle.kts:
+      #   KEYSTORE_PATH, STORE_PASSWORD, KEY_PASSWORD, KEY_ALIAS, VERSION_NAME, VERSION_CODE
+      - name: Build release APK and AAB
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/release.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
@@ -84,25 +103,47 @@ jobs:
           VERSION_NAME: ${{ steps.version.outputs.VERSION_NAME }}
           VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
         run: |
-          ./gradlew bundleRelease \
-            -Pandroid.injected.version.name="$VERSION_NAME" \
-            -Pandroid.injected.version.code="$VERSION_CODE"
+          ./gradlew assembleRelease bundleRelease \
+            -PversionName="$VERSION_NAME" \
+            -PversionCode="$VERSION_CODE"
 
       # ── 6. Clean up keystore from runner ───────────────────────────────────
       - name: Remove keystore
         if: always()
         run: rm -f ${{ github.workspace }}/release.jks
 
-      # ── 7. Upload AAB artifact (optional but useful for debugging) ──────────
+      # ── 7. Upload APK artifact (Actions run download) ──────────────────────
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: release-apk-v${{ steps.version.outputs.VERSION_NAME }}-${{ steps.version.outputs.VERSION_CODE }}
+          path: app/build/outputs/apk/release/*.apk
+          retention-days: 30
+
+      # ── 8. Upload AAB artifact (Actions run download) ──────────────────────
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: release-aab-${{ steps.version.outputs.VERSION_NAME }}-${{ steps.version.outputs.VERSION_CODE }}
+          name: release-aab-v${{ steps.version.outputs.VERSION_NAME }}-${{ steps.version.outputs.VERSION_CODE }}
           path: app/build/outputs/bundle/release/*.aab
-          retention-days: 7
+          retention-days: 30
 
-      # ── 8. Publish to Google Play ──────────────────────────────────────────
+      # ── 9. Publish to GitHub Releases (Direct download from GitHub) ────────
+      - name: Create or Update GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            app/build/outputs/apk/release/*.apk
+          name: "Release v${{ steps.version.outputs.VERSION_NAME }}"
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+      # ── 10. Publish to Google Play (Optional / conditional) ────────────────
       - name: Publish to Google Play
+        if: ${{ inputs.publish_to_play }}
         uses: r0adkll/upload-google-play@v1.1.3
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}

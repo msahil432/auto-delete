@@ -14,8 +14,12 @@ android {
     applicationId = "com.msahil432.multitool"
     minSdk = 36
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull()
+      ?: System.getenv("VERSION_CODE")?.toIntOrNull()
+      ?: 1
+    versionName = (project.findProperty("versionName") as? String)
+      ?: System.getenv("VERSION_NAME")
+      ?: "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
