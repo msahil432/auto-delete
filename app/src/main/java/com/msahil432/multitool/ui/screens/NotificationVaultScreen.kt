@@ -38,6 +38,7 @@ import com.msahil432.multitool.ui.components.ConfirmDialog
 import com.msahil432.multitool.ui.components.EmptyState
 import com.msahil432.multitool.ui.components.LoadingState
 import com.msahil432.multitool.ui.theme.MultiToolTheme
+import com.msahil432.multitool.util.SecureScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,6 +53,7 @@ fun NotificationVaultScreen(
     notificationRepository: NotificationRepository,
     onBack: () -> Unit
 ) {
+    SecureScreen()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val notifications by notificationRepository.allVaulted.collectAsState(initial = null)
