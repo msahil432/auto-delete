@@ -103,7 +103,7 @@ jobs:
 
       # ── 3b. Setup Gradle & Caching ─────────────────────────────────────────
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           cache-disabled: ${{ inputs.bust_cache == true }}
           cache-read-only: false  # Allows writing cache on workflow runs
