@@ -121,7 +121,7 @@ class ShortFormHandlerTest {
 
         handler.onEvent(service, event)
 
-        val timelineEvents = usageRepo.timelineForDate(System.currentTimeMillis() / 86400000L).first()
+        val timelineEvents = usageRepo.timelineToday().first()
         assertTrue(timelineEvents.isEmpty())
     }
 
@@ -144,7 +144,7 @@ class ShortFormHandlerTest {
 
         handler.onEvent(service, event)
 
-        val timelineEvents = usageRepo.timelineForDate(System.currentTimeMillis() / 86400000L).first()
+        val timelineEvents = usageRepo.timelineToday().first()
         assertTrue(timelineEvents.isEmpty())
     }
 
@@ -168,7 +168,7 @@ class ShortFormHandlerTest {
 
         handler.onEvent(service, event)
 
-        val timelineEvents = usageRepo.timelineForDate(System.currentTimeMillis() / 86400000L).first()
+        val timelineEvents = usageRepo.timelineToday().first()
         assertEquals(1, timelineEvents.size)
         assertEquals(ShortFormSignatures.PKG_YOUTUBE, timelineEvents[0].packageName)
         assertEquals(TimelineEventType.BLOCK_INTERCEPT, timelineEvents[0].eventType)
@@ -195,19 +195,19 @@ class ShortFormHandlerTest {
 
         // First trigger
         handler.onEvent(service, event)
-        val timeline1 = usageRepo.timelineForDate(System.currentTimeMillis() / 86400000L).first()
+        val timeline1 = usageRepo.timelineToday().first()
         assertEquals(1, timeline1.size)
 
         // Immediate second event (within cooldown)
         currentTime = 1200L
         handler.onEvent(service, event)
-        val timeline2 = usageRepo.timelineForDate(System.currentTimeMillis() / 86400000L).first()
+        val timeline2 = usageRepo.timelineToday().first()
         assertEquals(1, timeline2.size) // No new log
 
         // Third event after cooldown
         currentTime = 2500L
         handler.onEvent(service, event)
-        val timeline3 = usageRepo.timelineForDate(System.currentTimeMillis() / 86400000L).first()
+        val timeline3 = usageRepo.timelineToday().first()
         assertEquals(2, timeline3.size)
     }
 }

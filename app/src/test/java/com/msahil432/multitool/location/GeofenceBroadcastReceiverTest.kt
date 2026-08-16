@@ -45,13 +45,13 @@ class GeofenceBroadcastReceiverTest {
     @Test
     fun testHandleGeofenceTransitionEnter() = runBlocking {
         val group1Id = blockingRepo.upsertGroup(
-            BlockGroup(name = "Social", packageNames = "com.ig", enabled = false)
+            BlockGroup(name = "Social", packageNames = "com.ig", enabled = false, createdAt = System.currentTimeMillis())
         )
         val group2Id = blockingRepo.upsertGroup(
-            BlockGroup(name = "Gaming", packageNames = "com.game", enabled = false)
+            BlockGroup(name = "Gaming", packageNames = "com.game", enabled = false, createdAt = System.currentTimeMillis())
         )
         val group3Id = blockingRepo.upsertGroup(
-            BlockGroup(name = "Leisure", packageNames = "com.video", enabled = true)
+            BlockGroup(name = "Leisure", packageNames = "com.video", enabled = true, createdAt = System.currentTimeMillis())
         )
 
         val profileId = geofenceRepo.upsertProfile(
@@ -91,10 +91,10 @@ class GeofenceBroadcastReceiverTest {
     @Test
     fun testHandleGeofenceTransitionExit() = runBlocking {
         val group1Id = blockingRepo.upsertGroup(
-            BlockGroup(name = "Social", packageNames = "com.ig", enabled = true)
+            BlockGroup(name = "Social", packageNames = "com.ig", enabled = true, createdAt = System.currentTimeMillis())
         )
         val group2Id = blockingRepo.upsertGroup(
-            BlockGroup(name = "Home Free", packageNames = "com.relax", enabled = false)
+            BlockGroup(name = "Home Free", packageNames = "com.relax", enabled = false, createdAt = System.currentTimeMillis())
         )
 
         val profileId = geofenceRepo.upsertProfile(
@@ -132,7 +132,7 @@ class GeofenceBroadcastReceiverTest {
     @Test
     fun testDisabledProfileIgnoresTransition() = runBlocking {
         val groupId = blockingRepo.upsertGroup(
-            BlockGroup(name = "Social", packageNames = "com.ig", enabled = false)
+            BlockGroup(name = "Social", packageNames = "com.ig", enabled = false, createdAt = System.currentTimeMillis())
         )
 
         val profileId = geofenceRepo.upsertProfile(

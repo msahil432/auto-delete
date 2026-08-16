@@ -50,13 +50,13 @@ class DeviceAdminHelperTest {
 
     @Test
     fun `isActive returns true when admin is active`() {
-        shadowDpm.setAdminActive(adminComponent, true)
+        shadowDpm.setActiveAdmin(adminComponent)
         assertTrue(DeviceAdminHelper.isActive(context))
     }
 
     @Test
     fun `deactivate removes active admin`() {
-        shadowDpm.setAdminActive(adminComponent, true)
+        shadowDpm.setActiveAdmin(adminComponent)
         assertTrue(DeviceAdminHelper.isActive(context))
 
         DeviceAdminHelper.deactivate(context)
