@@ -7,6 +7,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -40,6 +41,9 @@ import com.msahil432.multitool.ui.screens.NotificationVaultScreen
 import com.msahil432.multitool.ui.screens.StrictModeScreen
 import com.msahil432.multitool.ui.screens.UsageTimelineScreen
 import com.msahil432.multitool.ui.theme.MultiToolTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Composable
 fun BottomNavScaffold(
@@ -54,6 +58,11 @@ fun BottomNavScaffold(
   val navController = rememberNavController()
   val navBackStackEntry by navController.currentBackStackEntryAsState()
   val currentDestination = navBackStackEntry?.destination
+
+  // ── Module activation states ──────────────────────────────────────────────
+  val isFileCleanupActive by settingsRepository.moduleFileCleanup.collectAsState(initial = false)
+  val isUsageStatsActive by settingsRepository.moduleUsageStats.collectAsState(initial = false)
+  val isAppFocusActive by settingsRepository.moduleAppFocus.collectAsState(initial = false)
 
   Scaffold(
     modifier = Modifier.fillMaxSize(),
@@ -96,6 +105,7 @@ fun BottomNavScaffold(
           settingsRepository = settingsRepository,
           appDao = appDao,
           innerPadding = innerPadding,
+          isModuleActive = isFileCleanupActive,
           onNavigateToFolder = { folderId -> navController.navigate("folder/$folderId") },
           onNavigateToActivityLog = { navController.navigate("activity_log") }
         )
@@ -121,7 +131,13 @@ fun BottomNavScaffold(
         UsageHomeScreen(
           usageRepository = usageRepository,
           innerPadding = innerPadding,
-          onNavigateToTimeline = { navController.navigate("usage_timeline") }
+          isModuleActive = isUsageStatsActive,
+          onNavigateToTimeline = { navController.navigate("usage_timeline") },
+          onActivateModule = {
+            CoroutineScope(Dispatchers.Main).launch {
+              settingsRepository.setModuleUsageStats(true)
+            }
+          }
         )
       }
       composable("usage_timeline") {
@@ -136,9 +152,15 @@ fun BottomNavScaffold(
         BlockingHomeScreen(
           blockingRepository = blockingRepository,
           innerPadding = innerPadding,
+          isModuleActive = isAppFocusActive,
           onNavigateToGroup = { groupId -> navController.navigate("block_group/$groupId") },
           onNavigateToGeofences = { navController.navigate("geofence_profiles") },
-          onNavigateToStrictMode = { navController.navigate("strict_mode") }
+          onNavigateToStrictMode = { navController.navigate("strict_mode") },
+          onActivateModule = {
+            CoroutineScope(Dispatchers.Main).launch {
+              settingsRepository.setModuleAppFocus(true)
+            }
+          }
         )
       }
       composable("block_group/{groupId}") { backStackEntry ->
@@ -180,11 +202,24 @@ fun BottomNavScaffold(
         AppSettingsScreen(
           settingsRepository = settingsRepository,
           innerPadding = innerPadding,
+          isModuleFileCleanupActive = isFileCleanupActive,
+          isModuleUsageStatsActive = isUsageStatsActive,
+          isModuleAppFocusActive = isAppFocusActive,
           onNavigateToPermissions = { navController.navigate("permissions") },
           onNavigateToBrowsingHistory = { navController.navigate("browsing_history") },
           onNavigateToNotificationVault = { navController.navigate("notification_vault") },
           onNavigateToGeofences = { navController.navigate("geofence_profiles") },
-          onNavigateToStrictMode = { navController.navigate("strict_mode") }
+          onNavigateToStrictMode = { navController.navigate("strict_mode") },
+          onActivateAppFocus = {
+            CoroutineScope(Dispatchers.Main).launch {
+              settingsRepository.setModuleAppFocus(true)
+              navController.navigate(TopLevelDest.BLOCKING.route) {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+              }
+            }
+          }
         )
       }
       composable("permissions") {

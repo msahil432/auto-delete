@@ -6,8 +6,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessibilityNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +29,7 @@ import com.msahil432.multitool.data.BlockRuleType
 import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.ui.components.EmptyState
 import com.msahil432.multitool.ui.components.LoadingState
+import com.msahil432.multitool.ui.components.ModuleActivationCard
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 import kotlinx.coroutines.launch
 
@@ -39,9 +43,11 @@ import com.msahil432.multitool.blocking.StrictModeController
 fun BlockingHomeScreen(
   blockingRepository: BlockingRepository,
   innerPadding: PaddingValues,
+  isModuleActive: Boolean,
   onNavigateToGroup: (Long) -> Unit,
   onNavigateToGeofences: (() -> Unit)? = null,
-  onNavigateToStrictMode: (() -> Unit)? = null
+  onNavigateToStrictMode: (() -> Unit)? = null,
+  onActivateModule: (() -> Unit)? = null
 ) {
   val coroutineScope = rememberCoroutineScope()
   val groups by blockingRepository.groups().collectAsState(initial = null)
@@ -87,23 +93,41 @@ fun BlockingHomeScreen(
       bottom = innerPadding.calculateBottomPadding()
     )
 
-    BlockingHomeScreenContent(
-      groups = groups,
-      allRules = allRules,
-      paddingValues = combinedPadding,
-      isStrictModeActive = isStrictModeActive,
-      onNavigateToGroup = onNavigateToGroup,
-      onNavigateToStrictMode = onNavigateToStrictMode,
-      onToggleGroupEnabled = { group, enabled ->
-        if (isStrictModeActive && group.enabled && !enabled) {
-          // Weakening by disabling is blocked while strict mode is active
-          return@BlockingHomeScreenContent
+    if (!isModuleActive) {
+      // ── Module not activated yet ─────────────────────────────────────────
+      ModuleActivationCard(
+        icon = Icons.Default.Block,
+        title = "App Tracking & Focus",
+        tagline = "Block distracting apps, filter short-form video, and enforce focus sessions.",
+        features = listOf(
+          Icons.Default.Block to "Block apps by schedule, quota, or session limit",
+          Icons.Default.PlayCircleOutline to "Filter YouTube Shorts, Instagram & Facebook Reels",
+          Icons.Default.AccessibilityNew to "Enforce focus with Strict Mode and anti-bypass",
+          Icons.Default.Language to "Track browser activity during sessions"
+        ),
+        ctaLabel = "Activate App Tracking & Focus",
+        onActivate = { onActivateModule?.invoke() },
+        modifier = Modifier.padding(combinedPadding)
+      )
+    } else {
+      BlockingHomeScreenContent(
+        groups = groups,
+        allRules = allRules,
+        paddingValues = combinedPadding,
+        isStrictModeActive = isStrictModeActive,
+        onNavigateToGroup = onNavigateToGroup,
+        onNavigateToStrictMode = onNavigateToStrictMode,
+        onToggleGroupEnabled = { group, enabled ->
+          if (isStrictModeActive && group.enabled && !enabled) {
+            // Weakening by disabling is blocked while strict mode is active
+            return@BlockingHomeScreenContent
+          }
+          coroutineScope.launch {
+            blockingRepository.upsertGroup(group.copy(enabled = enabled))
+          }
         }
-        coroutineScope.launch {
-          blockingRepository.upsertGroup(group.copy(enabled = enabled))
-        }
-      }
-    )
+      )
+    }
   }
 }
 

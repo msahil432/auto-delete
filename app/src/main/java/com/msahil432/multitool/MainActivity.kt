@@ -14,6 +14,8 @@ import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.service.FileMonitorService
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 import com.msahil432.multitool.ui.navigation.AppNavigation
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,16 +30,21 @@ class MainActivity : ComponentActivity() {
         val notificationRepository = com.msahil432.multitool.data.NotificationRepository(appDatabase.notificationDao())
         val geofenceRepository = com.msahil432.multitool.data.GeofenceRepository(appDatabase.geofenceDao())
         
-        // Start foreground service if possible
-        val serviceIntent = Intent(this, FileMonitorService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            try {
-                startForegroundService(serviceIntent)
-            } catch (e: Exception) {
-                // Ignore if not allowed in background
+        // Start foreground service only if the File Cleanup module is active
+        val isFileCleanupActive = runBlocking {
+            settingsRepository.moduleFileCleanup.first()
+        }
+        if (isFileCleanupActive) {
+            val serviceIntent = Intent(this, FileMonitorService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                try {
+                    startForegroundService(serviceIntent)
+                } catch (e: Exception) {
+                    // Ignore if not allowed in background
+                }
+            } else {
+                startService(serviceIntent)
             }
-        } else {
-            startService(serviceIntent)
         }
 
         setContent {

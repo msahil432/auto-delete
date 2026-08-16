@@ -1,7 +1,10 @@
 package com.msahil432.multitool.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
@@ -12,7 +15,10 @@ import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.msahil432.multitool.admin.DeviceAdminHelper
 import com.msahil432.multitool.data.SettingsRepository
@@ -32,16 +38,23 @@ import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Warning
 import com.msahil432.multitool.blocking.StrictModeController
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppSettingsScreen(
   settingsRepository: SettingsRepository,
   innerPadding: PaddingValues,
+  isModuleFileCleanupActive: Boolean = true,
+  isModuleUsageStatsActive: Boolean = true,
+  isModuleAppFocusActive: Boolean = true,
   onNavigateToPermissions: () -> Unit,
   onNavigateToBrowsingHistory: (() -> Unit)? = null,
   onNavigateToNotificationVault: (() -> Unit)? = null,
   onNavigateToGeofences: (() -> Unit)? = null,
-  onNavigateToStrictMode: (() -> Unit)? = null
+  onNavigateToStrictMode: (() -> Unit)? = null,
+  onActivateFileCleanup: (() -> Unit)? = null,
+  onActivateUsageStats: (() -> Unit)? = null,
+  onActivateAppFocus: (() -> Unit)? = null
 ) {
   val context = androidx.compose.ui.platform.LocalContext.current
   val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -181,166 +194,188 @@ fun AppSettingsScreen(
 
       // ── Short-Form Video Blocker ──────────────────────────────────────────
       SectionHeader(title = "Short-Form Video Blocker")
-      Text(
-        text = "Main feed and search stay available.",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-      )
-      SettingRow(
-        title = "Block YouTube Shorts",
-        subtitle = "Automatically dismisses YouTube Shorts",
-        leadingIcon = Icons.Default.PlayCircleOutline,
-        trailing = {
-          Switch(
-            checked = blockYtShorts,
-            onCheckedChange = { checked ->
-              coroutineScope.launch { settingsRepository.setBlockYtShorts(checked) }
-            },
-            modifier = Modifier.semantics {
-              contentDescription = "Toggle Block YouTube Shorts"
-            }
-          )
-        }
-      )
-      HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
-      SettingRow(
-        title = "Block Instagram Reels",
-        subtitle = "Automatically dismisses Instagram Reels",
-        leadingIcon = Icons.Default.PlayCircleOutline,
-        trailing = {
-          Switch(
-            checked = blockIgReels,
-            onCheckedChange = { checked ->
-              coroutineScope.launch { settingsRepository.setBlockIgReels(checked) }
-            },
-            modifier = Modifier.semantics {
-              contentDescription = "Toggle Block Instagram Reels"
-            }
-          )
-        }
-      )
-      HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
-      SettingRow(
-        title = "Block Facebook Reels",
-        subtitle = "Automatically dismisses Facebook Reels",
-        leadingIcon = Icons.Default.PlayCircleOutline,
-        trailing = {
-          Switch(
-            checked = blockFbReels,
-            onCheckedChange = { checked ->
-              coroutineScope.launch { settingsRepository.setBlockFbReels(checked) }
-            },
-            modifier = Modifier.semantics {
-              contentDescription = "Toggle Block Facebook Reels"
-            }
-          )
-        }
-      )
-      HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+      if (!isModuleAppFocusActive) {
+        InactiveModuleBanner(
+          moduleName = "App Tracking & Focus",
+          onActivate = onActivateAppFocus
+        )
+      } else {
+        Text(
+          text = "Main feed and search stay available.",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        )
+        SettingRow(
+          title = "Block YouTube Shorts",
+          subtitle = "Automatically dismisses YouTube Shorts",
+          leadingIcon = Icons.Default.PlayCircleOutline,
+          trailing = {
+            Switch(
+              checked = blockYtShorts,
+              onCheckedChange = { checked ->
+                coroutineScope.launch { settingsRepository.setBlockYtShorts(checked) }
+              },
+              modifier = Modifier.semantics {
+                contentDescription = "Toggle Block YouTube Shorts"
+              }
+            )
+          }
+        )
+        HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+        SettingRow(
+          title = "Block Instagram Reels",
+          subtitle = "Automatically dismisses Instagram Reels",
+          leadingIcon = Icons.Default.PlayCircleOutline,
+          trailing = {
+            Switch(
+              checked = blockIgReels,
+              onCheckedChange = { checked ->
+                coroutineScope.launch { settingsRepository.setBlockIgReels(checked) }
+              },
+              modifier = Modifier.semantics {
+                contentDescription = "Toggle Block Instagram Reels"
+              }
+            )
+          }
+        )
+        HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+        SettingRow(
+          title = "Block Facebook Reels",
+          subtitle = "Automatically dismisses Facebook Reels",
+          leadingIcon = Icons.Default.PlayCircleOutline,
+          trailing = {
+            Switch(
+              checked = blockFbReels,
+              onCheckedChange = { checked ->
+                coroutineScope.launch { settingsRepository.setBlockFbReels(checked) }
+              },
+              modifier = Modifier.semantics {
+                contentDescription = "Toggle Block Facebook Reels"
+              }
+            )
+          }
+        )
+        HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+      }
+
 
       // ── Browser URL & Search Tracker ─────────────────────────────────────
       SectionHeader(title = "Browser Activity Tracker")
-      Text(
-        text = "Stored only on this device. Passwords are never recorded.",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-      )
-      SettingRow(
-        title = "Track browser URLs & searches",
-        subtitle = "Logs visited domains and search queries from supported browsers",
-        leadingIcon = Icons.Default.Public,
-        trailing = {
-          Switch(
-            checked = trackBrowserUrls,
-            onCheckedChange = { checked ->
-              coroutineScope.launch { settingsRepository.setTrackBrowserUrls(checked) }
-            },
-            modifier = Modifier.semantics {
-              contentDescription = "Toggle Track browser URLs & searches"
-            }
+      if (!isModuleAppFocusActive) {
+        InactiveModuleBanner(
+          moduleName = "App Tracking & Focus",
+          onActivate = onActivateAppFocus
+        )
+      } else {
+        Text(
+          text = "Stored only on this device. Passwords are never recorded.",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        )
+        SettingRow(
+          title = "Track browser URLs & searches",
+          subtitle = "Logs visited domains and search queries from supported browsers",
+          leadingIcon = Icons.Default.Public,
+          trailing = {
+            Switch(
+              checked = trackBrowserUrls,
+              onCheckedChange = { checked ->
+                coroutineScope.launch { settingsRepository.setTrackBrowserUrls(checked) }
+              },
+              modifier = Modifier.semantics {
+                contentDescription = "Toggle Track browser URLs & searches"
+              }
+            )
+          }
+        )
+        if (onNavigateToBrowsingHistory != null) {
+          HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+          SettingRow(
+            title = "Browsing Activity Log",
+            subtitle = "View recorded domains and searches",
+            leadingIcon = Icons.Default.Language,
+            onClick = onNavigateToBrowsingHistory
           )
         }
-      )
-      if (onNavigateToBrowsingHistory != null) {
         HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
-        SettingRow(
-          title = "Browsing Activity Log",
-          subtitle = "View recorded domains and searches",
-          leadingIcon = Icons.Default.Language,
-          onClick = onNavigateToBrowsingHistory
-        )
       }
-      HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
 
       // ── Strict Mode & Anti-Uninstall Protection ───────────────────────────
       SectionHeader(title = "Strict Mode & Protection")
-      Text(
-        text = "Prevents weakening or deleting focus rules and prevents uninstalling the app during active focus sessions.",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-      )
-      if (onNavigateToStrictMode != null) {
+      if (!isModuleAppFocusActive) {
+        InactiveModuleBanner(
+          moduleName = "App Tracking & Focus",
+          onActivate = onActivateAppFocus
+        )
+      } else {
+        Text(
+          text = "Prevents weakening or deleting focus rules and prevents uninstalling the app during active focus sessions.",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        )
+        if (onNavigateToStrictMode != null) {
+          SettingRow(
+            title = "Strict Mode",
+            subtitle = if (isStrictModeActive) "Active — focus rules are locked" else "Inactive — tap to configure asymmetric lock-in",
+            leadingIcon = Icons.Default.Lock,
+            onClick = onNavigateToStrictMode
+          )
+          HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+        }
         SettingRow(
-          title = "Strict Mode",
-          subtitle = if (isStrictModeActive) "Active — focus rules are locked" else "Inactive — tap to configure asymmetric lock-in",
-          leadingIcon = Icons.Default.Lock,
-          onClick = onNavigateToStrictMode
+          title = "Anti-uninstall protection",
+          subtitle = if (isAdminActive) "Active (Device Admin enabled)" else "Inactive — tap to enable",
+          leadingIcon = Icons.Default.AdminPanelSettings,
+          trailing = {
+            Switch(
+              checked = isAdminActive,
+              onCheckedChange = { checked ->
+                if (checked) {
+                  showAdminDisclosure = true
+                } else {
+                  showAdminDeactivateConfirm = true
+                }
+              },
+              modifier = Modifier.semantics {
+                contentDescription = "Toggle Anti-uninstall protection"
+              }
+            )
+          },
+          onClick = {
+            if (!isAdminActive) {
+              showAdminDisclosure = true
+            } else {
+              showAdminDeactivateConfirm = true
+            }
+          }
+        )
+        HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+
+        SettingRow(
+          title = "Tamper alarm",
+          subtitle = if (tamperAlarmEnabled) {
+            "Sounds an audible siren if protected system settings are opened during strict mode"
+          } else {
+            "Disabled — sounds siren if tampering is detected during strict mode"
+          },
+          leadingIcon = Icons.Default.Warning,
+          trailing = {
+            Switch(
+              checked = tamperAlarmEnabled,
+              onCheckedChange = { checked ->
+                coroutineScope.launch { settingsRepository.setTamperAlarmEnabled(checked) }
+              },
+              modifier = Modifier.semantics {
+                contentDescription = "Toggle Tamper alarm"
+              }
+            )
+          }
         )
         HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
       }
-      SettingRow(
-        title = "Anti-uninstall protection",
-        subtitle = if (isAdminActive) "Active (Device Admin enabled)" else "Inactive — tap to enable",
-        leadingIcon = Icons.Default.AdminPanelSettings,
-        trailing = {
-          Switch(
-            checked = isAdminActive,
-            onCheckedChange = { checked ->
-              if (checked) {
-                showAdminDisclosure = true
-              } else {
-                showAdminDeactivateConfirm = true
-              }
-            },
-            modifier = Modifier.semantics {
-              contentDescription = "Toggle Anti-uninstall protection"
-            }
-          )
-        },
-        onClick = {
-          if (!isAdminActive) {
-            showAdminDisclosure = true
-          } else {
-            showAdminDeactivateConfirm = true
-          }
-        }
-      )
-      HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
-
-      SettingRow(
-        title = "Tamper alarm",
-        subtitle = if (tamperAlarmEnabled) {
-          "Sounds an audible siren if protected system settings are opened during strict mode"
-        } else {
-          "Disabled — sounds siren if tampering is detected during strict mode"
-        },
-        leadingIcon = Icons.Default.Warning,
-        trailing = {
-          Switch(
-            checked = tamperAlarmEnabled,
-            onCheckedChange = { checked ->
-              coroutineScope.launch { settingsRepository.setTamperAlarmEnabled(checked) }
-            },
-            modifier = Modifier.semantics {
-              contentDescription = "Toggle Tamper alarm"
-            }
-          )
-        }
-      )
-      HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
 
       // ── Global defaults (read-only placeholders — editable in future specs) ──
       SectionHeader(title = "Global Defaults")
@@ -453,3 +488,55 @@ fun AppSettingsScreen(
   }
 }
 
+/**
+ * A compact inline banner shown in Settings sections that belong to a module
+ * that hasn't been activated yet.
+ */
+@Composable
+private fun InactiveModuleBanner(
+  moduleName: String,
+  onActivate: (() -> Unit)?,
+  modifier: Modifier = Modifier
+) {
+  Row(
+    modifier = modifier
+      .fillMaxWidth()
+      .padding(horizontal = 16.dp, vertical = 8.dp)
+      .clip(RoundedCornerShape(12.dp))
+      .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+      .border(
+        width = 1.dp,
+        color = MaterialTheme.colorScheme.outlineVariant,
+        shape = RoundedCornerShape(12.dp)
+      )
+      .padding(horizontal = 14.dp, vertical = 12.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.SpaceBetween
+  ) {
+    Column(modifier = Modifier.weight(1f)) {
+      Text(
+        text = "$moduleName not activated",
+        style = MaterialTheme.typography.bodySmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+      )
+      Text(
+        text = "Activate the module to use these features",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+      )
+    }
+    if (onActivate != null) {
+      TextButton(
+        onClick = onActivate,
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+      ) {
+        Text(
+          "Activate",
+          style = MaterialTheme.typography.labelMedium,
+          fontWeight = FontWeight.SemiBold
+        )
+      }
+    }
+  }
+}

@@ -21,6 +21,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -28,7 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -63,6 +63,62 @@ import com.msahil432.multitool.util.OemAutostart
 import com.msahil432.multitool.util.UsageAccess
 import kotlinx.coroutines.launch
 
+
+// ─── Module definitions ──────────────────────────────────────────────────────
+
+const val MODULE_FILE_CLEANUP = "file_cleanup"
+const val MODULE_USAGE_STATS  = "usage_stats"
+const val MODULE_APP_FOCUS    = "app_focus"
+
+data class ModuleInfo(
+    val key: String,
+    val title: String,
+    val tagline: String,
+    val icon: ImageVector,
+    val features: List<String>,
+    /** Permission IDs required by this module */
+    val permissionIds: Set<String>
+)
+
+fun buildModuleList(): List<ModuleInfo> = listOf(
+    ModuleInfo(
+        key = MODULE_FILE_CLEANUP,
+        title = "File Cleanup",
+        tagline = "Automatically delete or move files on a schedule you define.",
+        icon = Icons.Default.FolderOpen,
+        features = listOf(
+            "Monitor Screenshots, Downloads, or any folder",
+            "Delete or move files after a delay you choose",
+            "Keep Google Photos safe with move-not-delete"
+        ),
+        permissionIds = setOf("notifications", "all_files", "overlay", "battery", "oem_autostart")
+    ),
+    ModuleInfo(
+        key = MODULE_USAGE_STATS,
+        title = "Usage Stats",
+        tagline = "See exactly how much time you spend on each app every day.",
+        icon = Icons.Default.BarChart,
+        features = listOf(
+            "Daily screen time and per-app breakdown",
+            "App launch counts and device unlock frequency",
+            "Chronological activity timeline"
+        ),
+        permissionIds = setOf("notifications", "usage_access", "battery", "oem_autostart")
+    ),
+    ModuleInfo(
+        key = MODULE_APP_FOCUS,
+        title = "App Tracking & Focus",
+        tagline = "Block distracting apps, filter short-form video, and enforce focus sessions.",
+        icon = Icons.Default.Block,
+        features = listOf(
+            "Block apps by schedule, quota, or session limit",
+            "Filter YouTube Shorts, Instagram & Facebook Reels",
+            "Track browser activity and silence notifications during focus",
+            "Geofenced profiles and Strict Mode anti-bypass"
+        ),
+        permissionIds = setOf("notifications", "accessibility", "overlay", "notification_listener", "battery", "oem_autostart")
+    )
+)
 
 // ─── Permission model ────────────────────────────────────────────────────────
 
@@ -115,7 +171,7 @@ fun buildPermissionList(): List<AppPermission> = listOf(
     ),
     AppPermission(
         id = "usage_access",
-        title = "Usage access",
+        title = "Usage Access",
         subtitle = "Lets Multi Tool measure your screen time, app launches, and build your activity timeline. Data stays on your device.",
         icon = Icons.Default.BarChart,
         isRequired = false,
@@ -177,6 +233,28 @@ fun buildPermissionList(): List<AppPermission> = listOf(
     )
 )
 
+/**
+ * Given the selected module keys, compute the deduplicated ordered list of permissions
+ * that need to be shown in the onboarding flow.
+ *
+ * Order: required permissions first, then optional ones.
+ * Each permission is included at most once regardless of how many modules need it.
+ */
+fun computePermissions(
+    selectedModuleKeys: Set<String>,
+    modules: List<ModuleInfo>,
+    allPermissions: List<AppPermission>
+): List<AppPermission> {
+    val neededIds = modules
+        .filter { it.key in selectedModuleKeys }
+        .flatMap { it.permissionIds }
+        .toSet()
+
+    val filtered = allPermissions.filter { it.id in neededIds }
+    // Required first, then optional — preserving original relative order within each group
+    return filtered.filter { it.isRequired } + filtered.filter { !it.isRequired }
+}
+
 // ─── Onboarding screen ───────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -188,10 +266,33 @@ fun OnboardingScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    // Module selection state
+    val allModules = remember { buildModuleList() }
+    val allPermissions = remember { buildPermissionList() }
+
+    var selectedModules by remember { mutableStateOf(emptySet<String>()) }
+
+    // Computed permissions based on selection; recalculated when selection changes
+    var activePermissions by remember { mutableStateOf(emptyList<AppPermission>()) }
+
+    // Step machine
+    // Step 0 = Welcome, Step 1 = Module Selection
+    // Steps 2..2+K-1 = Permission steps (K = activePermissions.size)
+    // Step 2+K = DefaultConfig (only if file_cleanup selected)
+    // Step 2+K+[0|1] = AllSet
     var step by remember { mutableIntStateOf(0) }
 
-    val permissions = remember { buildPermissionList() }
-    val totalSteps = permissions.size + 3 // Welcome + N permissions + DefaultConfig + Done
+    val permStartStep = 2
+    val defaultConfigStep = permStartStep + activePermissions.size
+    val allSetStep = defaultConfigStep + if (MODULE_FILE_CLEANUP in selectedModules) 1 else 0
+    val totalSteps = allSetStep + 1
+
+    fun onModulesConfirmed(modules: Set<String>) {
+        selectedModules = modules
+        activePermissions = computePermissions(modules, allModules, allPermissions)
+        step = permStartStep
+    }
 
     Box(
         modifier = Modifier
@@ -200,7 +301,13 @@ fun OnboardingScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // ── Top progress bar ──────────────────────────────────────────────
-            OnboardingProgressBar(step = step, total = totalSteps)
+            // Only show progress bar after module selection
+            if (step >= permStartStep) {
+                OnboardingProgressBar(
+                    step = step - permStartStep,
+                    total = totalSteps - permStartStep
+                )
+            }
 
             // ── Step content ──────────────────────────────────────────────────
             Box(
@@ -218,48 +325,69 @@ fun OnboardingScreen(
                     },
                     label = "onboarding_step"
                 ) { currentStep ->
-                    when (currentStep) {
-                        0 -> WelcomeStep(onNext = { step = 1 })
-                        in 1..permissions.size -> PermissionStep(
-                            permission = permissions[currentStep - 1],
-                            stepIndex = currentStep,
-                            onNext = { step++ }
+                    when {
+                        currentStep == 0 -> WelcomeStep(
+                            modules = allModules,
+                            onNext = { step = 1 }
                         )
-                        permissions.size + 1 -> DefaultConfigStep(
-                            onNext = { mode, keepAction ->
-                                coroutineScope.launch {
-                                    val defaultPresets = encodeTimePeriodPresets(DEFAULT_TIME_PRESETS)
-                                    settingsRepository.setGlobalDeletionMode(mode.name)
-                                    settingsRepository.setGlobalDefaultPool(defaultPresets)
+                        currentStep == 1 -> ModuleSelectionStep(
+                            modules = allModules,
+                            preSelected = selectedModules,
+                            onBack = { step = 0 },
+                            onNext = { chosen -> onModulesConfirmed(chosen) }
+                        )
+                        currentStep in permStartStep until permStartStep + activePermissions.size -> {
+                            val permIndex = currentStep - permStartStep
+                            PermissionStep(
+                                permission = activePermissions[permIndex],
+                                stepIndex = currentStep,
+                                onNext = { step++ }
+                            )
+                        }
+                        currentStep == defaultConfigStep && MODULE_FILE_CLEANUP in selectedModules ->
+                            DefaultConfigStep(
+                                onNext = { mode, keepAction ->
+                                    coroutineScope.launch {
+                                        val defaultPresets = encodeTimePeriodPresets(DEFAULT_TIME_PRESETS)
+                                        settingsRepository.setGlobalDeletionMode(mode.name)
+                                        settingsRepository.setGlobalDefaultPool(defaultPresets)
 
-                                    val picturesDir = Environment.getExternalStoragePublicDirectory(
-                                        Environment.DIRECTORY_PICTURES
-                                    )
-                                    val screenshotsDir = "${picturesDir.absolutePath}/Screenshots"
-
-                                    appDao.insertFolderConfig(
-                                        FolderConfig(
-                                            path = screenshotsDir,
-                                            displayName = "Screenshots",
-                                            isDefaultScreenshotsFolder = true,
-                                            enabled = true,
-                                            deletionMode = mode,
-                                            defaultActionOnIgnore = keepAction,
-                                            candidateTimePeriods = defaultPresets,
-                                            recentlyUsedPeriods = defaultPresets,
-                                            fileTypeExcludeList = encodeFilterRules(DEFAULT_EXCLUSION_RULES),
-                                            fileTypeIncludeList = null,
-                                            createdAt = System.currentTimeMillis()
+                                        val picturesDir = Environment.getExternalStoragePublicDirectory(
+                                            Environment.DIRECTORY_PICTURES
                                         )
-                                    )
+                                        val screenshotsDir = "${picturesDir.absolutePath}/Screenshots"
+
+                                        appDao.insertFolderConfig(
+                                            FolderConfig(
+                                                path = screenshotsDir,
+                                                displayName = "Screenshots",
+                                                isDefaultScreenshotsFolder = true,
+                                                enabled = true,
+                                                deletionMode = mode,
+                                                defaultActionOnIgnore = keepAction,
+                                                candidateTimePeriods = defaultPresets,
+                                                recentlyUsedPeriods = defaultPresets,
+                                                fileTypeExcludeList = encodeFilterRules(DEFAULT_EXCLUSION_RULES),
+                                                fileTypeIncludeList = null,
+                                                createdAt = System.currentTimeMillis()
+                                            )
+                                        )
+                                        step++
+                                    }
+                                }
+                            )
+                        else -> AllSetStep(
+                            permissions = activePermissions,
+                            onDone = {
+                                coroutineScope.launch {
+                                    // Persist selected modules
+                                    settingsRepository.setModuleFileCleanup(MODULE_FILE_CLEANUP in selectedModules)
+                                    settingsRepository.setModuleUsageStats(MODULE_USAGE_STATS in selectedModules)
+                                    settingsRepository.setModuleAppFocus(MODULE_APP_FOCUS in selectedModules)
                                     settingsRepository.setOnboardingComplete(true)
-                                    step = permissions.size + 2
+                                    onComplete()
                                 }
                             }
-                        )
-                        else -> AllSetStep(
-                            permissions = permissions,
-                            onDone = onComplete
                         )
                     }
                 }
@@ -308,11 +436,16 @@ private fun OnboardingProgressBar(step: Int, total: Int) {
 // ─── Welcome step ────────────────────────────────────────────────────────────
 
 @Composable
-private fun WelcomeStep(onNext: () -> Unit) {
+private fun WelcomeStep(
+    modules: List<ModuleInfo>,
+    onNext: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 32.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 32.dp)
+            .padding(vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -324,62 +457,288 @@ private fun WelcomeStep(onNext: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.AutoDelete,
+                Icons.Default.Build,
                 contentDescription = null,
                 modifier = Modifier.size(52.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
 
         Text(
-            "Welcome to Auto Delete",
+            "Welcome to Multi Tool",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
         Text(
-            "Automatically detects new files in folders you choose and schedules them for cleanup — so your storage stays tidy without thinking about it.",
+            "A suite of powerful on-device tools that keep your storage tidy, show you how you use your phone, and help you focus — all without a single byte leaving your device.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             lineHeight = 22.sp
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(4.dp))
 
-        // Feature highlights
-        listOf(
-            Triple(Icons.Default.FolderOpen, "Monitor any folder", "Screenshots, Downloads, or custom directories"),
-            Triple(Icons.Default.Timer, "Scheduled cleanup", "Delete or move files after a time delay you choose"),
-            Triple(Icons.AutoMirrored.Filled.DriveFileMove, "Google Photos safe", "Move to a backup folder instead of deleting")
-        ).forEach { (icon, title, sub) ->
+        // Module overview cards
+        modules.forEach { module ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-                Column {
-                    Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                    Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        module.icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        module.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        module.tagline,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
+                    )
                 }
             }
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
 
         Button(
             onClick = onNext,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
             shape = RoundedCornerShape(14.dp)
         ) {
             Text("Get Started", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        }
+
+        // Privacy note
+        Text(
+            "Everything runs 100% on-device. No account required.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+// ─── Module selection step ────────────────────────────────────────────────────
+
+@Composable
+private fun ModuleSelectionStep(
+    modules: List<ModuleInfo>,
+    preSelected: Set<String>,
+    onBack: () -> Unit,
+    onNext: (Set<String>) -> Unit
+) {
+    var selected by remember { mutableStateOf(if (preSelected.isEmpty()) emptySet() else preSelected) }
+    val allSelected = selected.size == modules.size
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp)
+            .padding(vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Spacer(Modifier.width(4.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Choose your tools",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "Select one or more modules to activate",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            // Select All toggle
+            TextButton(
+                onClick = {
+                    selected = if (allSelected) emptySet()
+                    else modules.map { it.key }.toSet()
+                }
+            ) {
+                Text(
+                    if (allSelected) "Deselect all" else "Select all",
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+        }
+
+        // Module cards
+        modules.forEach { module ->
+            ModuleSelectionCard(
+                module = module,
+                isSelected = module.key in selected,
+                onToggle = {
+                    selected = if (module.key in selected) selected - module.key
+                    else selected + module.key
+                }
+            )
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        Button(
+            onClick = { onNext(selected) },
+            enabled = selected.isNotEmpty(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text(
+                "Continue${if (selected.size > 1) " with ${selected.size} modules" else if (selected.size == 1) " with 1 module" else ""}",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp
+            )
+        }
+
+        AnimatedVisibility(visible = selected.isEmpty()) {
+            Text(
+                "Select at least one module to continue.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+private fun ModuleSelectionCard(
+    module: ModuleInfo,
+    isSelected: Boolean,
+    onToggle: () -> Unit
+) {
+    val containerColor = if (isSelected)
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+    else
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+
+    val borderColor = if (isSelected)
+        MaterialTheme.colorScheme.primary
+    else
+        MaterialTheme.colorScheme.outlineVariant
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(containerColor)
+            .border(
+                width = if (isSelected) 2.dp else 1.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable(onClick = onToggle)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        // Title row with checkbox
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    module.icon,
+                    contentDescription = null,
+                    tint = if (isSelected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    module.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Checkbox(
+                checked = isSelected,
+                onCheckedChange = { onToggle() },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = MaterialTheme.colorScheme.primary
+                )
+            )
+        }
+
+        // Feature bullets
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            module.features.forEach { feature ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Text(
+                        "•",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 1.dp)
+                    )
+                    Text(
+                        feature,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
         }
     }
 }
@@ -831,56 +1190,58 @@ private fun AllSetStep(
             textAlign = TextAlign.Center
         )
         Text(
-            "Auto Delete is ready. Here's a summary of your permission status:",
+            "Multi Tool is ready. Here's a summary of your permission status:",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
 
-        // Permission summary cards
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            val grantedStates = remember(refreshKey) {
-                permissions.map { it.isGranted(context) }
-            }
-            permissions.forEachIndexed { idx, perm ->
-                val granted = grantedStates[idx]
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            if (granted) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                            else if (perm.isRequired) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        // Permission summary cards — only show permissions relevant to selected modules
+        if (permissions.isNotEmpty()) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val grantedStates = remember(refreshKey) {
+                    permissions.map { it.isGranted(context) }
+                }
+                permissions.forEachIndexed { idx, perm ->
+                    val granted = grantedStates[idx]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (granted) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                                else if (perm.isRequired) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            )
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            if (granted) Icons.Default.CheckCircle else Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = if (granted) MaterialTheme.colorScheme.tertiary
+                                   else if (perm.isRequired) MaterialTheme.colorScheme.error
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        if (granted) Icons.Default.CheckCircle else Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = if (granted) MaterialTheme.colorScheme.tertiary
-                               else if (perm.isRequired) MaterialTheme.colorScheme.error
-                               else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            perm.title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            if (granted) "Granted" else if (perm.isRequired) "Not granted — required!" else "Not granted — optional",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (granted) MaterialTheme.colorScheme.tertiary
-                                    else if (perm.isRequired) MaterialTheme.colorScheme.error
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                perm.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                if (granted) "Granted" else if (perm.isRequired) "Not granted — required!" else "Not granted — optional",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (granted) MaterialTheme.colorScheme.tertiary
+                                        else if (perm.isRequired) MaterialTheme.colorScheme.error
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }

@@ -32,6 +32,7 @@ import com.msahil432.multitool.ui.components.AppListItem
 import com.msahil432.multitool.ui.components.EmptyState
 import com.msahil432.multitool.ui.components.ErrorState
 import com.msahil432.multitool.ui.components.LoadingState
+import com.msahil432.multitool.ui.components.ModuleActivationCard
 import com.msahil432.multitool.ui.components.SectionHeader
 import com.msahil432.multitool.ui.components.StatCard
 import com.msahil432.multitool.ui.theme.MultiToolTheme
@@ -44,7 +45,9 @@ import java.text.NumberFormat
 fun UsageHomeScreen(
   usageRepository: UsageRepository,
   innerPadding: PaddingValues,
+  isModuleActive: Boolean,
   onNavigateToTimeline: () -> Unit,
+  onActivateModule: (() -> Unit)? = null,
   viewModel: UsageViewModel = viewModel(
     factory = UsageViewModel.Factory(usageRepository, LocalContext.current.applicationContext)
   )
@@ -85,6 +88,8 @@ fun UsageHomeScreen(
     )
   }
 
+  val coroutineScope = rememberCoroutineScope()
+
   Scaffold(
     topBar = {
       TopAppBar(
@@ -98,17 +103,34 @@ fun UsageHomeScreen(
       bottom = innerPadding.calculateBottomPadding()
     )
 
-    UsageHomeScreenContent(
-      isUsageAccessGranted = isUsageAccessGranted,
-      isLoading = isLoading,
-      totalScreenTimeToday = totalScreenTimeToday,
-      unlocksToday = unlocksToday,
-      perApp = perApp,
-      appMetaCache = appMetaCache,
-      paddingValues = combinedPadding,
-      onGrantPermission = { showUsageDisclosure = true },
-      onNavigateToTimeline = onNavigateToTimeline
-    )
+    if (!isModuleActive) {
+      // ── Module not activated yet ─────────────────────────────────────────
+      ModuleActivationCard(
+        icon = Icons.Default.BarChart,
+        title = "Usage Stats",
+        tagline = "See exactly how much time you spend on each app every day.",
+        features = listOf(
+          Icons.Default.Timer to "Daily screen time and per-app breakdown",
+          Icons.Default.LockOpen to "App launch counts and device unlock frequency",
+          Icons.Default.History to "Chronological activity timeline"
+        ),
+        ctaLabel = "Activate Usage Stats",
+        onActivate = { onActivateModule?.invoke() ?: showUsageDisclosure.let { true } },
+        modifier = Modifier.padding(combinedPadding)
+      )
+    } else {
+      UsageHomeScreenContent(
+        isUsageAccessGranted = isUsageAccessGranted,
+        isLoading = isLoading,
+        totalScreenTimeToday = totalScreenTimeToday,
+        unlocksToday = unlocksToday,
+        perApp = perApp,
+        appMetaCache = appMetaCache,
+        paddingValues = combinedPadding,
+        onGrantPermission = { showUsageDisclosure = true },
+        onNavigateToTimeline = onNavigateToTimeline
+      )
+    }
   }
 }
 

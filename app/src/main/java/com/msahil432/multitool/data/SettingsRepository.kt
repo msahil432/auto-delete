@@ -33,6 +33,11 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
         // Tamper alarm preference
         val TAMPER_ALARM_ENABLED = booleanPreferencesKey("tamper_alarm_enabled")
+
+        // Module activation — which tool modules the user has opted into
+        val MODULE_FILE_CLEANUP = booleanPreferencesKey("module_file_cleanup")
+        val MODULE_USAGE_STATS = booleanPreferencesKey("module_usage_stats")
+        val MODULE_APP_FOCUS = booleanPreferencesKey("module_app_focus")
     }
 
     val tamperAlarmEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -224,6 +229,38 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setGlobalDeletionMode(mode: String) {
         dataStore.edit { preferences ->
             preferences[GLOBAL_DELETION_MODE] = mode
+        }
+    }
+
+    // ── Module activation ────────────────────────────────────────────────────
+
+    val moduleFileCleanup: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[MODULE_FILE_CLEANUP] ?: false
+    }
+
+    suspend fun setModuleFileCleanup(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[MODULE_FILE_CLEANUP] = enabled
+        }
+    }
+
+    val moduleUsageStats: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[MODULE_USAGE_STATS] ?: false
+    }
+
+    suspend fun setModuleUsageStats(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[MODULE_USAGE_STATS] = enabled
+        }
+    }
+
+    val moduleAppFocus: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[MODULE_APP_FOCUS] ?: false
+    }
+
+    suspend fun setModuleAppFocus(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[MODULE_APP_FOCUS] = enabled
         }
     }
 }
