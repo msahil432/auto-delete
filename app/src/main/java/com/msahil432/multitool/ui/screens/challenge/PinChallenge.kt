@@ -23,6 +23,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.msahil432.multitool.util.PasswordSecurity
+import com.msahil432.multitool.util.SecureScreen
 import kotlinx.coroutines.delay
 
 private const val MAX_ATTEMPTS = 5
@@ -39,6 +40,7 @@ fun PinChallenge(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    SecureScreen()
     var pinInput by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var remainingAttempts by remember { mutableIntStateOf(MAX_ATTEMPTS) }
