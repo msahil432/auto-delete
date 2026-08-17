@@ -62,13 +62,8 @@ android {
   buildTypes {
     release {
       isCrunchPngs = false
-      optimization {
-        enable = true
-      }
-      proguardFiles(
-        getDefaultProguardFile("proguard-android-optimize.txt"),
-        "proguard-rules.pro"
-      )
+      isMinifyEnabled = false
+      proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("release")
     }
     debug { signingConfig = signingConfigs.getByName("debug") }
@@ -114,8 +109,11 @@ dependencies {
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
   implementation(libs.androidx.work.runtime.ktx)
+  // implementation(libs.coil.compose)
+  implementation(libs.converter.moshi)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
+  implementation(libs.logging.interceptor)
   implementation(libs.moshi.kotlin)
   implementation(libs.play.services.location)
   implementation(libs.androidx.profileinstaller)
