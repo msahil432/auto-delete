@@ -1,6 +1,7 @@
 package com.msahil432.multitool.ui.screens
 
 import android.content.Context
+import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.msahil432.multitool.data.AppDatabase
@@ -8,10 +9,15 @@ import com.msahil432.multitool.data.TimelineEventType
 import com.msahil432.multitool.data.UnlockType
 import com.msahil432.multitool.data.UsageDao
 import com.msahil432.multitool.data.UsageRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -26,6 +32,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [36])
 class UsageViewModelTest {
 
+  private val testDispatcher = UnconfinedTestDispatcher()
   private lateinit var db: AppDatabase
   private lateinit var dao: UsageDao
   private lateinit var repository: UsageRepository
@@ -33,6 +40,7 @@ class UsageViewModelTest {
 
   @Before
   fun setUp() {
+    Dispatchers.setMain(testDispatcher)
     context = ApplicationProvider.getApplicationContext()
     db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
       .allowMainThreadQueries()
@@ -44,6 +52,7 @@ class UsageViewModelTest {
   @After
   fun tearDown() {
     db.close()
+    Dispatchers.resetMain()
   }
 
   @Test
@@ -79,6 +88,8 @@ class UsageViewModelTest {
     val timelineEvents = viewModel.timeline.first { it.isNotEmpty() }
     assertEquals(1, timelineEvents.size)
     assertEquals("com.example.app", timelineEvents[0].packageName)
+
+    viewModel.viewModelScope.cancel()
   }
 
   @Test
@@ -90,5 +101,7 @@ class UsageViewModelTest {
 
     val metaMap = viewModel.appMetaCache.first { it.containsKey(context.packageName) }
     assertNotNull(metaMap[context.packageName])
+
+    viewModel.viewModelScope.cancel()
   }
 }

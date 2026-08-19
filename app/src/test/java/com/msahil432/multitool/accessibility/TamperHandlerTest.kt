@@ -10,10 +10,9 @@ import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.StrictModeState
 import com.msahil432.multitool.data.UnlockMethod
 import com.msahil432.multitool.service.TamperAlarm
+import java.io.File
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertFalse
@@ -35,9 +34,6 @@ class TamperHandlerTest {
     @get:Rule
     val tempFolder = TemporaryFolder()
 
-    private val testDispatcher = UnconfinedTestDispatcher()
-    private val testScope = TestScope(testDispatcher)
-
     private lateinit var context: Context
     private lateinit var settingsRepo: SettingsRepository
 
@@ -45,8 +41,7 @@ class TamperHandlerTest {
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
         val testDataStore = PreferenceDataStoreFactory.create(
-            scope = testScope,
-            produceFile = { tempFolder.newFile("test_tamper_settings.preferences_pb") }
+            produceFile = { File(tempFolder.root, "test_tamper_settings.preferences_pb") }
         )
         settingsRepo = SettingsRepository(testDataStore)
         TamperAlarm.resetForTesting()
@@ -72,7 +67,7 @@ class TamperHandlerTest {
     }
 
     @Test
-    fun testSettingsRepositoryTamperAlarmToggle() = testScope.runTest {
+    fun testSettingsRepositoryTamperAlarmToggle() = runTest {
         assertFalse(settingsRepo.tamperAlarmEnabled.first())
         settingsRepo.setTamperAlarmEnabled(true)
         assertTrue(settingsRepo.tamperAlarmEnabled.first())
@@ -81,7 +76,7 @@ class TamperHandlerTest {
     }
 
     @Test
-    fun testAlarmDoesNotTriggerWhenStrictModeInactive() = testScope.runTest {
+    fun testAlarmDoesNotTriggerWhenStrictModeInactive() = runTest {
         settingsRepo.setTamperAlarmEnabled(true)
         StrictModeController.resetForTesting(
             state = StrictModeState(isActive = false),
@@ -90,7 +85,7 @@ class TamperHandlerTest {
 
         val handler = TamperHandler(
             settingsRepository = settingsRepo,
-            coroutineScope = testScope,
+            coroutineScope = backgroundScope,
             alarmController = TamperAlarm,
             overlayManager = BlockOverlayManager
         )
@@ -108,7 +103,7 @@ class TamperHandlerTest {
     }
 
     @Test
-    fun testAlarmDoesNotTriggerWhenTamperAlarmDisabled() = testScope.runTest {
+    fun testAlarmDoesNotTriggerWhenTamperAlarmDisabled() = runTest {
         settingsRepo.setTamperAlarmEnabled(false)
         StrictModeController.resetForTesting(
             state = StrictModeState(isActive = true, unlockMethod = UnlockMethod.TEXT),
@@ -117,7 +112,7 @@ class TamperHandlerTest {
 
         val handler = TamperHandler(
             settingsRepository = settingsRepo,
-            coroutineScope = testScope,
+            coroutineScope = backgroundScope,
             alarmController = TamperAlarm,
             overlayManager = BlockOverlayManager
         )
@@ -135,7 +130,7 @@ class TamperHandlerTest {
     }
 
     @Test
-    fun testAlarmTriggersWhenStrictAndTamperAlarmEnabled() = testScope.runTest {
+    fun testAlarmTriggersWhenStrictAndTamperAlarmEnabled() = runTest {
         settingsRepo.setTamperAlarmEnabled(true)
         StrictModeController.resetForTesting(
             state = StrictModeState(isActive = true, unlockMethod = UnlockMethod.TEXT),
@@ -144,7 +139,7 @@ class TamperHandlerTest {
 
         val handler = TamperHandler(
             settingsRepository = settingsRepo,
-            coroutineScope = testScope,
+            coroutineScope = backgroundScope,
             alarmController = TamperAlarm,
             overlayManager = BlockOverlayManager
         )
@@ -162,7 +157,7 @@ class TamperHandlerTest {
     }
 
     @Test
-    fun testNavigatingAwayStopsAlarm() = testScope.runTest {
+    fun testNavigatingAwayStopsAlarm() = runTest {
         settingsRepo.setTamperAlarmEnabled(true)
         StrictModeController.resetForTesting(
             state = StrictModeState(isActive = true, unlockMethod = UnlockMethod.TEXT),
@@ -171,7 +166,7 @@ class TamperHandlerTest {
 
         val handler = TamperHandler(
             settingsRepository = settingsRepo,
-            coroutineScope = testScope,
+            coroutineScope = backgroundScope,
             alarmController = TamperAlarm,
             overlayManager = BlockOverlayManager
         )

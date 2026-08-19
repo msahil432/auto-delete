@@ -14,9 +14,8 @@ import com.msahil432.multitool.data.BrowsingRepository
 import com.msahil432.multitool.data.SettingsRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import java.io.File
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -40,9 +39,6 @@ class BrowserUrlHandlerTest {
     @get:Rule
     val tempFolder = TemporaryFolder()
 
-    private val testDispatcher = UnconfinedTestDispatcher()
-    private val testScope = TestScope(testDispatcher)
-
     private lateinit var context: Context
     private lateinit var db: AppDatabase
     private lateinit var browsingRepo: BrowsingRepository
@@ -57,8 +53,7 @@ class BrowserUrlHandlerTest {
         browsingRepo = BrowsingRepository(db.browsingDao())
 
         val testDataStore = PreferenceDataStoreFactory.create(
-            scope = testScope,
-            produceFile = { tempFolder.newFile("test_settings.preferences_pb") }
+            produceFile = { File(tempFolder.root, "test_settings.preferences_pb") }
         )
         settingsRepo = SettingsRepository(testDataStore)
     }
@@ -86,7 +81,7 @@ class BrowserUrlHandlerTest {
     }
 
     @Test
-    fun testSettingsRepositoryTrackBrowserUrlsToggle() = testScope.runTest {
+    fun testSettingsRepositoryTrackBrowserUrlsToggle() = runTest {
         assertFalse(settingsRepo.trackBrowserUrls.first())
 
         settingsRepo.setTrackBrowserUrls(true)
@@ -147,11 +142,11 @@ class BrowserUrlHandlerTest {
     }
 
     @Test
-    fun testHandlerIgnoresEventsWhenToggleDisabled() = testScope.runTest {
+    fun testHandlerIgnoresEventsWhenToggleDisabled() = runTest {
         val handler = BrowserUrlHandler(
             settingsRepository = settingsRepo,
             browsingRepository = browsingRepo,
-            coroutineScope = testScope,
+            coroutineScope = backgroundScope,
             debounceDelayMs = 0L
         )
 
@@ -169,13 +164,13 @@ class BrowserUrlHandlerTest {
     }
 
     @Test
-    fun testHandlerIgnoresUnsupportedBrowser() = testScope.runTest {
+    fun testHandlerIgnoresUnsupportedBrowser() = runTest {
         settingsRepo.setTrackBrowserUrls(true)
 
         val handler = BrowserUrlHandler(
             settingsRepository = settingsRepo,
             browsingRepository = browsingRepo,
-            coroutineScope = testScope,
+            coroutineScope = backgroundScope,
             debounceDelayMs = 0L
         )
 
@@ -192,7 +187,7 @@ class BrowserUrlHandlerTest {
     }
 
     @Test
-    fun testBrowsingRepositoryOperations() = testScope.runTest {
+    fun testBrowsingRepositoryOperations() = runTest {
         val eventId = browsingRepo.recordBrowsing(
             packageName = BrowserSignatures.PKG_CHROME,
             kind = BrowsingKind.URL,

@@ -11,10 +11,9 @@ import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.TimelineEventType
 import com.msahil432.multitool.data.UsageRepository
+import java.io.File
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -37,9 +36,6 @@ class ShortFormHandlerTest {
     @get:Rule
     val tempFolder = TemporaryFolder()
 
-    private val testDispatcher = UnconfinedTestDispatcher()
-    private val testScope = TestScope(testDispatcher)
-
     private lateinit var context: Context
     private lateinit var db: AppDatabase
     private lateinit var blockingRepo: BlockingRepository
@@ -56,8 +52,7 @@ class ShortFormHandlerTest {
         usageRepo = UsageRepository(db.usageDao())
 
         val testDataStore = PreferenceDataStoreFactory.create(
-            scope = testScope,
-            produceFile = { tempFolder.newFile("test_settings.preferences_pb") }
+            produceFile = { File(tempFolder.root, "test_settings.preferences_pb") }
         )
         settingsRepo = SettingsRepository(testDataStore)
     }
@@ -86,7 +81,7 @@ class ShortFormHandlerTest {
     }
 
     @Test
-    fun testSettingsRepositoryShortFormToggles() = testScope.runTest {
+    fun testSettingsRepositoryShortFormToggles() = runTest {
         assertFalse(settingsRepo.blockYtShorts.first())
         assertFalse(settingsRepo.blockIgReels.first())
         assertFalse(settingsRepo.blockFbReels.first())
@@ -105,12 +100,12 @@ class ShortFormHandlerTest {
     }
 
     @Test
-    fun testHandlerIgnoresUnsupportedPackage() = testScope.runTest {
+    fun testHandlerIgnoresUnsupportedPackage() = runTest {
         val handler = ShortFormHandler(
             settingsRepository = settingsRepo,
             blockingRepository = blockingRepo,
             usageRepository = usageRepo,
-            coroutineScope = testScope
+            coroutineScope = backgroundScope
         )
 
         settingsRepo.setBlockYtShorts(true)
@@ -126,12 +121,12 @@ class ShortFormHandlerTest {
     }
 
     @Test
-    fun testHandlerIgnoresWhenToggleDisabled() = testScope.runTest {
+    fun testHandlerIgnoresWhenToggleDisabled() = runTest {
         val handler = ShortFormHandler(
             settingsRepository = settingsRepo,
             blockingRepository = blockingRepo,
             usageRepository = usageRepo,
-            coroutineScope = testScope
+            coroutineScope = backgroundScope
         )
 
         // All toggles are false by default
@@ -149,14 +144,14 @@ class ShortFormHandlerTest {
     }
 
     @Test
-    fun testHandlerDetectsAndLogsWhenToggleEnabled() = testScope.runTest {
+    fun testHandlerDetectsAndLogsWhenToggleEnabled() = runTest {
         settingsRepo.setBlockYtShorts(true)
 
         val handler = ShortFormHandler(
             settingsRepository = settingsRepo,
             blockingRepository = blockingRepo,
             usageRepository = usageRepo,
-            coroutineScope = testScope
+            coroutineScope = backgroundScope
         )
 
         assertTrue(handler.isBlockingEnabledForPackage(ShortFormSignatures.PKG_YOUTUBE))
@@ -175,7 +170,7 @@ class ShortFormHandlerTest {
     }
 
     @Test
-    fun testCooldownPreventsRapidActionSpam() = testScope.runTest {
+    fun testCooldownPreventsRapidActionSpam() = runTest {
         settingsRepo.setBlockIgReels(true)
 
         var currentTime = 1000L
@@ -183,7 +178,7 @@ class ShortFormHandlerTest {
             settingsRepository = settingsRepo,
             blockingRepository = blockingRepo,
             usageRepository = usageRepo,
-            coroutineScope = testScope,
+            coroutineScope = backgroundScope,
             cooldownMs = 1000L,
             clock = { currentTime }
         )

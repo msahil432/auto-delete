@@ -81,7 +81,7 @@ class ScreenUnlockReceiverTest {
     @Test
     fun `receiver actions correctly write unlock and timeline events to repository`() = runTest {
         val receiver = ScreenUnlockReceiver { type ->
-            runTest {
+            kotlinx.coroutines.runBlocking {
                 repository.recordUnlock(type)
                 if (type == UnlockType.USER_PRESENT) {
                     repository.recordTimeline("", TimelineEventType.UNLOCK)

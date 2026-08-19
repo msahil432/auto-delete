@@ -22,6 +22,14 @@ class BootReceiverTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
+        try {
+            val config = androidx.work.Configuration.Builder()
+                .setMinimumLoggingLevel(android.util.Log.DEBUG)
+                .build()
+            WorkManager.initialize(context, config)
+        } catch (_: Exception) {
+            // Already initialized in test environment
+        }
     }
 
     @Test
