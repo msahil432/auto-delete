@@ -7,6 +7,7 @@ plugins {
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.sentry.android.gradle)
+  id("io.sentry.android.gradle") version "6.19.0"
 }
 
 val sentryDsn: String = run {
@@ -45,6 +46,7 @@ android {
       ?: "1.0"
 
     buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
+    manifestPlaceholders["sentryDsn"] = sentryDsn
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

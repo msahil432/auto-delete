@@ -17,3 +17,6 @@ local.properties
 .env
 debug.keystore
 .artifacts
+
+# Sentry Config File
+sentry.properties
