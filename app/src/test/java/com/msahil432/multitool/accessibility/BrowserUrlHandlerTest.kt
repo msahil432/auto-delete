@@ -149,6 +149,7 @@ class BrowserUrlHandlerTest {
             coroutineScope = backgroundScope,
             debounceDelayMs = 0L
         )
+        testScheduler.advanceUntilIdle()
 
         // Toggle is false by default
         assertFalse(handler.trackBrowserUrls)
@@ -158,6 +159,7 @@ class BrowserUrlHandlerTest {
         event.packageName = BrowserSignatures.PKG_CHROME
 
         handler.onEvent(service, event)
+        testScheduler.advanceUntilIdle()
 
         val events = browsingRepo.allRecent().first()
         assertTrue(events.isEmpty())
@@ -173,6 +175,7 @@ class BrowserUrlHandlerTest {
             coroutineScope = backgroundScope,
             debounceDelayMs = 0L
         )
+        testScheduler.advanceUntilIdle()
 
         assertTrue(handler.trackBrowserUrls)
 
@@ -181,6 +184,7 @@ class BrowserUrlHandlerTest {
         event.packageName = "com.unsupported.browser"
 
         handler.onEvent(service, event)
+        testScheduler.advanceUntilIdle()
 
         val events = browsingRepo.allRecent().first()
         assertTrue(events.isEmpty())

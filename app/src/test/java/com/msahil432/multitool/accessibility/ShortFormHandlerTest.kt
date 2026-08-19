@@ -101,20 +101,22 @@ class ShortFormHandlerTest {
 
     @Test
     fun testHandlerIgnoresUnsupportedPackage() = runTest {
+        settingsRepo.setBlockYtShorts(true)
+
         val handler = ShortFormHandler(
             settingsRepository = settingsRepo,
             blockingRepository = blockingRepo,
             usageRepository = usageRepo,
             coroutineScope = backgroundScope
         )
-
-        settingsRepo.setBlockYtShorts(true)
+        testScheduler.advanceUntilIdle()
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
         val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
         event.packageName = "com.unrelated.app"
 
         handler.onEvent(service, event)
+        testScheduler.advanceUntilIdle()
 
         val timelineEvents = usageRepo.timelineToday().first()
         assertTrue(timelineEvents.isEmpty())
@@ -128,6 +130,7 @@ class ShortFormHandlerTest {
             usageRepository = usageRepo,
             coroutineScope = backgroundScope
         )
+        testScheduler.advanceUntilIdle()
 
         // All toggles are false by default
         assertFalse(handler.isBlockingEnabledForPackage(ShortFormSignatures.PKG_YOUTUBE))
@@ -138,6 +141,7 @@ class ShortFormHandlerTest {
         event.className = "com.google.android.apps.youtube.app.extensions.reel.watch.activity.ReelWatchActivity"
 
         handler.onEvent(service, event)
+        testScheduler.advanceUntilIdle()
 
         val timelineEvents = usageRepo.timelineToday().first()
         assertTrue(timelineEvents.isEmpty())
@@ -153,6 +157,7 @@ class ShortFormHandlerTest {
             usageRepository = usageRepo,
             coroutineScope = backgroundScope
         )
+        testScheduler.advanceUntilIdle()
 
         assertTrue(handler.isBlockingEnabledForPackage(ShortFormSignatures.PKG_YOUTUBE))
 
@@ -162,6 +167,7 @@ class ShortFormHandlerTest {
         event.className = "com.google.android.apps.youtube.app.extensions.reel.watch.activity.ReelWatchActivity"
 
         handler.onEvent(service, event)
+        testScheduler.advanceUntilIdle()
 
         val timelineEvents = usageRepo.timelineToday().first()
         assertEquals(1, timelineEvents.size)
@@ -182,6 +188,7 @@ class ShortFormHandlerTest {
             cooldownMs = 1000L,
             clock = { currentTime }
         )
+        testScheduler.advanceUntilIdle()
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
         val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
@@ -190,18 +197,21 @@ class ShortFormHandlerTest {
 
         // First trigger
         handler.onEvent(service, event)
+        testScheduler.advanceUntilIdle()
         val timeline1 = usageRepo.timelineToday().first()
         assertEquals(1, timeline1.size)
 
         // Immediate second event (within cooldown)
         currentTime = 1200L
         handler.onEvent(service, event)
+        testScheduler.advanceUntilIdle()
         val timeline2 = usageRepo.timelineToday().first()
         assertEquals(1, timeline2.size) // No new log
 
         // Third event after cooldown
         currentTime = 2500L
         handler.onEvent(service, event)
+        testScheduler.advanceUntilIdle()
         val timeline3 = usageRepo.timelineToday().first()
         assertEquals(2, timeline3.size)
     }

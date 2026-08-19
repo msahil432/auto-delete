@@ -89,6 +89,7 @@ class TamperHandlerTest {
             alarmController = TamperAlarm,
             overlayManager = BlockOverlayManager
         )
+        testScheduler.advanceUntilIdle()
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
         val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
@@ -97,6 +98,7 @@ class TamperHandlerTest {
         event.text.add("Multi Tool")
 
         handler.onEvent(service, event)
+        testScheduler.advanceUntilIdle()
 
         assertFalse(handler.isTamperTriggered)
         assertFalse(TamperAlarm.isPlaying())
@@ -116,6 +118,7 @@ class TamperHandlerTest {
             alarmController = TamperAlarm,
             overlayManager = BlockOverlayManager
         )
+        testScheduler.advanceUntilIdle()
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
         val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
@@ -124,6 +127,7 @@ class TamperHandlerTest {
         event.text.add("Multi Tool")
 
         handler.onEvent(service, event)
+        testScheduler.advanceUntilIdle()
 
         assertFalse(handler.isTamperTriggered)
         assertFalse(TamperAlarm.isPlaying())
@@ -143,6 +147,7 @@ class TamperHandlerTest {
             alarmController = TamperAlarm,
             overlayManager = BlockOverlayManager
         )
+        testScheduler.advanceUntilIdle()
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
         val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
@@ -151,6 +156,7 @@ class TamperHandlerTest {
         event.text.add("Multi Tool")
 
         handler.onEvent(service, event)
+        testScheduler.advanceUntilIdle()
 
         assertTrue(handler.isTamperTriggered)
         assertTrue(TamperAlarm.isPlaying())
@@ -170,6 +176,7 @@ class TamperHandlerTest {
             alarmController = TamperAlarm,
             overlayManager = BlockOverlayManager
         )
+        testScheduler.advanceUntilIdle()
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
 
@@ -180,6 +187,7 @@ class TamperHandlerTest {
         tamperEvent.text.add("Multi Tool")
 
         handler.onEvent(service, tamperEvent)
+        testScheduler.advanceUntilIdle()
         assertTrue(handler.isTamperTriggered)
         assertTrue(TamperAlarm.isPlaying())
 
@@ -188,6 +196,7 @@ class TamperHandlerTest {
         navAwayEvent.packageName = "com.google.android.apps.nexuslauncher"
 
         handler.onEvent(service, navAwayEvent)
+        testScheduler.advanceUntilIdle()
         assertFalse(handler.isTamperTriggered)
         assertFalse(TamperAlarm.isPlaying())
     }
