@@ -13,6 +13,7 @@ import com.msahil432.multitool.data.ActivityLogEntry
 import com.msahil432.multitool.data.FolderConfig
 import com.msahil432.multitool.data.LogAction
 import java.io.File
+import io.sentry.Sentry
 
 /**
  * Shared helper for the Move Rule operation.
@@ -163,6 +164,7 @@ object MoveHelper {
                 )
             )
             fireErrorNotification(context, filePath, "Move failed: ${e.localizedMessage}")
+            Sentry.captureException(e)
         }
     }
 
