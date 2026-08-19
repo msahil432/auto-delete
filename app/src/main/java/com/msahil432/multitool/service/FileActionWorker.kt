@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import java.io.File
 import java.util.concurrent.TimeUnit
 import android.util.Log
+import io.sentry.Sentry
 
 class FileActionWorker(
     private val appContext: Context,
@@ -63,11 +64,13 @@ class FileActionWorker(
                             appContext.contentResolver.update(itemUri, values, null, null)
                         } catch (e: Exception) {
                             Log.e("FileActionWorker", "Failed to trash via MediaStore, trying delete", e)
+                            Sentry.captureException(e)
                             file.delete()
                         }
                         cursor.close()
                     } else {
                         Log.w("FileActionWorker", "File not in MediaStore, deleting: $filePath")
+                        Sentry.captureMessage("File not in MediaStore, deleting: $filePath")
                         file.delete()
                     }
 
@@ -120,6 +123,7 @@ class FileActionWorker(
                 )
             } catch (logEx: Exception) {
                 Log.e("FileActionWorker", "Failed to write error log", logEx)
+                Sentry.captureException(logEx)
             }
             return Result.retry()
         }

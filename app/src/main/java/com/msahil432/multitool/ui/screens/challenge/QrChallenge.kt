@@ -40,6 +40,7 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.delay
 import java.util.concurrent.Executors
+import io.sentry.Sentry
 
 /**
  * High-friction QR Code Scan Challenge.
@@ -241,7 +242,8 @@ fun QrChallenge(
                                     preview,
                                     imageAnalysis
                                 )
-                            } catch (_: Exception) {
+                            } catch (e: Exception) {
+                                Sentry.captureException(e)
                                 // Camera binding error
                             }
                         }, ContextCompat.getMainExecutor(ctx))

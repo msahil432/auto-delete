@@ -26,6 +26,7 @@ import com.msahil432.multitool.data.decodeFilterRules
 import com.msahil432.multitool.tracking.ScreenUnlockReceiver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
+import io.sentry.Sentry
 
 class FileMonitorService : Service() {
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -113,6 +114,7 @@ class FileMonitorService : Service() {
             unregisterReceiver(unlockReceiver)
         } catch (e: Exception) {
             Log.w("FileMonitorService", "Failed to unregister unlockReceiver", e)
+            Sentry.captureException(e)
         }
         coroutineScope.cancel()
     }

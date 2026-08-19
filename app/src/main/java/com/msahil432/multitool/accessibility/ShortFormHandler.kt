@@ -83,7 +83,7 @@ class ShortFormHandler(
             svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
 
             // 2. Log interception to blocking repository and usage timeline
-            coroutineScope.launch(Dispatchers.IO) {
+            coroutineScope.launch {
                 try {
                     blockingRepository.logInterception(
                         packageName = pkg,
