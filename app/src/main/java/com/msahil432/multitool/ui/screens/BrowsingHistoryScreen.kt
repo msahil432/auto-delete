@@ -36,6 +36,7 @@ import java.util.Locale
 @Composable
 fun BrowsingHistoryScreen(
     browsingRepository: BrowsingRepository,
+    innerPadding: PaddingValues = PaddingValues(),
     onBack: () -> Unit
 ) {
     val events by browsingRepository.allRecent().collectAsState(initial = emptyList())
@@ -55,9 +56,14 @@ fun BrowsingHistoryScreen(
             )
         }
     ) { paddingValues ->
+        val bottomNavPadding = maxOf(paddingValues.calculateBottomPadding(), innerPadding.calculateBottomPadding())
         BrowsingHistoryContent(
             events = events,
-            modifier = Modifier.padding(paddingValues)
+            innerPadding = PaddingValues(
+                top = paddingValues.calculateTopPadding(),
+                bottom = bottomNavPadding
+            ),
+            modifier = Modifier.fillMaxSize()
         )
     }
 }
@@ -65,6 +71,7 @@ fun BrowsingHistoryScreen(
 @Composable
 fun BrowsingHistoryContent(
     events: List<BrowsingEvent>,
+    innerPadding: PaddingValues = PaddingValues(),
     modifier: Modifier = Modifier
 ) {
     if (events.isEmpty()) {
@@ -72,14 +79,17 @@ fun BrowsingHistoryContent(
             icon = Icons.Default.History,
             title = "No browsing activity",
             message = "Visited domains and search queries will appear here when browser tracking is enabled.",
-            modifier = modifier
+            modifier = modifier.padding(innerPadding)
         )
     } else {
         val timeFormat = remember { SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()) }
 
         LazyColumn(
             modifier = modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 16.dp)
+            contentPadding = PaddingValues(
+                top = innerPadding.calculateTopPadding(),
+                bottom = innerPadding.calculateBottomPadding() + 16.dp
+            )
         ) {
             items(events, key = { it.id }) { event ->
                 val formattedTime = timeFormat.format(Date(event.timestamp))

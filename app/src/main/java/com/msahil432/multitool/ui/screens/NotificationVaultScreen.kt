@@ -51,6 +51,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun NotificationVaultScreen(
     notificationRepository: NotificationRepository,
+    innerPadding: PaddingValues = PaddingValues(),
     onBack: () -> Unit
 ) {
     SecureScreen()
@@ -81,7 +82,9 @@ fun NotificationVaultScreen(
                 }
                 label to iconBitmap
             }
-            appInfoMap = newMap
+            withContext(Dispatchers.Main) {
+                appInfoMap = newMap
+            }
         }
     }
 
@@ -119,11 +122,12 @@ fun NotificationVaultScreen(
                 }
             )
         }
-    ) { innerPadding ->
+    ) { padding ->
+        val bottomNavPadding = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding())
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = padding.calculateTopPadding())
         ) {
             when {
                 notifications == null -> {
@@ -141,7 +145,12 @@ fun NotificationVaultScreen(
                     val list = notifications!!
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 16.dp,
+                            bottom = bottomNavPadding + 16.dp
+                        ),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(list, key = { it.id }) { item ->

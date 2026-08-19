@@ -116,12 +116,14 @@ fun BottomNavScaffold(
         FolderDetailScreen(
           folderId = folderId,
           appDao = appDao,
+          innerPadding = innerPadding,
           onBack = { navController.popBackStack() }
         )
       }
       composable("activity_log") {
         ActivityLogScreen(
           appDao = appDao,
+          innerPadding = innerPadding,
           onBack = { navController.popBackStack() }
         )
       }
@@ -143,6 +145,7 @@ fun BottomNavScaffold(
       composable("usage_timeline") {
         UsageTimelineScreen(
           usageRepository = usageRepository,
+          innerPadding = innerPadding,
           onBack = { navController.popBackStack() }
         )
       }
@@ -169,6 +172,7 @@ fun BottomNavScaffold(
         BlockGroupEditScreen(
           groupId = groupId,
           blockingRepository = blockingRepository,
+          innerPadding = innerPadding,
           onBack = { navController.popBackStack() }
         )
       }
@@ -176,6 +180,7 @@ fun BottomNavScaffold(
         GeofenceProfilesScreen(
           geofenceRepository = geofenceRepository,
           blockingRepository = blockingRepository,
+          innerPadding = innerPadding,
           onBack = { navController.popBackStack() },
           onNavigateToEdit = { profileId -> navController.navigate("geofence_edit/$profileId") }
         )
@@ -187,12 +192,14 @@ fun BottomNavScaffold(
           profileId = profileId,
           geofenceRepository = geofenceRepository,
           blockingRepository = blockingRepository,
+          innerPadding = innerPadding,
           onBack = { navController.popBackStack() }
         )
       }
       composable("strict_mode") {
         StrictModeScreen(
           settingsRepository = settingsRepository,
+          innerPadding = innerPadding,
           onBack = { navController.popBackStack() }
         )
       }
@@ -223,17 +230,22 @@ fun BottomNavScaffold(
         )
       }
       composable("permissions") {
-        PermissionCheckScreen(onBack = { navController.popBackStack() })
+        PermissionCheckScreen(
+          innerPadding = innerPadding,
+          onBack = { navController.popBackStack() }
+        )
       }
       composable("browsing_history") {
         BrowsingHistoryScreen(
           browsingRepository = browsingRepository,
+          innerPadding = innerPadding,
           onBack = { navController.popBackStack() }
         )
       }
       composable("notification_vault") {
         NotificationVaultScreen(
           notificationRepository = notificationRepository,
+          innerPadding = innerPadding,
           onBack = { navController.popBackStack() }
         )
       }

@@ -46,6 +46,7 @@ import com.msahil432.multitool.blocking.StrictModeController
 fun BlockGroupEditScreen(
   groupId: Long,
   blockingRepository: BlockingRepository,
+  innerPadding: PaddingValues = PaddingValues(),
   onBack: () -> Unit
 ) {
   val coroutineScope = rememberCoroutineScope()
@@ -100,7 +101,8 @@ fun BlockGroupEditScreen(
         )
       }
     ) { padding ->
-      LoadingState(modifier = Modifier.padding(padding))
+      val bottomNavPadding = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding())
+      LoadingState(modifier = Modifier.padding(top = padding.calculateTopPadding(), bottom = bottomNavPadding))
     }
     return
   }
@@ -137,12 +139,13 @@ fun BlockGroupEditScreen(
       )
     }
   ) { padding ->
+    val bottomNavPadding = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding())
     Column(
       modifier = Modifier
         .fillMaxSize()
-        .padding(padding)
+        .padding(top = padding.calculateTopPadding())
         .verticalScroll(rememberScrollState())
-        .padding(horizontal = 16.dp, vertical = 8.dp),
+        .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomNavPadding + 32.dp),
       verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
       if (isStrictModeActive) {

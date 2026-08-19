@@ -57,6 +57,7 @@ import java.time.format.DateTimeFormatter
 fun StrictModeScreen(
     onBack: () -> Unit,
     settingsRepository: SettingsRepository? = null,
+    innerPadding: PaddingValues = PaddingValues(),
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -92,12 +93,13 @@ fun StrictModeScreen(
             )
         }
     ) { padding ->
+        val bottomNavPadding = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding())
         Column(
             modifier = modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(top = padding.calculateTopPadding())
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = bottomNavPadding + 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (strictState.isActive) {

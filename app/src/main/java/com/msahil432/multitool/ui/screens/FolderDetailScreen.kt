@@ -40,9 +40,15 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FolderDetailScreen(folderId: Long, appDao: AppDao, onBack: () -> Unit) {
+fun FolderDetailScreen(
+    folderId: Long,
+    appDao: AppDao,
+    innerPadding: PaddingValues = PaddingValues(),
+    onBack: () -> Unit
+) {
     val coroutineScope = rememberCoroutineScope()
     var config by remember { mutableStateOf<FolderConfig?>(null) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(folderId) {
         appDao.getFolderConfigById(folderId).collect { config = it }
@@ -64,6 +70,17 @@ fun FolderDetailScreen(folderId: Long, appDao: AppDao, onBack: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = {
+                    if (currentConfig != null) {
+                        IconButton(onClick = { showDeleteConfirmDialog = true }) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete folder",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -78,12 +95,12 @@ fun FolderDetailScreen(folderId: Long, appDao: AppDao, onBack: () -> Unit) {
                 CircularProgressIndicator()
             }
         } else {
+            val bottomNavPadding = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding())
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(bottom = 32.dp),
+                    .padding(top = padding.calculateTopPadding(), start = 0.dp, end = 0.dp)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 // ── 1. Folder Path ──
@@ -138,8 +155,68 @@ fun FolderDetailScreen(folderId: Long, appDao: AppDao, onBack: () -> Unit) {
                         coroutineScope.launch { appDao.updateFolderConfig(updated) }
                     }
                 )
+
+                SectionDivider()
+
+                // ── 5. Delete Folder Monitoring ──
+                DeleteFolderSection(
+                    folderName = currentConfig.displayName,
+                    onDeleteClick = { showDeleteConfirmDialog = true }
+                )
+
+                Spacer(Modifier.height(bottomNavPadding + 32.dp))
             }
         }
+    }
+
+    if (showDeleteConfirmDialog && currentConfig != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.DeleteForever,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(28.dp)
+                )
+            },
+            title = {
+                Text(
+                    "Delete Folder Monitoring?",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    "Are you sure you want to stop monitoring \"${currentConfig.displayName}\"? Multi Tool will no longer automatically move or delete files in this folder.\n\nYour actual files on device will NOT be deleted.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirmDialog = false
+                        coroutineScope.launch {
+                            appDao.deleteFolderConfig(currentConfig)
+                            onBack()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -1310,3 +1387,60 @@ fun MoveRuleSection(
         }
     }
 }
+
+// ─── Section: Delete Folder Monitoring ────────────────────────────────────────
+
+@Composable
+fun DeleteFolderSection(
+    folderName: String,
+    onDeleteClick: () -> Unit
+) {
+    SectionContainer {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Default.DeleteOutline,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                "Delete Folder Monitoring",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Text(
+            "Stop monitoring \"$folderName\". Multi Tool will no longer track, move, or delete files in this folder. Your actual files on disk will NOT be deleted.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        OutlinedButton(
+            onClick = onDeleteClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error
+            ),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(
+                Icons.Default.Delete,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("Delete Folder Monitoring", fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
