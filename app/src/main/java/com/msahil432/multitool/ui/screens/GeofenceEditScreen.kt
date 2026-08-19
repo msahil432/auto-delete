@@ -48,6 +48,7 @@ fun GeofenceEditScreen(
     profileId: Long,
     geofenceRepository: GeofenceRepository,
     blockingRepository: BlockingRepository,
+    innerPadding: PaddingValues = PaddingValues(),
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -227,8 +228,9 @@ fun GeofenceEditScreen(
             )
         }
     ) { paddingValues ->
+        val bottomNavPadding = maxOf(paddingValues.calculateBottomPadding(), innerPadding.calculateBottomPadding())
         if (!initialProfileLoaded) {
-            LoadingState(modifier = Modifier.padding(paddingValues))
+            LoadingState(modifier = Modifier.padding(top = paddingValues.calculateTopPadding(), bottom = bottomNavPadding))
         } else {
             GeofenceEditContent(
                 name = name,
@@ -272,7 +274,10 @@ fun GeofenceEditScreen(
                 onUseCurrentLocation = { handleUseCurrentLocation() },
                 onSave = { handleSave() },
                 onCancel = onBack,
-                paddingValues = paddingValues
+                paddingValues = PaddingValues(
+                    top = paddingValues.calculateTopPadding(),
+                    bottom = bottomNavPadding
+                )
             )
         }
     }

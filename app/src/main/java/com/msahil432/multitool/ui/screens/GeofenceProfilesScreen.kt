@@ -50,6 +50,7 @@ import kotlinx.coroutines.launch
 fun GeofenceProfilesScreen(
     geofenceRepository: GeofenceRepository,
     blockingRepository: BlockingRepository,
+    innerPadding: PaddingValues = PaddingValues(),
     onBack: () -> Unit,
     onNavigateToEdit: (Long) -> Unit
 ) {
@@ -115,16 +116,21 @@ fun GeofenceProfilesScreen(
             ExtendedFloatingActionButton(
                 onClick = { onNavigateToEdit(0L) },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("New profile") }
+                text = { Text("New profile") },
+                modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
             )
         }
     ) { paddingValues ->
+        val bottomNavPadding = maxOf(paddingValues.calculateBottomPadding(), innerPadding.calculateBottomPadding())
         GeofenceProfilesContent(
             profiles = profiles,
             groups = groups,
             hasForegroundPermission = hasForegroundPermission,
             hasBackgroundPermission = hasBackgroundPermission,
-            paddingValues = paddingValues,
+            paddingValues = PaddingValues(
+                top = paddingValues.calculateTopPadding(),
+                bottom = bottomNavPadding
+            ),
             onRequestForegroundPermission = {
                 foregroundPermissionLauncher.launch(
                     arrayOf(

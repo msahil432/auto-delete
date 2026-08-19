@@ -45,6 +45,7 @@ import java.util.Locale
 @Composable
 fun UsageTimelineScreen(
   usageRepository: UsageRepository,
+  innerPadding: PaddingValues = PaddingValues(),
   onBack: () -> Unit,
   viewModel: UsageViewModel = viewModel(
     factory = UsageViewModel.Factory(usageRepository, LocalContext.current.applicationContext)
@@ -69,11 +70,16 @@ fun UsageTimelineScreen(
       )
     }
   ) { paddingValues ->
+    val bottomNavPadding = maxOf(paddingValues.calculateBottomPadding(), innerPadding.calculateBottomPadding())
     UsageTimelineScreenContent(
       timeline = timeline,
       isLoading = isLoading,
       appMetaCache = appMetaCache,
-      modifier = Modifier.padding(paddingValues)
+      innerPadding = PaddingValues(
+        top = paddingValues.calculateTopPadding(),
+        bottom = bottomNavPadding
+      ),
+      modifier = Modifier.fillMaxSize()
     )
   }
 }
@@ -83,18 +89,19 @@ fun UsageTimelineScreenContent(
   timeline: List<TimelineEvent>,
   isLoading: Boolean,
   appMetaCache: Map<String, AppMeta>,
+  innerPadding: PaddingValues = PaddingValues(),
   modifier: Modifier = Modifier
 ) {
   when {
     isLoading -> {
-      LoadingState(modifier = modifier)
+      LoadingState(modifier = modifier.padding(innerPadding))
     }
     timeline.isEmpty() -> {
       EmptyState(
         icon = Icons.Default.History,
         title = "No timeline events",
         message = "Activity will appear here as you use your device.",
-        modifier = modifier
+        modifier = modifier.padding(innerPadding)
       )
     }
     else -> {
@@ -113,7 +120,10 @@ fun UsageTimelineScreenContent(
 
       LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        contentPadding = PaddingValues(
+          top = innerPadding.calculateTopPadding(),
+          bottom = innerPadding.calculateBottomPadding() + 16.dp
+        )
       ) {
         groupedEvents.forEach { (hourKey, eventsInHour) ->
           item(key = "header_$hourKey") {

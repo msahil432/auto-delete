@@ -1262,7 +1262,10 @@ private fun AllSetStep(
 // ─── Permissions check screen (post-onboarding, launched from Settings) ──────
 
 @Composable
-fun PermissionCheckScreen(onBack: () -> Unit) {
+fun PermissionCheckScreen(
+    innerPadding: PaddingValues = PaddingValues(),
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val permissions = remember { buildPermissionList() }
 
@@ -1303,12 +1306,13 @@ fun PermissionCheckScreen(onBack: () -> Unit) {
             )
         }
     ) { padding ->
+        val bottomNavPadding = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding())
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(top = padding.calculateTopPadding())
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = bottomNavPadding + 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Force re-evaluation of isGranted on each refresh

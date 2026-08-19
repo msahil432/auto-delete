@@ -1,4 +1,4 @@
-﻿package com.msahil432.multitool.ui.screens
+package com.msahil432.multitool.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,7 +20,11 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ActivityLogScreen(appDao: AppDao, onBack: () -> Unit) {
+fun ActivityLogScreen(
+    appDao: AppDao,
+    innerPadding: PaddingValues = PaddingValues(),
+    onBack: () -> Unit
+) {
     val logs by appDao.getAllActivityLogs().collectAsState(initial = emptyList())
     val coroutineScope = rememberCoroutineScope()
     
@@ -36,12 +40,24 @@ fun ActivityLogScreen(appDao: AppDao, onBack: () -> Unit) {
             )
         }
     ) { padding ->
+        val bottomNavPadding = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding())
         if (logs.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = padding.calculateTopPadding(), bottom = bottomNavPadding),
+                contentAlignment = Alignment.Center
+            ) {
                 Text("No activity yet.")
             }
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding(),
+                    bottom = bottomNavPadding + 16.dp
+                )
+            ) {
                 items(logs) { log ->
                     ActivityLogItem(log, onUndo = {
                         coroutineScope.launch {
