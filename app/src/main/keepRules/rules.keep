@@ -77,8 +77,13 @@
 
 # ------------------------------------------------------------------------------
 # 9. Sentry Crash Reporting & Performance Tracing
+# Keep Sentry SDK classes so R8 never strips the crash reporter itself.
+# Without these, Sentry may be silently removed from release builds.
 # ------------------------------------------------------------------------------
 -keepattributes LineNumberTable,SourceFile
+-keep class io.sentry.** { *; }
+-keep interface io.sentry.** { *; }
 -dontwarn org.slf4j.**
 -dontwarn io.sentry.**
+
 

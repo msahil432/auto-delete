@@ -38,6 +38,12 @@ class MultiToolApp : Application() {
     }
 
     private fun initSentry() {
+        // Sentry auto-initializes via ContentProvider using the manifest DSN
+        // (io.sentry.dsn meta-data) BEFORE Application.onCreate() — this catches
+        // crashes that occur during class loading or early initialization.
+        //
+        // This manual init applies custom options on top of the auto-init.
+        // If the DSN is empty (local dev without config), Sentry stays inactive.
         val dsn = BuildConfig.SENTRY_DSN
         if (dsn.isNotBlank()) {
             SentryAndroid.init(this) { options: SentryAndroidOptions ->
