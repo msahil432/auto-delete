@@ -2,11 +2,13 @@ package com.msahil432.multitool.ui.components
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -307,22 +309,54 @@ fun AppPicker(
 private fun loadInstalledApps(context: Context): List<InstalledAppItem> {
   return try {
     val pm = context.packageManager
-    val intent = Intent(Intent.ACTION_MAIN, null).apply {
-      addCategory(Intent.CATEGORY_LAUNCHER)
-    }
-    val resolveInfos = pm.queryIntentActivities(intent, 0)
     val myPackage = context.packageName
-
     val seen = mutableSetOf<String>()
     val result = mutableListOf<InstalledAppItem>()
 
-    for (info in resolveInfos) {
-      val pkg = info.activityInfo.packageName
+    val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+      PackageManager.MATCH_ALL
+    } else {
+      0
+    }
+
+    // 1. Query standard launcher activities
+    val launcherIntent = Intent(Intent.ACTION_MAIN, null).apply {
+      addCategory(Intent.CATEGORY_LAUNCHER)
+    }
+    val launcherResolves = try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        pm.queryIntentActivities(launcherIntent, PackageManager.ResolveInfoFlags.of(flags.toLong()))
+      } else {
+        @Suppress("DEPRECATION")
+        pm.queryIntentActivities(launcherIntent, flags)
+      }
+    } catch (_: Exception) {
+      emptyList()
+    }
+
+    // 2. Query Leanback launcher activities (for TV / specialized launcher apps)
+    val tvIntent = Intent(Intent.ACTION_MAIN, null).apply {
+      addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
+    }
+    val tvResolves = try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        pm.queryIntentActivities(tvIntent, PackageManager.ResolveInfoFlags.of(flags.toLong()))
+      } else {
+        @Suppress("DEPRECATION")
+        pm.queryIntentActivities(tvIntent, flags)
+      }
+    } catch (_: Exception) {
+      emptyList()
+    }
+
+    for (info in (launcherResolves + tvResolves)) {
+      val pkg = info.activityInfo?.packageName ?: continue
       if (pkg == myPackage || seen.contains(pkg)) continue
       seen.add(pkg)
 
       val label = try {
-        info.loadLabel(pm).toString()
+        val l = info.loadLabel(pm).toString()
+        if (l.isNotBlank()) l else info.activityInfo.applicationInfo.loadLabel(pm).toString()
       } catch (_: Exception) {
         pkg
       }
@@ -334,6 +368,42 @@ private fun loadInstalledApps(context: Context): List<InstalledAppItem> {
       }
 
       result.add(InstalledAppItem(packageName = pkg, label = label, icon = icon))
+    }
+
+    // 3. Fallback: Query all installed applications to catch any launchable or user apps missed by activity filters
+    val installedApps = try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        pm.getInstalledApplications(PackageManager.ApplicationInfoFlags.of(0L))
+      } else {
+        @Suppress("DEPRECATION")
+        pm.getInstalledApplications(0)
+      }
+    } catch (_: Exception) {
+      emptyList()
+    }
+
+    for (appInfo in installedApps) {
+      val pkg = appInfo.packageName
+      if (pkg == myPackage || seen.contains(pkg)) continue
+
+      val hasLaunchIntent = pm.getLaunchIntentForPackage(pkg) != null
+      val isUserApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+
+      if (hasLaunchIntent || isUserApp) {
+        seen.add(pkg)
+        val label = try {
+          val l = appInfo.loadLabel(pm).toString()
+          if (l.isNotBlank()) l else pkg
+        } catch (_: Exception) {
+          pkg
+        }
+        val icon = try {
+          appInfo.loadIcon(pm).toBitmapOrNull()
+        } catch (_: Exception) {
+          null
+        }
+        result.add(InstalledAppItem(packageName = pkg, label = label, icon = icon))
+      }
     }
 
     result.sortBy { it.label.lowercase() }
@@ -348,8 +418,8 @@ private fun Drawable.toBitmapOrNull(): Bitmap? {
     if (this is BitmapDrawable && this.bitmap != null) {
       this.bitmap
     } else {
-      val width = if (intrinsicWidth > 0) intrinsicWidth else 96
-      val height = if (intrinsicHeight > 0) intrinsicHeight else 96
+      val width = if (intrinsicWidth > 0) intrinsicWidth.coerceIn(48, 192) else 96
+      val height = if (intrinsicHeight > 0) intrinsicHeight.coerceIn(48, 192) else 96
       val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
       val canvas = Canvas(bitmap)
       setBounds(0, 0, canvas.width, canvas.height)
