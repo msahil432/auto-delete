@@ -170,16 +170,7 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           retention-days: 30
 
-      # ── 8. Upload AAB artifact (Actions run download) ──────────────────────
-      - name: Upload AAB artifact
-        if: inputs.skip_publishing != true
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: release-aab-v${{ steps.version.outputs.VERSION_NAME }}-${{ steps.version.outputs.VERSION_CODE }}
-          path: app/build/outputs/bundle/release/*.aab
-          retention-days: 30
-
-      # ── 8b. Upload R8 Deobfuscation Mapping (for crash analysis) ───────────
+      # ── 8. Upload R8 Deobfuscation Mapping (for crash analysis) ───────────
       - name: Upload R8 Mapping Artifact
         if: inputs.skip_publishing != true
         uses: actions/upload-artifact@v7.0.1
