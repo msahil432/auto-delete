@@ -10,6 +10,7 @@ import com.msahil432.multitool.data.UnlockType
 import com.msahil432.multitool.data.UsageDao
 import com.msahil432.multitool.data.UsageRepository
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -81,7 +82,7 @@ class ScreenUnlockReceiverTest {
     @Test
     fun `receiver actions correctly write unlock and timeline events to repository`() = runTest {
         val receiver = ScreenUnlockReceiver { type ->
-            runTest {
+            launch {
                 repository.recordUnlock(type)
                 if (type == UnlockType.USER_PRESENT) {
                     repository.recordTimeline("", TimelineEventType.UNLOCK)
@@ -92,6 +93,7 @@ class ScreenUnlockReceiverTest {
 
         receiver.onReceive(context, Intent(Intent.ACTION_SCREEN_ON))
         receiver.onReceive(context, Intent(Intent.ACTION_USER_PRESENT))
+        testScheduler.advanceUntilIdle()
 
         val unlockCount = repository.unlocksToday().first()
         assertEquals(2, unlockCount)
