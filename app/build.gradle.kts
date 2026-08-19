@@ -6,7 +6,6 @@ plugins {
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
-  alias(libs.plugins.sentry.android.gradle)
   id("io.sentry.android.gradle") version "6.19.0"
 }
 
@@ -36,8 +35,8 @@ android {
 
   defaultConfig {
     applicationId = "com.msahil432.multitool"
-    minSdk = 36
-    targetSdk = 36
+    minSdk = 35
+    targetSdk = 37
     versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull()
       ?: System.getenv("VERSION_CODE")?.toIntOrNull()
       ?: 1
