@@ -144,6 +144,8 @@ jobs:
           BUST_CACHE: ${{ inputs.bust_cache }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         run: |
           if [ "$BUST_CACHE" = "true" ]; then
             echo "Cache busting enabled: running clean and disabling build cache"
