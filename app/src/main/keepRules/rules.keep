@@ -53,13 +53,23 @@
 # ------------------------------------------------------------------------------
 -keep class com.google.android.gms.location.** { *; }
 -keep interface com.google.android.gms.location.** { *; }
+-keep class com.google.android.gms.common.** { *; }
+-keep interface com.google.android.gms.common.** { *; }
+-keep class com.google.android.gms.tasks.** { *; }
+-keep interface com.google.android.gms.tasks.** { *; }
 
 # ------------------------------------------------------------------------------
 # 6. MLKit Barcode Scanning & CameraX
 # ------------------------------------------------------------------------------
--keep class com.google.mlkit.vision.barcode.** { *; }
+-keep class com.google.mlkit.** { *; }
+-keep interface com.google.mlkit.** { *; }
+-keep class com.google.android.gms.internal.mlkit.** { *; }
+-keep class com.google.android.gms.internal.mlkit_vision_** { *; }
+-keep class * implements com.google.firebase.components.ComponentRegistrar { *; }
+-keep class * implements com.google.mlkit.common.sdkinternal.ComponentRegistrar { *; }
 -keep class androidx.camera.** { *; }
 -keep interface androidx.camera.** { *; }
+-dontwarn com.google.mlkit.**
 
 # ------------------------------------------------------------------------------
 # 7. Kotlin Coroutines & DataStore
