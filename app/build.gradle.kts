@@ -161,6 +161,6 @@ sentry {
 
   // Enable size analysis in sentry
   sizeAnalysis {
-    enabled = providers.environmentVariable("GITHUB_ACTIONS").isPresent
+    enabled = providers.environmentVariable("SENTRY_AUTH_TOKEN").isPresent
   }
 }
