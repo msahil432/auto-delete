@@ -158,4 +158,9 @@ sentry {
 
   // Recommended: don't let the plugin phone home telemetry about your build.
   telemetry = false
+
+  // Enable size analysis in sentry
+  sizeAnalysis {
+    enabled = providers.environmentVariable("SENTRY_AUTH_TOKEN").isPresent
+  }
 }

@@ -121,6 +121,10 @@
         <meta-data android:name="io.sentry.traces.sample-rate" android:value="1.0" />
         <!-- enable Sentry Logs -->
         <meta-data android:name="io.sentry.logs.enabled" android:value="true" />
+
+        <!-- Enable UI profiling, adjust in production env. This is evaluated only once per session -->
+        <meta-data android:name="io.sentry.traces.profiling.session-sample-rate" android:value="1.0" />
+        <meta-data android:name="io.sentry.traces.profiling.lifecycle" android:value="trace" />
     </application>
 
 </manifest>
