@@ -21,16 +21,12 @@
 }
 
 # ------------------------------------------------------------------------------
-# 3. Room Database, DAOs & TypeConverters
+# 3. Room Database & TypeConverters
+# Room generates its own surgical keep rules for entities and DAOs.
 # ------------------------------------------------------------------------------
 -keepclassmembers class * extends androidx.room.RoomDatabase {
     public void <init>();
 }
--keep class * extends androidx.room.RoomDatabase { *; }
--keep class com.msahil432.multitool.data.** { *; }
--keep class * extends androidx.room.RoomDatabase
--keep @androidx.room.Entity class * { *; }
--keep @androidx.room.Dao class * { *; }
 -keepclassmembers class * {
     @androidx.room.TypeConverter *;
 }
@@ -49,51 +45,21 @@
 }
 
 # ------------------------------------------------------------------------------
-# 5. Play Services & Location Geofencing
+# 5. Kotlin Coroutines & DataStore
+# Libraries (kotlinx-coroutines-core) bundle their own keep rules.
 # ------------------------------------------------------------------------------
--keep class com.google.android.gms.location.** { *; }
--keep interface com.google.android.gms.location.** { *; }
--keep class com.google.android.gms.common.** { *; }
--keep interface com.google.android.gms.common.** { *; }
--keep class com.google.android.gms.tasks.** { *; }
--keep interface com.google.android.gms.tasks.** { *; }
-
-# ------------------------------------------------------------------------------
-# 6. MLKit Barcode Scanning & CameraX
-# ------------------------------------------------------------------------------
--keep class com.google.mlkit.** { *; }
--keep interface com.google.mlkit.** { *; }
--keep class com.google.android.gms.internal.mlkit.** { *; }
--keep class com.google.android.gms.internal.mlkit_vision_** { *; }
--keep class * implements com.google.firebase.components.ComponentRegistrar { *; }
--keep class * implements com.google.mlkit.common.sdkinternal.ComponentRegistrar { *; }
--keep class androidx.camera.** { *; }
--keep interface androidx.camera.** { *; }
--dontwarn com.google.mlkit.**
-
-# ------------------------------------------------------------------------------
-# 7. Kotlin Coroutines & DataStore
-# ------------------------------------------------------------------------------
--keepnames class kotlinx.coroutines.internal.MainDispatcherFactory { *; }
--keepnames class kotlinx.coroutines.CoroutineExceptionHandler { *; }
 -keepclassmembers class * extends androidx.datastore.preferences.core.Preferences { *; }
 
 # ------------------------------------------------------------------------------
-# 8. WorkManager
+# 6. WorkManager
 # ------------------------------------------------------------------------------
 -keep class * extends androidx.work.ListenableWorker {
     public <init>(android.content.Context, androidx.work.WorkerParameters);
 }
 
 # ------------------------------------------------------------------------------
-# 9. Sentry Crash Reporting & Performance Tracing
-# Keep Sentry SDK classes so R8 never strips the crash reporter itself.
-# Without these, Sentry may be silently removed from release builds.
+# 7. Sentry & Third Party Library Warnings
+# Sentry bundles consumer rules. This section only suppresses warnings.
 # ------------------------------------------------------------------------------
--keepattributes LineNumberTable,SourceFile
--keep class io.sentry.** { *; }
--keep interface io.sentry.** { *; }
 -dontwarn org.slf4j.**
 -dontwarn io.sentry.**
-
-
