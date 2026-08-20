@@ -54,7 +54,10 @@ class MultiToolApp : Application() {
 
                 // Session Replay (optional) — small free quota, useful at low volume
                 options.sessionReplay.onErrorSampleRate = 1.0
-                options.sessionReplay.sessionSampleRate = 0.1
+                options.sessionReplay.sessionSampleRate = 0.5
+
+                // This will reduce screenshot compression to 10 and bitrate to 50kbps
+                options.sessionReplay.quality = SentryReplayQuality.LOW // defaults to MEDIUM
 
                 // Only enable debug logging locally, never in release
                 options.isDebug = BuildConfig.DEBUG
