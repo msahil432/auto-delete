@@ -36,7 +36,7 @@ class ScreenUnlockReceiverTest {
             .allowMainThreadQueries()
             .build()
         dao = db.usageDao()
-        repository = UsageRepository(dao)
+        repository = UsageRepository(dao) { 1724150000000L } // Fixed timestamp
     }
 
     @After

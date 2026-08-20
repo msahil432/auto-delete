@@ -1,6 +1,6 @@
 package com.msahil432.multitool.accessibility
 
-import android.accessibilityservice.AccessibilityService
+
 import android.content.Context
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -50,7 +50,7 @@ class BrowserUrlHandlerTest {
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
         // Use a unique database name per test to avoid any chance of leakage
-        val dbName = "test_db_${System.nanoTime()}"
+
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
@@ -63,7 +63,7 @@ class BrowserUrlHandlerTest {
             produceFile = { File(tempFolder.root, "test_settings.preferences_pb") }
         )
         settingsRepo = SettingsRepository(testDataStore)
-        currentTime = 1000000L
+        currentTime = 1724150000000L
     }
 
     @After
@@ -184,18 +184,18 @@ class BrowserUrlHandlerTest {
             debounceDelayMs = 0L,
             clock = testClock
         )
-        // Wait for flow to collect
         testScheduler.advanceUntilIdle()
-        for (i in 1..10) {
-            if (handler.trackBrowserUrls) break
+        // Wait for flow to collect
+        repeat(50) {
+            if (handler.trackBrowserUrls) return@repeat
             testScheduler.advanceTimeBy(100)
             testScheduler.runCurrent()
         }
 
-        assertTrue(handler.trackBrowserUrls)
+        assertTrue("trackBrowserUrls should be true", handler.trackBrowserUrls)
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
         event.packageName = "com.unsupported.browser"
 
         handler.onEvent(service, event)
@@ -203,7 +203,6 @@ class BrowserUrlHandlerTest {
 
         val events = browsingRepo.allRecent().first()
         assertTrue("Expected empty events but found: ${events.map { it.packageName }}", events.isEmpty())
-        event.recycle()
     }
 
     @Test

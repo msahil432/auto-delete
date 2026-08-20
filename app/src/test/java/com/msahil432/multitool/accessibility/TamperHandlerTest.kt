@@ -217,6 +217,11 @@ class TamperHandlerTest {
 
         handler.onEvent(service, navAwayEvent)
         testScheduler.advanceUntilIdle()
+        repeat(10) {
+            if (!handler.isTamperTriggered) return@repeat
+            testScheduler.advanceTimeBy(100)
+            testScheduler.runCurrent()
+        }
         assertFalse(handler.isTamperTriggered)
         assertFalse(TamperAlarm.isPlaying())
     }

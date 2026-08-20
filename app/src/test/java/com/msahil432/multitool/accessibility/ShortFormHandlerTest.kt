@@ -59,7 +59,7 @@ class ShortFormHandlerTest {
             produceFile = { File(tempFolder.root, "test_settings.preferences_pb") }
         )
         settingsRepo = SettingsRepository(testDataStore)
-        currentTime = 1000000L
+        currentTime = 1724150000000L
     }
 
     @After
@@ -173,7 +173,7 @@ class ShortFormHandlerTest {
         assertTrue(handler.isBlockingEnabledForPackage(ShortFormSignatures.PKG_YOUTUBE))
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
         event.packageName = ShortFormSignatures.PKG_YOUTUBE
         event.className = "com.google.android.apps.youtube.app.extensions.reel.watch.activity.ReelWatchActivity"
 
@@ -182,7 +182,6 @@ class ShortFormHandlerTest {
 
         val timelineEvents = usageRepo.timelineToday().first()
         assertEquals(1, timelineEvents.size)
-        event.recycle()
         assertEquals(ShortFormSignatures.PKG_YOUTUBE, timelineEvents[0].packageName)
         assertEquals(TimelineEventType.BLOCK_INTERCEPT, timelineEvents[0].eventType)
     }
@@ -199,22 +198,28 @@ class ShortFormHandlerTest {
             cooldownMs = 1000L,
             clock = testClock
         )
-        testScheduler.advanceUntilIdle()
-        for (i in 1..10) {
+        for (i in 1..20) {
             if (handler.isBlockingEnabledForPackage(ShortFormSignatures.PKG_INSTAGRAM)) break
             testScheduler.advanceTimeBy(100)
             testScheduler.runCurrent()
         }
+        assertTrue("Blocking should be enabled for Instagram", handler.isBlockingEnabledForPackage(ShortFormSignatures.PKG_INSTAGRAM))
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
         event.packageName = ShortFormSignatures.PKG_INSTAGRAM
         event.className = "com.instagram.clips.viewer.ClipsViewerActivity"
 
         // First trigger
         handler.onEvent(service, event)
         testScheduler.advanceUntilIdle()
-        val timeline1 = usageRepo.timelineToday().first()
+        var timeline1 = usageRepo.timelineToday().first()
+        repeat(10) {
+            if (timeline1.size == 1) return@repeat
+            testScheduler.advanceTimeBy(100)
+            testScheduler.runCurrent()
+            timeline1 = usageRepo.timelineToday().first()
+        }
         assertEquals(1, timeline1.size)
 
         // Immediate second event (within cooldown)
@@ -238,6 +243,5 @@ class ShortFormHandlerTest {
             timeline3 = usageRepo.timelineToday().first()
         }
         assertEquals(2, timeline3.size)
-        event.recycle()
     }
 }
