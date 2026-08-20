@@ -28,7 +28,7 @@ import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
+@Config(sdk = [35])
 class TamperHandlerTest {
 
     @get:Rule
@@ -90,6 +90,11 @@ class TamperHandlerTest {
             overlayManager = BlockOverlayManager
         )
         testScheduler.advanceUntilIdle()
+        for (i in 1..10) {
+            if (handler.isStrictModeActive && handler.isTamperAlarmEnabled) break
+            testScheduler.advanceTimeBy(100)
+            testScheduler.runCurrent()
+        }
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
         val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
@@ -119,6 +124,11 @@ class TamperHandlerTest {
             overlayManager = BlockOverlayManager
         )
         testScheduler.advanceUntilIdle()
+        for (i in 1..10) {
+            if (handler.isStrictModeActive && handler.isTamperAlarmEnabled) break
+            testScheduler.advanceTimeBy(100)
+            testScheduler.runCurrent()
+        }
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
         val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
@@ -148,6 +158,11 @@ class TamperHandlerTest {
             overlayManager = BlockOverlayManager
         )
         testScheduler.advanceUntilIdle()
+        for (i in 1..10) {
+            if (handler.isStrictModeActive && handler.isTamperAlarmEnabled) break
+            testScheduler.advanceTimeBy(100)
+            testScheduler.runCurrent()
+        }
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
         val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
@@ -177,6 +192,11 @@ class TamperHandlerTest {
             overlayManager = BlockOverlayManager
         )
         testScheduler.advanceUntilIdle()
+        for (i in 1..10) {
+            if (handler.isStrictModeActive && handler.isTamperAlarmEnabled) break
+            testScheduler.advanceTimeBy(100)
+            testScheduler.runCurrent()
+        }
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
 
@@ -197,6 +217,11 @@ class TamperHandlerTest {
 
         handler.onEvent(service, navAwayEvent)
         testScheduler.advanceUntilIdle()
+        repeat(10) {
+            if (!handler.isTamperTriggered) return@repeat
+            testScheduler.advanceTimeBy(100)
+            testScheduler.runCurrent()
+        }
         assertFalse(handler.isTamperTriggered)
         assertFalse(TamperAlarm.isPlaying())
     }

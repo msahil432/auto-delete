@@ -126,7 +126,7 @@ class TamperHandler(
 
         // If it references this app, check if danger control or protected fragment class matches
         val hasDangerControl = TamperSignatures.containsDangerControl(rootNode)
-        return classMatches || hasDangerControl || true
+        return classMatches || hasDangerControl
     }
 
     private fun triggerTamperAlarm(svc: AccessibilityService) {

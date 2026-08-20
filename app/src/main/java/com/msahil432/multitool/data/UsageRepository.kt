@@ -1,15 +1,21 @@
 package com.msahil432.multitool.data
 
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
-class UsageRepository(private val dao: UsageDao) {
-  fun epochDayNow(): Long = LocalDate.now().toEpochDay()
+class UsageRepository(
+  private val dao: UsageDao,
+  private val clock: () -> Long = System::currentTimeMillis
+) {
+  fun epochDayNow(): Long =
+    Instant.ofEpochMilli(clock()).atZone(ZoneId.systemDefault()).toLocalDate().toEpochDay()
 
   fun startOfDayMillisNow(): Long =
-    LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    Instant.ofEpochMilli(clock()).atZone(ZoneId.systemDefault()).toLocalDate()
+      .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
   fun todayStats(): Flow<List<UsageDailyStat>> = dao.statsForDay(epochDayNow())
 
@@ -28,7 +34,7 @@ class UsageRepository(private val dao: UsageDao) {
 
   suspend fun recordForeground(pkg: String, addedMillis: Long) {
     val day = epochDayNow()
-    val now = System.currentTimeMillis()
+    val now = clock()
     val existing = dao.statFor(day, pkg)
     val updated = if (existing != null) {
       existing.copy(
@@ -49,7 +55,7 @@ class UsageRepository(private val dao: UsageDao) {
 
   suspend fun recordLaunch(pkg: String) {
     val day = epochDayNow()
-    val now = System.currentTimeMillis()
+    val now = clock()
     dao.insertLaunch(AppLaunchEvent(packageName = pkg, timestamp = now))
     val existing = dao.statFor(day, pkg)
     val updated = if (existing != null) {
@@ -70,13 +76,13 @@ class UsageRepository(private val dao: UsageDao) {
   }
 
   suspend fun recordUnlock(type: UnlockType) {
-    dao.insertUnlock(UnlockEvent(timestamp = System.currentTimeMillis(), type = type))
+    dao.insertUnlock(UnlockEvent(timestamp = clock(), type = type))
   }
 
   suspend fun recordTimeline(pkg: String, type: TimelineEventType, durationMillis: Long? = null) {
     dao.insertTimeline(
       TimelineEvent(
-        timestamp = System.currentTimeMillis(),
+        timestamp = clock(),
         packageName = pkg,
         eventType = type,
         durationMillis = durationMillis

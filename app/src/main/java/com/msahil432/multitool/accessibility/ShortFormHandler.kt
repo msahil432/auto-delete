@@ -44,7 +44,7 @@ class ShortFormHandler(
         private set
 
     @Volatile
-    private var lastActionTime: Long = 0L
+    private var lastActionTime: Long = -10000L
 
     init {
         coroutineScope.launch {
@@ -74,7 +74,7 @@ class ShortFormHandler(
 
         if (isShortFormFeed(svc, pkg, e)) {
             val now = clock()
-            if (now - lastActionTime < cooldownMs) {
+            if (lastActionTime != -10000L && now - lastActionTime < cooldownMs) {
                 return
             }
             lastActionTime = now

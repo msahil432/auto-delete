@@ -58,9 +58,7 @@ class BrowserUrlHandler(
     override fun onEvent(svc: AccessibilityService, e: AccessibilityEvent) {
         if (!trackBrowserUrls) return
 
-        val pkg = e.packageName?.toString()
-            ?: try { svc.rootInActiveWindow?.packageName?.toString() } catch (_: Exception) { null }
-            ?: return
+        val pkg = e.packageName?.toString() ?: return
 
         if (!BrowserSignatures.isSupportedBrowser(pkg)) return
 
@@ -82,9 +80,6 @@ class BrowserUrlHandler(
             if (lastRecordedEntry[pkg] == parsed) {
                 return
             }
-
-            // Cancel any pending debounce job for this browser package
-            debounceJobs[pkg]?.cancel()
 
             // Schedule recording after debounce period
             val job = coroutineScope.launch {

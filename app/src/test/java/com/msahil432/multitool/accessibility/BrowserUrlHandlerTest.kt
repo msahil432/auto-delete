@@ -1,6 +1,6 @@
 package com.msahil432.multitool.accessibility
 
-import android.accessibilityservice.AccessibilityService
+
 import android.content.Context
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -43,19 +43,27 @@ class BrowserUrlHandlerTest {
     private lateinit var db: AppDatabase
     private lateinit var browsingRepo: BrowsingRepository
     private lateinit var settingsRepo: SettingsRepository
+    private var currentTime = 1724150000000L
+    private val testClock = { currentTime }
 
     @Before
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
+        // Use a unique database name per test to avoid any chance of leakage
+
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        browsingRepo = BrowsingRepository(db.browsingDao())
+        
+        Dispatcher.handlers.clear()
+        
+        browsingRepo = BrowsingRepository(db.browsingDao(), clock = testClock)
 
         val testDataStore = PreferenceDataStoreFactory.create(
             produceFile = { File(tempFolder.root, "test_settings.preferences_pb") }
         )
         settingsRepo = SettingsRepository(testDataStore)
+        currentTime = 1724150000000L
     }
 
     @After
@@ -173,11 +181,18 @@ class BrowserUrlHandlerTest {
             settingsRepository = settingsRepo,
             browsingRepository = browsingRepo,
             coroutineScope = backgroundScope,
-            debounceDelayMs = 0L
+            debounceDelayMs = 0L,
+            clock = testClock
         )
         testScheduler.advanceUntilIdle()
+        // Wait for flow to collect
+        repeat(50) {
+            if (handler.trackBrowserUrls) return@repeat
+            testScheduler.advanceTimeBy(100)
+            testScheduler.runCurrent()
+        }
 
-        assertTrue(handler.trackBrowserUrls)
+        assertTrue("trackBrowserUrls should be true", handler.trackBrowserUrls)
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
         val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
@@ -187,7 +202,7 @@ class BrowserUrlHandlerTest {
         testScheduler.advanceUntilIdle()
 
         val events = browsingRepo.allRecent().first()
-        assertTrue(events.isEmpty())
+        assertTrue("Expected empty events but found: ${events.map { it.packageName }}", events.isEmpty())
     }
 
     @Test

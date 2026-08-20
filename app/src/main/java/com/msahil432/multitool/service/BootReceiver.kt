@@ -34,7 +34,7 @@ class BootReceiver : BroadcastReceiver() {
                         geofenceManager.reRegisterAll(geofenceRepo)
                     } catch (_: Exception) {
                     } finally {
-                        pendingResult.finish()
+                        pendingResult?.finish()
                     }
                 }
             }
