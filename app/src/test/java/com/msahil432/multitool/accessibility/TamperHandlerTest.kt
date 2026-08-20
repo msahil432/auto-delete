@@ -158,11 +158,14 @@ class TamperHandlerTest {
             overlayManager = BlockOverlayManager
         )
         testScheduler.advanceUntilIdle()
-        for (i in 1..10) {
+        for (i in 1..20) {
             if (handler.isStrictModeActive && handler.isTamperAlarmEnabled) break
             testScheduler.advanceTimeBy(100)
             testScheduler.runCurrent()
         }
+        
+        assertTrue("Handler should have isStrictModeActive=true", handler.isStrictModeActive)
+        assertTrue("Handler should have isTamperAlarmEnabled=true", handler.isTamperAlarmEnabled)
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
         val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
@@ -173,8 +176,8 @@ class TamperHandlerTest {
         handler.onEvent(service, event)
         testScheduler.advanceUntilIdle()
 
-        assertTrue(handler.isTamperTriggered)
-        assertTrue(TamperAlarm.isPlaying())
+        assertTrue("Tamper triggered flag should be true", handler.isTamperTriggered)
+        assertTrue("Tamper alarm should be playing", TamperAlarm.isPlaying())
     }
 
     @Test
