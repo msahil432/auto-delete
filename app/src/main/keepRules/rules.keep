@@ -3,16 +3,13 @@
 # Target: AGP 9.3+ Source Set (src/main/keepRules/rules.keep)
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# 1. Stack Trace & Line Number Preservation (for crash deobfuscation)
-# ------------------------------------------------------------------------------
+# 1. Stack Trace & Line Number Preservation (for deobfuscation)
+# Standard for deobfuscating crash reports in Sentry/Play Console.
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
 
-# ------------------------------------------------------------------------------
 # 2. Strip Logging in Release Builds
-# Prevents sensitive internal paths, package names, and metadata from leaking in logcat
-# ------------------------------------------------------------------------------
+# Enables R8 to remove calls to Log.v/d/i for better shrinking and obfuscation.
 -assumenosideeffects class android.util.Log {
     public static boolean isLoggable(java.lang.String, int);
     public static int v(...);
@@ -20,46 +17,7 @@
     public static int i(...);
 }
 
-# ------------------------------------------------------------------------------
-# 3. Room Database & TypeConverters
-# Room generates its own surgical keep rules for entities and DAOs.
-# ------------------------------------------------------------------------------
--keepclassmembers class * extends androidx.room.RoomDatabase {
-    public void <init>();
-}
--keepclassmembers class * {
-    @androidx.room.TypeConverter *;
-}
--dontwarn androidx.room.paging.**
-
-# ------------------------------------------------------------------------------
-# 4. Moshi & JSON Serialization
-# ------------------------------------------------------------------------------
--keepclasseswithmembers class * {
-    @com.squareup.moshi.Json <fields>;
-}
--keep @com.squareup.moshi.JsonClass class * { *; }
--keep class *JsonAdapter {
-    public <init>(com.squareup.moshi.Moshi);
-    public <init>(com.squareup.moshi.Moshi, java.lang.reflect.Type[]);
-}
-
-# ------------------------------------------------------------------------------
-# 5. Kotlin Coroutines & DataStore
-# Libraries (kotlinx-coroutines-core) bundle their own keep rules.
-# ------------------------------------------------------------------------------
--keepclassmembers class * extends androidx.datastore.preferences.core.Preferences { *; }
-
-# ------------------------------------------------------------------------------
-# 6. WorkManager
-# ------------------------------------------------------------------------------
--keep class * extends androidx.work.ListenableWorker {
-    public <init>(android.content.Context, androidx.work.WorkerParameters);
-}
-
-# ------------------------------------------------------------------------------
-# 7. Sentry & Third Party Library Warnings
-# Sentry bundles consumer rules. This section only suppresses warnings.
-# ------------------------------------------------------------------------------
+# 3. Third Party Library Warning Suppression
+# Suppresses warnings from dependencies that might reference missing classes.
 -dontwarn org.slf4j.**
 -dontwarn io.sentry.**
