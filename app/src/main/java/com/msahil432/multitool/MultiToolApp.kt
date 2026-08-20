@@ -8,6 +8,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import com.msahil432.multitool.data.AppDatabase
 import com.msahil432.multitool.tracking.UsageCollectorWorker
+import io.sentry.SentryReplayOptions.SentryReplayQuality
 import io.sentry.android.core.SentryAndroid
 import io.sentry.android.core.SentryAndroidOptions
 
