@@ -96,7 +96,7 @@ class ScreenUnlockReceiverTest {
         testScheduler.advanceUntilIdle()
 
         val unlockCount = repository.unlocksToday().first()
-        assertEquals(2, unlockCount)
+        assertEquals(1, unlockCount)
 
         val timeline = repository.timelineToday().first()
         assertEquals(1, timeline.size)

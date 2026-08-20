@@ -2,7 +2,10 @@ package com.msahil432.multitool.data
 
 import kotlinx.coroutines.flow.Flow
 
-class BlockingRepository(private val dao: BlockingDao) {
+class BlockingRepository(
+  private val dao: BlockingDao,
+  private val clock: () -> Long = System::currentTimeMillis
+) {
   fun groups(): Flow<List<BlockGroup>> = dao.getAllGroups()
 
   fun rulesFor(groupId: Long): Flow<List<BlockRule>> = dao.getRulesForGroup(groupId)
@@ -65,7 +68,7 @@ class BlockingRepository(private val dao: BlockingDao) {
   suspend fun logInterception(packageName: String, ruleId: Long, ruleType: BlockRuleType): Long {
     return dao.insertInterception(
       BlockInterception(
-        timestamp = System.currentTimeMillis(),
+        timestamp = clock(),
         packageName = packageName,
         ruleId = ruleId,
         ruleType = ruleType

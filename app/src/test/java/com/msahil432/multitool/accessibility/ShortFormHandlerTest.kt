@@ -41,6 +41,8 @@ class ShortFormHandlerTest {
     private lateinit var blockingRepo: BlockingRepository
     private lateinit var usageRepo: UsageRepository
     private lateinit var settingsRepo: SettingsRepository
+    private var currentTime = 1724150000000L
+    private val testClock = { currentTime }
 
     @Before
     fun setup() {
@@ -48,13 +50,16 @@ class ShortFormHandlerTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        blockingRepo = BlockingRepository(db.blockingDao())
-        usageRepo = UsageRepository(db.usageDao())
+        db.clearAllTables()
+        
+        blockingRepo = BlockingRepository(db.blockingDao(), clock = testClock)
+        usageRepo = UsageRepository(db.usageDao(), clock = testClock)
 
         val testDataStore = PreferenceDataStoreFactory.create(
             produceFile = { File(tempFolder.root, "test_settings.preferences_pb") }
         )
         settingsRepo = SettingsRepository(testDataStore)
+        currentTime = 1000000L
     }
 
     @After
@@ -155,14 +160,20 @@ class ShortFormHandlerTest {
             settingsRepository = settingsRepo,
             blockingRepository = blockingRepo,
             usageRepository = usageRepo,
-            coroutineScope = backgroundScope
+            coroutineScope = backgroundScope,
+            clock = testClock
         )
         testScheduler.advanceUntilIdle()
+        for (i in 1..10) {
+            if (handler.isBlockingEnabledForPackage(ShortFormSignatures.PKG_YOUTUBE)) break
+            testScheduler.advanceTimeBy(100)
+            testScheduler.runCurrent()
+        }
 
         assertTrue(handler.isBlockingEnabledForPackage(ShortFormSignatures.PKG_YOUTUBE))
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
-        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
         event.packageName = ShortFormSignatures.PKG_YOUTUBE
         event.className = "com.google.android.apps.youtube.app.extensions.reel.watch.activity.ReelWatchActivity"
 
@@ -171,6 +182,7 @@ class ShortFormHandlerTest {
 
         val timelineEvents = usageRepo.timelineToday().first()
         assertEquals(1, timelineEvents.size)
+        event.recycle()
         assertEquals(ShortFormSignatures.PKG_YOUTUBE, timelineEvents[0].packageName)
         assertEquals(TimelineEventType.BLOCK_INTERCEPT, timelineEvents[0].eventType)
     }
@@ -179,19 +191,23 @@ class ShortFormHandlerTest {
     fun testCooldownPreventsRapidActionSpam() = runTest {
         settingsRepo.setBlockIgReels(true)
 
-        var currentTime = 1000L
         val handler = ShortFormHandler(
             settingsRepository = settingsRepo,
             blockingRepository = blockingRepo,
             usageRepository = usageRepo,
             coroutineScope = backgroundScope,
             cooldownMs = 1000L,
-            clock = { currentTime }
+            clock = testClock
         )
         testScheduler.advanceUntilIdle()
+        for (i in 1..10) {
+            if (handler.isBlockingEnabledForPackage(ShortFormSignatures.PKG_INSTAGRAM)) break
+            testScheduler.advanceTimeBy(100)
+            testScheduler.runCurrent()
+        }
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
-        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
         event.packageName = ShortFormSignatures.PKG_INSTAGRAM
         event.className = "com.instagram.clips.viewer.ClipsViewerActivity"
 
@@ -202,17 +218,26 @@ class ShortFormHandlerTest {
         assertEquals(1, timeline1.size)
 
         // Immediate second event (within cooldown)
-        currentTime = 1200L
+        currentTime = 1724150000200L
         handler.onEvent(service, event)
         testScheduler.advanceUntilIdle()
         val timeline2 = usageRepo.timelineToday().first()
         assertEquals(1, timeline2.size) // No new log
 
         // Third event after cooldown
-        currentTime = 2500L
+        currentTime = 1724150002500L
         handler.onEvent(service, event)
         testScheduler.advanceUntilIdle()
-        val timeline3 = usageRepo.timelineToday().first()
+        
+        // Wait for the flow to reflect the new state
+        var timeline3 = usageRepo.timelineToday().first()
+        for (i in 1..10) {
+            if (timeline3.size == 2) break
+            testScheduler.advanceTimeBy(100)
+            testScheduler.runCurrent()
+            timeline3 = usageRepo.timelineToday().first()
+        }
         assertEquals(2, timeline3.size)
+        event.recycle()
     }
 }
