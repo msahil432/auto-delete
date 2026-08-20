@@ -90,11 +90,15 @@ class TamperHandlerTest {
             overlayManager = BlockOverlayManager
         )
         testScheduler.advanceUntilIdle()
-        for (i in 1..10) {
-            if (handler.isStrictModeActive && handler.isTamperAlarmEnabled) break
+        for (i in 1..20) {
+            // We expect isTamperAlarmEnabled to be true, but isStrictModeActive to be false
+            if (!handler.isStrictModeActive && handler.isTamperAlarmEnabled) break
             testScheduler.advanceTimeBy(100)
             testScheduler.runCurrent()
         }
+        
+        assertFalse("Handler should have isStrictModeActive=false", handler.isStrictModeActive)
+        assertTrue("Handler should have isTamperAlarmEnabled=true", handler.isTamperAlarmEnabled)
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
         val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
@@ -124,11 +128,15 @@ class TamperHandlerTest {
             overlayManager = BlockOverlayManager
         )
         testScheduler.advanceUntilIdle()
-        for (i in 1..10) {
-            if (handler.isStrictModeActive && handler.isTamperAlarmEnabled) break
+        for (i in 1..20) {
+            // We expect isTamperAlarmEnabled to be false, but isStrictModeActive to be true
+            if (handler.isStrictModeActive && !handler.isTamperAlarmEnabled) break
             testScheduler.advanceTimeBy(100)
             testScheduler.runCurrent()
         }
+        
+        assertTrue("Handler should have isStrictModeActive=true", handler.isStrictModeActive)
+        assertFalse("Handler should have isTamperAlarmEnabled=false", handler.isTamperAlarmEnabled)
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
         val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
@@ -161,7 +169,7 @@ class TamperHandlerTest {
         for (i in 1..20) {
             if (handler.isStrictModeActive && handler.isTamperAlarmEnabled) break
             testScheduler.advanceTimeBy(100)
-            testScheduler.runCurrent()
+            testScheduler.advanceUntilIdle()
         }
         
         assertTrue("Handler should have isStrictModeActive=true", handler.isStrictModeActive)
@@ -195,11 +203,14 @@ class TamperHandlerTest {
             overlayManager = BlockOverlayManager
         )
         testScheduler.advanceUntilIdle()
-        for (i in 1..10) {
+        for (i in 1..20) {
             if (handler.isStrictModeActive && handler.isTamperAlarmEnabled) break
             testScheduler.advanceTimeBy(100)
-            testScheduler.runCurrent()
+            testScheduler.advanceUntilIdle()
         }
+        
+        assertTrue("Handler should have isStrictModeActive=true", handler.isStrictModeActive)
+        assertTrue("Handler should have isTamperAlarmEnabled=true", handler.isTamperAlarmEnabled)
 
         val service = Robolectric.buildService(MultiToolAccessibilityService::class.java).create().get()
 
@@ -211,8 +222,8 @@ class TamperHandlerTest {
 
         handler.onEvent(service, tamperEvent)
         testScheduler.advanceUntilIdle()
-        assertTrue(handler.isTamperTriggered)
-        assertTrue(TamperAlarm.isPlaying())
+        assertTrue("Tamper triggered flag should be true after tamper event", handler.isTamperTriggered)
+        assertTrue("Tamper alarm should be playing after tamper event", TamperAlarm.isPlaying())
 
         // 2. User navigates away to Launcher or another app
         val navAwayEvent = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
@@ -220,12 +231,12 @@ class TamperHandlerTest {
 
         handler.onEvent(service, navAwayEvent)
         testScheduler.advanceUntilIdle()
-        repeat(10) {
-            if (!handler.isTamperTriggered) return@repeat
+        for (i in 1..20) {
+            if (!handler.isTamperTriggered) break
             testScheduler.advanceTimeBy(100)
-            testScheduler.runCurrent()
+            testScheduler.advanceUntilIdle()
         }
-        assertFalse(handler.isTamperTriggered)
-        assertFalse(TamperAlarm.isPlaying())
+        assertFalse("Tamper triggered flag should be false after navigating away", handler.isTamperTriggered)
+        assertFalse("Tamper alarm should be stopped after navigating away", TamperAlarm.isPlaying())
     }
 }
