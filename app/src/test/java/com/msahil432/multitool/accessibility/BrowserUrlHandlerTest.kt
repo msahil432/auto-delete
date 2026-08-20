@@ -215,7 +215,7 @@ class BrowserUrlHandlerTest {
             val events = browsingRepo.allRecent().first()
             assertTrue("Expected empty events but found: ${events.map { it.packageName }}", events.isEmpty())
         } catch (e: AssertionError) {
-            println("::warning file=app/src/test/java/com/msahil432/multitool/accessibility/BrowserUrlHandlerTest.kt,line=177::BrowserUrlHandlerTest.testHandlerIgnoresUnsupportedBrowser failed intermittently (suppressed as non-fatal warning): ${e.message}")
+            println("::warning file=app/src/test/java/com/msahil432/multitool/accessibility/BrowserUrlHandlerTest.kt,line=183::BrowserUrlHandlerTest.testHandlerIgnoresUnsupportedBrowser failed intermittently (suppressed as non-fatal warning): ${e.message}")
             Assume.assumeNoException("Flaky test suppressed as non-fatal warning", e)
         }
     }
