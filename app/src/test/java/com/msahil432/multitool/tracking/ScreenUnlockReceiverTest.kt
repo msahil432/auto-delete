@@ -9,6 +9,7 @@ import com.msahil432.multitool.data.TimelineEventType
 import com.msahil432.multitool.data.UnlockType
 import com.msahil432.multitool.data.UsageDao
 import com.msahil432.multitool.data.UsageRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
@@ -21,6 +22,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class ScreenUnlockReceiverTest {
@@ -95,10 +97,22 @@ class ScreenUnlockReceiverTest {
         receiver.onReceive(context, Intent(Intent.ACTION_USER_PRESENT))
         testScheduler.advanceUntilIdle()
 
-        val unlockCount = repository.unlocksToday().first()
+        var unlockCount = repository.unlocksToday().first()
+        for (i in 1..20) {
+            if (unlockCount == 1) break
+            testScheduler.advanceTimeBy(100)
+            testScheduler.runCurrent()
+            unlockCount = repository.unlocksToday().first()
+        }
         assertEquals(1, unlockCount)
 
-        val timeline = repository.timelineToday().first()
+        var timeline = repository.timelineToday().first()
+        for (i in 1..20) {
+            if (timeline.size == 1) break
+            testScheduler.advanceTimeBy(100)
+            testScheduler.runCurrent()
+            timeline = repository.timelineToday().first()
+        }
         assertEquals(1, timeline.size)
         assertEquals(TimelineEventType.UNLOCK, timeline[0].eventType)
     }

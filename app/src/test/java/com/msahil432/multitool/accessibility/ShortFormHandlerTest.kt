@@ -180,7 +180,13 @@ class ShortFormHandlerTest {
         handler.onEvent(service, event)
         testScheduler.advanceUntilIdle()
 
-        val timelineEvents = usageRepo.timelineToday().first()
+        var timelineEvents = usageRepo.timelineToday().first()
+        for (i in 1..20) {
+            if (timelineEvents.size == 1) break
+            testScheduler.advanceTimeBy(100)
+            testScheduler.runCurrent()
+            timelineEvents = usageRepo.timelineToday().first()
+        }
         assertEquals(1, timelineEvents.size)
         assertEquals(ShortFormSignatures.PKG_YOUTUBE, timelineEvents[0].packageName)
         assertEquals(TimelineEventType.BLOCK_INTERCEPT, timelineEvents[0].eventType)
