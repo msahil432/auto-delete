@@ -51,7 +51,6 @@ jobs:
 
       # ── 4. Lint and Unit Tests ─────────────────────────────────────────────
       - name: Run Lint and Unit Tests
-        continue-on-error: true
         run: ./gradlew testDebugUnitTest lintDebug
 
       # ── 5. Assemble Debug APK ──────────────────────────────────────────────
