@@ -115,7 +115,7 @@ fun UsageHomeScreen(
           Icons.Default.History to "Chronological activity timeline"
         ),
         ctaLabel = "Activate Usage Stats",
-        onActivate = { onActivateModule?.invoke() ?: showUsageDisclosure.let { true } },
+        onActivate = { onActivateModule?.invoke() ?: run { showUsageDisclosure = true } },
         modifier = Modifier.padding(combinedPadding)
       )
     } else {
