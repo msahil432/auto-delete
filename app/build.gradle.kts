@@ -6,28 +6,24 @@ plugins {
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
-  id("io.sentry.android.gradle") version "6.19.0"
+  alias(libs.plugins.sentry.android.gradle)
 }
 
-val sentryDsn: String = run {
-  val envDsn = System.getenv("SENTRY_DSN")
-  if (!envDsn.isNullOrBlank()) return@run envDsn
-
-  val propDsn = (project.findProperty("sentry.dsn") as? String)
-    ?: (project.findProperty("SENTRY_DSN") as? String)
-  if (!propDsn.isNullOrBlank()) return@run propDsn
-
-  val localPropertiesFile = rootProject.file("local.properties")
-  if (localPropertiesFile.exists()) {
-    val props = Properties()
-    localPropertiesFile.inputStream().use { stream ->
-      props.load(stream)
+val sentryDsn = providers.environmentVariable("SENTRY_DSN")
+  .orElse(providers.gradleProperty("sentry.dsn"))
+  .orElse(providers.gradleProperty("SENTRY_DSN"))
+  .getOrElse(
+    run {
+      val localPropertiesFile = rootProject.file("local.properties")
+      if (localPropertiesFile.exists()) {
+        val props = Properties()
+        localPropertiesFile.inputStream().use { props.load(it) }
+        props.getProperty("sentry.dsn") ?: props.getProperty("SENTRY_DSN") ?: ""
+      } else {
+        ""
+      }
     }
-    props.getProperty("sentry.dsn") ?: props.getProperty("SENTRY_DSN") ?: ""
-  } else {
-    ""
-  }
-}
+  )
 
 android {
   namespace = "com.msahil432.multitool"
@@ -37,12 +33,13 @@ android {
     applicationId = "com.msahil432.multitool"
     minSdk = 35
     targetSdk = 37
-    versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull()
-      ?: System.getenv("VERSION_CODE")?.toIntOrNull()
-      ?: 1
-    versionName = (project.findProperty("versionName") as? String)
-      ?: System.getenv("VERSION_NAME")
-      ?: "1.0"
+    versionCode = providers.gradleProperty("versionCode")
+      .orElse(providers.environmentVariable("VERSION_CODE"))
+      .map { it.toIntOrNull() }
+      .getOrNull() ?: 1
+    versionName = providers.gradleProperty("versionName")
+      .orElse(providers.environmentVariable("VERSION_NAME"))
+      .getOrElse("1.0")
 
     buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
     manifestPlaceholders["sentryDsn"] = sentryDsn
@@ -52,11 +49,12 @@ android {
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
+      val keystorePath = providers.environmentVariable("KEYSTORE_PATH")
+        .getOrElse("${rootDir}/my-upload-key.jks")
       storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = System.getenv("KEY_ALIAS")
-      keyPassword = System.getenv("KEY_PASSWORD")
+      storePassword = providers.environmentVariable("STORE_PASSWORD").getOrNull()
+      keyAlias = providers.environmentVariable("KEY_ALIAS").getOrNull()
+      keyPassword = providers.environmentVariable("KEY_PASSWORD").getOrNull()
     }
   }
 

@@ -100,7 +100,7 @@ object TamperSignatures {
 
         val text = node.text?.toString()
         val desc = node.contentDescription?.toString()
-        val viewId = node.viewIdResourceName?.toString()
+        val viewId = node.viewIdResourceName
 
         for (target in targets) {
             if (text?.contains(target, ignoreCase = true) == true) return true
