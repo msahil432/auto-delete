@@ -199,7 +199,7 @@ class TamperHandlerTest {
             assertTrue("Tamper triggered flag should be true", handler.isTamperTriggered)
             assertTrue("Tamper alarm should be playing", TamperAlarm.isPlaying())
         } catch (e: AssertionError) {
-            println("::warning file=app/src/test/java/com/msahil432/multitool/accessibility/TamperHandlerTest.kt,line=155::TamperHandlerTest.testAlarmTriggersWhenStrictAndTamperAlarmEnabled failed intermittently (suppressed as non-fatal warning): ${e.message}")
+            println("::warning file=app/src/test/java/com/msahil432/multitool/accessibility/TamperHandlerTest.kt,line=166::TamperHandlerTest.testAlarmTriggersWhenStrictAndTamperAlarmEnabled failed intermittently (suppressed as non-fatal warning): ${e.message}")
             Assume.assumeNoException("Flaky test suppressed as non-fatal warning", e)
         }
     }
@@ -256,7 +256,7 @@ class TamperHandlerTest {
             assertFalse("Tamper triggered flag should be false after navigating away", handler.isTamperTriggered)
             assertFalse("Tamper alarm should be stopped after navigating away", TamperAlarm.isPlaying())
         } catch (e: AssertionError) {
-            println("::warning file=app/src/test/java/com/msahil432/multitool/accessibility/TamperHandlerTest.kt,line=203::TamperHandlerTest.testNavigatingAwayStopsAlarm failed intermittently (suppressed as non-fatal warning): ${e.message}")
+            println("::warning file=app/src/test/java/com/msahil432/multitool/accessibility/TamperHandlerTest.kt,line=208::TamperHandlerTest.testNavigatingAwayStopsAlarm failed intermittently (suppressed as non-fatal warning): ${e.message}")
             Assume.assumeNoException("Flaky test suppressed as non-fatal warning", e)
         }
     }

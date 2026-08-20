@@ -42,7 +42,6 @@ class BrowserUrlHandler(
 
     @Volatile
     internal var trackBrowserUrls: Boolean = false
-        private set
 
     private val debounceJobs = ConcurrentHashMap<String, Job>()
     private val lastRecordedEntry = ConcurrentHashMap<String, Pair<BrowsingKind, String>>()

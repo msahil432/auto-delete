@@ -95,11 +95,29 @@ android {
     }
   }
 
-  testOptions { unitTests { isIncludeAndroidResources = true } }
+  testOptions {
+    unitTests {
+      isIncludeAndroidResources = true
+      all {
+        it.testLogging {
+          showStandardStreams = true
+          events("passed", "skipped", "failed", "standardOut", "standardError")
+        }
+      }
+    }
+  }
+
   lint {
     abortOnError = false
     checkReleaseBuilds = true
     fatal += setOf("HardcodedDebugMode", "ExportedReceiver", "ExportedService", "InsecureBaseConfiguration")
+  }
+}
+
+tasks.withType<Test>().configureEach {
+  testLogging {
+    showStandardStreams = true
+    events("passed", "skipped", "failed", "standardOut", "standardError")
   }
 }
 
