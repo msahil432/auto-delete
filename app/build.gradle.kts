@@ -145,10 +145,6 @@ dependencies {
 }
 
 sentry {
-  // Disables the dependencies report to avoid resolving configurations at configuration time.
-  // This fixes the "Configuration 'debugRuntimeClasspath' was resolved during configuration time" warning.
-  includeDependenciesReport = false
-
   // Uploads ProGuard/R8 mapping file automatically on release builds
   // so obfuscated stack traces get de-obfuscated in the Sentry dashboard.
   autoUploadProguardMapping = true
