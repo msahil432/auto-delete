@@ -91,7 +91,7 @@ fun ModuleActivationCard(
                 ) {
                     Icon(
                         imageVector = icon,
-                        contentDescription = null,
+                        contentDescription = "$title icon",
                         modifier = Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -143,7 +143,7 @@ fun ModuleActivationCard(
                             ) {
                                 Icon(
                                     imageVector = featureIcon,
-                                    contentDescription = null,
+                                    contentDescription = "$featureText icon",
                                     modifier = Modifier.size(17.dp),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
@@ -175,7 +175,7 @@ fun ModuleActivationCard(
                 ) {
                     Icon(
                         Icons.Default.Check,
-                        contentDescription = null,
+                        contentDescription = "Check icon",
                         modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.tertiary
                     )

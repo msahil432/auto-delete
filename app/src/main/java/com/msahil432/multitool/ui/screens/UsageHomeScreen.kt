@@ -276,7 +276,7 @@ fun UsageHomeScreenContent(
           ) {
             Icon(
               imageVector = Icons.Default.History,
-              contentDescription = null,
+              contentDescription = "View Timeline icon",
               modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))

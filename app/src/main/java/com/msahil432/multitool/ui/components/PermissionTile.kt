@@ -58,7 +58,7 @@ fun PermissionTile(
     ) {
       Icon(
         imageVector = if (granted) Icons.Default.Check else icon,
-        contentDescription = null,
+        contentDescription = if (granted) "$title granted" else "$title icon",
         tint = iconTint,
         modifier = Modifier.size(36.dp)
       )
@@ -98,7 +98,7 @@ fun PermissionTile(
           contentColor = MaterialTheme.colorScheme.tertiary
         )
       ) {
-        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+        Icon(Icons.Default.Check, contentDescription = "Permission granted icon", modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
         Text("Granted")
       }

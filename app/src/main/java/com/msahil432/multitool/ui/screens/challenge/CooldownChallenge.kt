@@ -83,7 +83,7 @@ fun CooldownChallenge(
             ) {
                 Icon(
                     Icons.Default.Timer,
-                    contentDescription = null,
+                    contentDescription = "Cooldown Challenge icon",
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
@@ -143,7 +143,7 @@ fun CooldownChallenge(
             ) {
                 Icon(
                     imageVector = if (isTimerComplete) Icons.Default.CheckCircle else Icons.Default.HourglassTop,
-                    contentDescription = null,
+                    contentDescription = if (isTimerComplete) "Cooldown complete icon" else "Cooldown timer active icon",
                     tint = if (isTimerComplete) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(48.dp)
                 )

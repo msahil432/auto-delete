@@ -471,7 +471,7 @@ private fun WelcomeStep(
         ) {
             Icon(
                 Icons.Default.Build,
-                contentDescription = null,
+                contentDescription = "Multi Tool icon",
                 modifier = Modifier.size(52.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -515,7 +515,7 @@ private fun WelcomeStep(
                 ) {
                     Icon(
                         module.icon,
-                        contentDescription = null,
+                        contentDescription = "${module.title} icon",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -703,7 +703,7 @@ private fun ModuleSelectionCard(
             ) {
                 Icon(
                     module.icon,
-                    contentDescription = null,
+                    contentDescription = "${module.title} icon",
                     tint = if (isSelected) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(22.dp)
@@ -898,7 +898,7 @@ private fun PermissionStep(
         ) {
             Icon(
                 permission.icon,
-                contentDescription = null,
+                contentDescription = "${permission.title} icon",
                 modifier = Modifier.size(44.dp),
                 tint = if (granted) MaterialTheme.colorScheme.tertiary
                        else if (permission.isRequired) MaterialTheme.colorScheme.error
@@ -953,7 +953,7 @@ private fun PermissionStep(
                     containerColor = MaterialTheme.colorScheme.tertiary
                 )
             ) {
-                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Check, contentDescription = "Continue icon", modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Continue", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             }
@@ -1002,7 +1002,7 @@ private fun PermissionStep(
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp)
             ) {
-                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Grant permission icon", modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Grant Permission", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             }
@@ -1037,7 +1037,7 @@ fun PermissionStatusChip(granted: Boolean) {
     ) {
         Icon(
             if (granted) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-            contentDescription = null,
+            contentDescription = if (granted) "Permission granted status" else "Permission not granted status",
             modifier = Modifier.size(16.dp),
             tint = if (granted) MaterialTheme.colorScheme.tertiary
                    else MaterialTheme.colorScheme.onSurfaceVariant
@@ -1075,7 +1075,7 @@ private fun DefaultConfigStep(onNext: (DeletionMode, String) -> Unit) {
         ) {
             Icon(
                 Icons.Default.Settings,
-                contentDescription = null,
+                contentDescription = "Default Setup icon",
                 modifier = Modifier.size(44.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -1197,7 +1197,7 @@ private fun AllSetStep(
         ) {
             Icon(
                 Icons.Default.CheckCircle,
-                contentDescription = null,
+                contentDescription = "Success icon",
                 modifier = Modifier.size(52.dp),
                 tint = MaterialTheme.colorScheme.tertiary
             )
@@ -1242,7 +1242,7 @@ private fun AllSetStep(
                     ) {
                         Icon(
                             if (granted) Icons.Default.CheckCircle else Icons.Default.Warning,
-                            contentDescription = null,
+                            contentDescription = if (granted) "${perm.title} granted icon" else "${perm.title} not granted icon",
                             tint = if (granted) MaterialTheme.colorScheme.tertiary
                                    else if (perm.isRequired) MaterialTheme.colorScheme.error
                                    else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1355,7 +1355,7 @@ fun PermissionCheckScreen(
                 ) {
                     Icon(
                         Icons.Default.CheckCircle,
-                        contentDescription = null,
+                        contentDescription = "All permissions granted icon",
                         tint = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.size(22.dp)
                     )
@@ -1378,7 +1378,7 @@ fun PermissionCheckScreen(
                 ) {
                     Icon(
                         Icons.Default.Warning,
-                        contentDescription = null,
+                        contentDescription = "Missing permissions warning icon",
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(22.dp)
                     )
@@ -1552,7 +1552,7 @@ private fun PermissionCard(
         ) {
             Icon(
                 permission.icon,
-                contentDescription = null,
+                contentDescription = "${permission.title} icon",
                 modifier = Modifier.size(24.dp),
                 tint = when {
                     granted -> MaterialTheme.colorScheme.tertiary
@@ -1607,7 +1607,7 @@ private fun PermissionCard(
                 else
                     ButtonDefaults.filledTonalButtonColors()
             ) {
-                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Grant in settings icon", modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Grant in Settings", fontWeight = FontWeight.Medium)
             }

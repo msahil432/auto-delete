@@ -1,6 +1,7 @@
 # Refactoring Plan: Accessibility — Replace `contentDescription = null`
 
-**Guideline violated:** §9 Accessibility — "All content descriptions must be meaningful for screen readers."
+**Guideline violated:** §9 Accessibility — "All content descriptions must be meaningful for screen readers."  
+**Status:** **Done ✓**
 
 ## Problem
 

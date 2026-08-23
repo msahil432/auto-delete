@@ -155,7 +155,7 @@ fun NotificationVaultContent(
                         onClick = onBack,
                         modifier = Modifier.semantics { contentDescription = "Navigate back" }
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Navigate back")
                     }
                 },
                 actions = {
@@ -164,7 +164,7 @@ fun NotificationVaultContent(
                             onClick = onClearAll,
                             modifier = Modifier.semantics { contentDescription = "Clear all notifications" }
                         ) {
-                            Icon(Icons.Default.DeleteSweep, contentDescription = null)
+                            Icon(Icons.Default.DeleteSweep, contentDescription = "Clear all notifications")
                         }
                     }
                 }
@@ -254,7 +254,7 @@ fun VaultedNotificationCard(
                 if (appIcon != null) {
                     Image(
                         bitmap = appIcon.asImageBitmap(),
-                        contentDescription = null,
+                        contentDescription = "$appLabel icon",
                         modifier = Modifier
                             .size(28.dp)
                             .clip(RoundedCornerShape(6.dp))
@@ -269,7 +269,7 @@ fun VaultedNotificationCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Android,
-                            contentDescription = null,
+                            contentDescription = "$appLabel icon",
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -321,7 +321,7 @@ fun VaultedNotificationCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = null,
+                        contentDescription = "Delete notification",
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )

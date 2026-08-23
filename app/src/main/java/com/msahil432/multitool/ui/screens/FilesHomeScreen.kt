@@ -284,7 +284,7 @@ fun AddFolderCard(
         Box(contentAlignment = Alignment.Center) {
           Icon(
             imageVector = Icons.Default.Add,
-            contentDescription = null,
+            contentDescription = "Add folder icon",
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.size(24.dp)
           )

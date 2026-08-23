@@ -86,7 +86,7 @@ fun PinChallenge(
             ) {
                 Icon(
                     Icons.Default.Password,
-                    contentDescription = null,
+                    contentDescription = "Master PIN Challenge icon",
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
@@ -122,7 +122,7 @@ fun PinChallenge(
                 ) {
                     Icon(
                         Icons.Default.Lock,
-                        contentDescription = null,
+                        contentDescription = "Lockout icon",
                         tint = MaterialTheme.colorScheme.error
                     )
                     Column {

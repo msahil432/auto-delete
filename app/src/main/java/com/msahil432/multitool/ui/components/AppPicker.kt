@@ -142,7 +142,7 @@ fun AppPicker(
           modifier = Modifier.fillMaxWidth(),
           placeholder = { Text("Search apps…") },
           leadingIcon = {
-            Icon(Icons.Default.Search, contentDescription = null)
+            Icon(Icons.Default.Search, contentDescription = "Search apps")
           },
           trailingIcon = {
             if (searchQuery.isNotEmpty()) {
@@ -242,7 +242,7 @@ fun AppPicker(
                     if (app.icon != null) {
                       Image(
                         bitmap = app.icon.asImageBitmap(),
-                        contentDescription = null,
+                        contentDescription = "${app.label} icon",
                         modifier = Modifier
                           .fillMaxSize()
                           .padding(4.dp)
@@ -250,7 +250,7 @@ fun AppPicker(
                     } else {
                       Icon(
                         imageVector = Icons.Default.Android,
-                        contentDescription = null,
+                        contentDescription = "${app.label} icon",
                         modifier = Modifier.padding(8.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                       )

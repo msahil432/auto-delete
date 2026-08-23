@@ -68,7 +68,7 @@ fun TextMatchChallenge(
             ) {
                 Icon(
                     Icons.Default.TextFields,
-                    contentDescription = null,
+                    contentDescription = "Text Match Challenge icon",
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
@@ -161,7 +161,7 @@ fun TextMatchChallenge(
                 ) {
                     Icon(
                         Icons.Default.ErrorOutline,
-                        contentDescription = null,
+                        contentDescription = "Error icon",
                         tint = MaterialTheme.colorScheme.error
                     )
                     Text(

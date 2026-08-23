@@ -119,7 +119,7 @@ fun GeofenceProfilesScreen(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { onNavigateToEdit(0L) },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                icon = { Icon(Icons.Default.Add, contentDescription = "New geofence profile icon") },
                 text = { Text("New profile") },
                 modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
             )
@@ -164,7 +164,7 @@ fun GeofenceProfilesScreen(
     if (showBackgroundDisclosure) {
         AlertDialog(
             onDismissRequest = { showBackgroundDisclosure = false },
-            icon = { Icon(Icons.Default.Place, contentDescription = null) },
+            icon = { Icon(Icons.Default.Place, contentDescription = "Location icon") },
             title = { Text("Background Location Required") },
             text = {
                 Text(

@@ -78,7 +78,7 @@ fun FolderDetailScreen(
             icon = {
                 Icon(
                     Icons.Default.DeleteForever,
-                    contentDescription = null,
+                    contentDescription = "Delete confirmation icon",
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(28.dp)
                 )
@@ -281,7 +281,7 @@ fun FolderPathSection(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(
                     Icons.Default.Folder,
-                    contentDescription = null,
+                    contentDescription = "Monitored Folder icon",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
@@ -377,7 +377,7 @@ fun FolderPathSection(
         ) {
             Icon(
                 Icons.Default.Info,
-                contentDescription = null,
+                contentDescription = "Info icon",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(14.dp)
             )
@@ -404,7 +404,7 @@ fun DeletionModeSection(
         ) {
             Icon(
                 Icons.Default.DeleteSweep,
-                contentDescription = null,
+                contentDescription = "Deletion Mode icon",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
@@ -458,7 +458,7 @@ fun DeletionModeRow(
     ) {
         Icon(
             icon,
-            contentDescription = null,
+            contentDescription = "$label icon",
             tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
             else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(22.dp)
@@ -509,7 +509,7 @@ fun TimePeriodPresetsSection(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(
                     Icons.Default.Timer,
-                    contentDescription = null,
+                    contentDescription = "Time Period Presets icon",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
@@ -707,7 +707,7 @@ fun AddTimePeriodDialog(
                     ) {
                         Icon(
                             Icons.Default.Timer,
-                            contentDescription = null,
+                            contentDescription = "Timer preview icon",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
@@ -765,7 +765,7 @@ fun FileFiltersSection(
         ) {
             Icon(
                 Icons.Default.FilterList,
-                contentDescription = null,
+                contentDescription = "File Filters icon",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
@@ -875,7 +875,7 @@ fun FilterListCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(18.dp))
+                Icon(icon, contentDescription = "$title icon", tint = iconTint, modifier = Modifier.size(18.dp))
                 Column {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -907,7 +907,7 @@ fun FilterListCard(
                 }
                 Icon(
                     if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null,
+                    contentDescription = if (expanded) "Collapse $title" else "Expand $title",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )
@@ -1076,7 +1076,7 @@ fun AddFilterRuleDialog(
                     ) {
                         Icon(
                             Icons.Default.Preview,
-                            contentDescription = null,
+                            contentDescription = "Rule preview icon",
                             tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(16.dp)
                         )
@@ -1172,7 +1172,7 @@ fun MoveRuleSection(
         ) {
             Icon(
                 Icons.AutoMirrored.Filled.DriveFileMove,
-                contentDescription = null,
+                contentDescription = "Move Rule icon",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
@@ -1197,7 +1197,7 @@ fun MoveRuleSection(
         ) {
             Icon(
                 Icons.Default.Info,
-                contentDescription = null,
+                contentDescription = "Move Rule info icon",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(16.dp).padding(top = 2.dp)
             )
@@ -1265,7 +1265,7 @@ fun MoveRuleSection(
                     ) {
                         Icon(
                             Icons.Default.FolderCopy,
-                            contentDescription = null,
+                            contentDescription = "Destination Folder icon",
                             tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(18.dp)
                         )
@@ -1352,7 +1352,7 @@ fun MoveRuleSection(
                         ) {
                             Icon(
                                 Icons.Default.Warning,
-                                contentDescription = null,
+                                contentDescription = "Destination warning icon",
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(14.dp)
                             )
@@ -1416,7 +1416,7 @@ fun DeleteFolderSection(
         ) {
             Icon(
                 Icons.Default.DeleteOutline,
-                contentDescription = null,
+                contentDescription = "Delete Folder Monitoring icon",
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(20.dp)
             )
@@ -1449,7 +1449,7 @@ fun DeleteFolderSection(
         ) {
             Icon(
                 Icons.Default.Delete,
-                contentDescription = null,
+                contentDescription = "Delete folder monitoring action icon",
                 modifier = Modifier.size(18.dp)
             )
             Spacer(Modifier.width(8.dp))

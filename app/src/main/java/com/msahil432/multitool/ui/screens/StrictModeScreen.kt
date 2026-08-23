@@ -328,7 +328,7 @@ private fun ActiveStrictModeContent(
                     .fillMaxWidth()
                     .height(50.dp)
             ) {
-                Icon(Icons.Default.LockOpen, contentDescription = null)
+                Icon(Icons.Default.LockOpen, contentDescription = "Deactivate Strict Mode icon")
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Deactivate Strict Mode", style = MaterialTheme.typography.titleMedium)
             }
@@ -374,7 +374,7 @@ private fun SetupStrictModeContent(
             ) {
                 Icon(
                     Icons.Default.Shield,
-                    contentDescription = null,
+                    contentDescription = "Asymmetric Lock-In Guarantee icon",
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
@@ -575,7 +575,7 @@ private fun SetupStrictModeContent(
         ) {
             Icon(
                 Icons.Default.Warning,
-                contentDescription = null,
+                contentDescription = "Tamper Alarm warning icon",
                 tint = MaterialTheme.colorScheme.primary
             )
             Column(modifier = Modifier.weight(1f)) {
@@ -610,7 +610,7 @@ private fun SetupStrictModeContent(
             .height(52.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Icon(Icons.Default.Lock, contentDescription = null)
+        Icon(Icons.Default.Lock, contentDescription = "Activate Strict Mode icon")
         Spacer(modifier = Modifier.width(8.dp))
         Text("Activate Strict Mode", style = MaterialTheme.typography.titleMedium)
     }

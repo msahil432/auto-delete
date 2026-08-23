@@ -107,7 +107,7 @@ fun QrChallenge(
             ) {
                 Icon(
                     Icons.Default.QrCodeScanner,
-                    contentDescription = null,
+                    contentDescription = "QR Code Challenge icon",
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
@@ -147,7 +147,7 @@ fun QrChallenge(
                 ) {
                     Icon(
                         Icons.Default.CameraAlt,
-                        contentDescription = null,
+                        contentDescription = "Camera Permission icon",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(56.dp)
                     )
@@ -169,7 +169,7 @@ fun QrChallenge(
                         onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.VpnKey, contentDescription = null)
+                        Icon(Icons.Default.VpnKey, contentDescription = "Grant Permission icon")
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Grant Permission")
                     }
@@ -310,7 +310,7 @@ fun QrChallenge(
                 ) {
                     Icon(
                         Icons.Default.ErrorOutline,
-                        contentDescription = null,
+                        contentDescription = "Error icon",
                         tint = MaterialTheme.colorScheme.error
                     )
                     Text(

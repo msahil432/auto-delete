@@ -391,7 +391,7 @@ fun GeofenceEditContent(
                     ) {
                         Icon(
                             imageVector = Icons.Default.MyLocation,
-                            contentDescription = null,
+                            contentDescription = "Use current location icon",
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
@@ -597,7 +597,7 @@ fun GeofenceEditContent(
                 onClick = onSave,
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Check, contentDescription = "Save profile icon", modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Save")
             }

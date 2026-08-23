@@ -35,7 +35,7 @@ fun EmptyState(
   ) {
     Icon(
       imageVector = icon,
-      contentDescription = null,
+      contentDescription = "$title icon",
       modifier = Modifier.size(64.dp),
       tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
     )

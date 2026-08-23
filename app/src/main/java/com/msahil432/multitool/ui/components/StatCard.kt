@@ -40,7 +40,7 @@ fun StatCard(
         if (icon != null) {
           Icon(
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = "$label icon",
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(20.dp)
           )

@@ -40,7 +40,7 @@ fun SettingRow(
     if (leadingIcon != null) {
       Icon(
         imageVector = leadingIcon,
-        contentDescription = null,
+        contentDescription = "$title icon",
         tint = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.size(24.dp)
       )

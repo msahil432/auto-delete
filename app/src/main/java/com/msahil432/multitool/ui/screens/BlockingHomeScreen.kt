@@ -86,7 +86,7 @@ fun BlockingHomeScreen(
     floatingActionButton = {
       ExtendedFloatingActionButton(
         onClick = { onNavigateToGroup(0L) },
-        icon = { Icon(Icons.Default.Add, contentDescription = null) },
+        icon = { Icon(Icons.Default.Add, contentDescription = "Add new block group") },
         text = { Text("New group") }
       )
     },
@@ -222,7 +222,7 @@ fun StrictModeActiveBanner(
       ) {
         Icon(
           Icons.Default.Lock,
-          contentDescription = null,
+          contentDescription = "Strict mode active icon",
           tint = MaterialTheme.colorScheme.primary
         )
         Column {

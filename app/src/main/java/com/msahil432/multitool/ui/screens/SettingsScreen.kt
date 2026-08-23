@@ -99,7 +99,7 @@ fun PermissionHealthBanner(
         ) {
             Icon(
                 Icons.Default.CheckCircle,
-                contentDescription = null,
+                contentDescription = "All permissions granted icon",
                 tint = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.size(16.dp)
             )
@@ -135,7 +135,7 @@ fun PermissionHealthBanner(
     ) {
         Icon(
             if (missingRequired.isNotEmpty()) Icons.Default.Warning else Icons.Default.Security,
-            contentDescription = null,
+            contentDescription = if (missingRequired.isNotEmpty()) "Missing required permissions icon" else "Missing optional permissions icon",
             tint = contentColor,
             modifier = Modifier.size(22.dp)
         )
@@ -157,7 +157,7 @@ fun PermissionHealthBanner(
         }
         Icon(
             Icons.AutoMirrored.Filled.ArrowForward,
-            contentDescription = null,
+            contentDescription = "Review permissions icon",
             tint = contentColor,
             modifier = Modifier.size(18.dp)
         )
