@@ -11,7 +11,6 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import com.msahil432.multitool.MainActivity
 
 /**
  * Unit tests for [SecureScreen] context helper extensions.
@@ -28,13 +27,18 @@ class SecureScreenTest {
 
   @Test
   fun `findActivity on Activity or wrapped Context returns Activity`() {
-    val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
-    assertEquals(activity, activity.findActivity())
+    val controller = Robolectric.buildActivity(Activity::class.java).setup()
+    try {
+      val activity = controller.get()
+      assertEquals(activity, activity.findActivity())
 
-    val wrappedContext = ContextWrapper(activity)
-    assertEquals(activity, wrappedContext.findActivity())
+      val wrappedContext = ContextWrapper(activity)
+      assertEquals(activity, wrappedContext.findActivity())
 
-    val doubleWrapped = ContextWrapper(wrappedContext)
-    assertEquals(activity, doubleWrapped.findActivity())
+      val doubleWrapped = ContextWrapper(wrappedContext)
+      assertEquals(activity, doubleWrapped.findActivity())
+    } finally {
+      controller.pause().stop().destroy()
+    }
   }
 }

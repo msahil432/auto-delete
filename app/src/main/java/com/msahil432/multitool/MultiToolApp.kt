@@ -22,27 +22,34 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "se
  * periodic workers, and strict mode controllers.
  */
 class MultiToolApp : Application() {
-    lateinit var database: AppDatabase
-        private set
+    private var _database: AppDatabase? = null
+    val database: AppDatabase
+        get() {
+            return _database ?: synchronized(this) {
+                _database ?: Room.databaseBuilder(
+                    this,
+                    AppDatabase::class.java,
+                    "multi_tool_db" // DB file name kept as-is (see 01-rename-package.md decision)
+                )
+                    .fallbackToDestructiveMigration(dropAllTables = true)
+                    .build().also { _database = it }
+            }
+        }
 
     override fun onCreate() {
         super.onCreate()
 
         initSentry()
 
-        database = Room.databaseBuilder(
-            this,
-            AppDatabase::class.java,
-            "multi_tool_db" // DB file name kept as-is (see 01-rename-package.md decision)
-        )
-            .fallbackToDestructiveMigration(dropAllTables = true)
-            .build()
-
-
         UsageCollectorWorker.schedule(this)
 
         val settingsRepo = com.msahil432.multitool.data.SettingsRepository(dataStore)
         com.msahil432.multitool.blocking.StrictModeController.init(this, settingsRepo)
+    }
+
+    override fun onTerminate() {
+        super.onTerminate()
+        _database?.close()
     }
 
     private fun initSentry() {
