@@ -8,9 +8,12 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import com.msahil432.multitool.data.AppDatabase
 import com.msahil432.multitool.tracking.UsageCollectorWorker
+import io.sentry.Sentry
 import io.sentry.SentryReplayOptions.SentryReplayQuality
 import io.sentry.android.core.SentryAndroid
 import io.sentry.android.core.SentryAndroidOptions
+import io.sentry.protocol.User
+import java.util.UUID
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
@@ -66,7 +69,27 @@ class MultiToolApp : Application() {
                 // Attaches screenshots on crash (optional, helps debugging)
                 options.isAttachScreenshot = true
             }
+
+            // Set anonymous installation UUID so Sentry aggregates unique affected users
+            val user = User().apply {
+                id = getOrCreateInstallationId()
+            }
+            Sentry.setUser(user)
         }
+    }
+
+    /**
+     * Returns a persistent anonymous installation UUID for Sentry user aggregation.
+     * Persisted in SharedPreferences so it is synchronously available during early app startup.
+     */
+    private fun getOrCreateInstallationId(): String {
+        val prefs = getSharedPreferences("app_install_meta", Context.MODE_PRIVATE)
+        var installId = prefs.getString("install_id", null)
+        if (installId.isNullOrBlank()) {
+            installId = UUID.randomUUID().toString()
+            prefs.edit().putString("install_id", installId).apply()
+        }
+        return installId
     }
 }
 

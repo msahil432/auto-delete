@@ -9,6 +9,8 @@
         <exclude domain="database" path="multi_tool_db-journal" />
         <!-- Exclude temporary cache directories -->
         <exclude domain="root" path="cache" />
+        <!-- Exclude installation metadata so each device/reinstall gets a fresh install ID -->
+        <exclude domain="sharedpref" path="app_install_meta.xml" />
     </cloud-backup>
 
     <!-- Rules for Android 12+ Device-to-Device Transfer -->
@@ -19,5 +21,7 @@
         <exclude domain="database" path="multi_tool_db-shm" />
         <exclude domain="database" path="multi_tool_db-journal" />
         <exclude domain="root" path="cache" />
+        <!-- Exclude installation metadata from device-to-device migration -->
+        <exclude domain="sharedpref" path="app_install_meta.xml" />
     </device-transfer>
 </data-extraction-rules>
