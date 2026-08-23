@@ -50,6 +50,7 @@ Package: `com.msahil432.multitool` | minSdk 35 | targetSdk 37 | Kotlin + Jetpack
 - DB schema changes: **add a migration** or document why `fallbackToDestructiveMigration` is acceptable.
 - DataStore prefs keys go in `SettingsRepository.Companion`. Follow the existing getter/setter pattern.
 - Moshi with codegen (KSP) for JSON serialization — annotate with `@JsonClass(generateAdapter = true)`.
+- Whenever a new data is being saved, ask the user if the new data should be part of the backup or not. Accordingly, update the backup_rules.xml file.
 
 ## 6. Documentation & Comments
 
