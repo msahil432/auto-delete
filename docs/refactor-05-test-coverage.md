@@ -1,6 +1,7 @@
-# Refactoring Plan: Test Coverage Gaps
+# Refactoring Plan: Test Coverage Gaps — **Done ✓**
 
 **Guideline violated:** §7 Testing — "Every new feature or bugfix must include tests."
+**Status:** Done ✓
 
 ## Problem
 
