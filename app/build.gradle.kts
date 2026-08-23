@@ -92,6 +92,7 @@ android {
           "META-INF/**/NOTICE*",
           "META-INF/**/notice*",
           "META-INF/**/DEPENDENCIES*",
+          "META-INF/**.md",
         )
     }
   }
