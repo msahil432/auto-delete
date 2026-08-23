@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -49,6 +50,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.msahil432.multitool.accessibility.AccessibilityUtil
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 
 import com.msahil432.multitool.data.AppDao
 import com.msahil432.multitool.data.DEFAULT_EXCLUSION_RULES
@@ -1612,3 +1614,110 @@ private fun PermissionCard(
         }
     }
 }
+
+@Preview(showBackground = true, name = "Onboarding WelcomeStep Light")
+@Composable
+private fun OnboardingWelcomeStepPreviewLight() {
+    MultiToolTheme {
+        WelcomeStep(
+            modules = buildModuleList(),
+            onNext = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Onboarding WelcomeStep Dark"
+)
+@Composable
+private fun OnboardingWelcomeStepPreviewDark() {
+    MultiToolTheme {
+        WelcomeStep(
+            modules = buildModuleList(),
+            onNext = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Onboarding ModuleSelectionStep Light")
+@Composable
+private fun OnboardingModuleSelectionStepPreviewLight() {
+    MultiToolTheme {
+        ModuleSelectionStep(
+            modules = buildModuleList(),
+            preSelected = setOf(MODULE_FILE_CLEANUP, MODULE_USAGE_STATS),
+            onBack = {},
+            onNext = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Onboarding ModuleSelectionStep Dark"
+)
+@Composable
+private fun OnboardingModuleSelectionStepPreviewDark() {
+    MultiToolTheme {
+        ModuleSelectionStep(
+            modules = buildModuleList(),
+            preSelected = setOf(MODULE_FILE_CLEANUP, MODULE_USAGE_STATS),
+            onBack = {},
+            onNext = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Onboarding DefaultConfigStep Light")
+@Composable
+private fun OnboardingDefaultConfigStepPreviewLight() {
+    MultiToolTheme {
+        DefaultConfigStep(
+            onNext = { _, _ -> }
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Onboarding DefaultConfigStep Dark"
+)
+@Composable
+private fun OnboardingDefaultConfigStepPreviewDark() {
+    MultiToolTheme {
+        DefaultConfigStep(
+            onNext = { _, _ -> }
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Onboarding AllSetStep Light")
+@Composable
+private fun OnboardingAllSetStepPreviewLight() {
+    MultiToolTheme {
+        AllSetStep(
+            permissions = buildPermissionList(),
+            onDone = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Onboarding AllSetStep Dark"
+)
+@Composable
+private fun OnboardingAllSetStepPreviewDark() {
+    MultiToolTheme {
+        AllSetStep(
+            permissions = buildPermissionList(),
+            onDone = {}
+        )
+    }
+}
+

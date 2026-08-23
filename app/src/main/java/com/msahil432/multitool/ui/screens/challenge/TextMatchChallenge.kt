@@ -23,8 +23,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 import java.security.SecureRandom
 
 /**
@@ -218,3 +220,32 @@ private fun generateChallengeText(length: Int): String {
     }
     return String(bytes)
 }
+
+@Preview(showBackground = true, name = "TextMatchChallenge Light")
+@Composable
+private fun TextMatchChallengePreviewLight() {
+    MultiToolTheme {
+        TextMatchChallenge(
+            targetLength = 50,
+            onSuccess = {},
+            onCancel = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "TextMatchChallenge Dark"
+)
+@Composable
+private fun TextMatchChallengePreviewDark() {
+    MultiToolTheme {
+        TextMatchChallenge(
+            targetLength = 50,
+            onSuccess = {},
+            onCancel = {}
+        )
+    }
+}
+

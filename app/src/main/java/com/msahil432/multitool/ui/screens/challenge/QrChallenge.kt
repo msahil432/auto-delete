@@ -41,6 +41,8 @@ import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.delay
 import java.util.concurrent.Executors
 import io.sentry.Sentry
+import androidx.compose.ui.tooling.preview.Preview as ComposePreview
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 
 /**
  * High-friction QR Code Scan Challenge.
@@ -332,3 +334,32 @@ fun QrChallenge(
         }
     }
 }
+
+@ComposePreview(showBackground = true, name = "QrChallenge Permission Required Light")
+@Composable
+private fun QrChallengePermissionRequiredPreviewLight() {
+    MultiToolTheme {
+        QrChallenge(
+            expectedQrValue = "STRICT-UNLOCK-SECRET",
+            onSuccess = {},
+            onCancel = {}
+        )
+    }
+}
+
+@ComposePreview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "QrChallenge Permission Required Dark"
+)
+@Composable
+private fun QrChallengePermissionRequiredPreviewDark() {
+    MultiToolTheme {
+        QrChallenge(
+            expectedQrValue = "STRICT-UNLOCK-SECRET",
+            onSuccess = {},
+            onCancel = {}
+        )
+    }
+}
+

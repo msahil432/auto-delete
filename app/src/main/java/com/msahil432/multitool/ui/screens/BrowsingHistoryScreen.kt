@@ -221,9 +221,9 @@ private fun getBrowserDisplayName(packageName: String): String {
     }
 }
 
-@Preview(showBackground = true, name = "BrowsingHistoryScreen Preview")
+@Preview(showBackground = true, name = "BrowsingHistoryScreen Light")
 @Composable
-private fun BrowsingHistoryPreview() {
+private fun BrowsingHistoryPreviewLight() {
     MultiToolTheme {
         BrowsingHistoryContent(
             events = listOf(
@@ -245,3 +245,43 @@ private fun BrowsingHistoryPreview() {
         )
     }
 }
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "BrowsingHistoryScreen Dark"
+)
+@Composable
+private fun BrowsingHistoryPreviewDark() {
+    MultiToolTheme {
+        BrowsingHistoryContent(
+            events = listOf(
+                BrowsingEvent(
+                    id = 1,
+                    timestamp = System.currentTimeMillis() - 1000 * 60 * 5,
+                    packageName = "com.android.chrome",
+                    kind = BrowsingKind.URL,
+                    value = "github.com"
+                ),
+                BrowsingEvent(
+                    id = 2,
+                    timestamp = System.currentTimeMillis() - 1000 * 60 * 15,
+                    packageName = "org.mozilla.firefox",
+                    kind = BrowsingKind.SEARCH_QUERY,
+                    value = "kotlin coroutines best practices"
+                )
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "BrowsingHistoryScreen Empty")
+@Composable
+private fun BrowsingHistoryPreviewEmpty() {
+    MultiToolTheme {
+        BrowsingHistoryContent(
+            events = emptyList()
+        )
+    }
+}
+

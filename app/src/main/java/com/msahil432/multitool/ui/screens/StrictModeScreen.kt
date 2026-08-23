@@ -645,9 +645,9 @@ private fun generateRandomSecret(length: Int): String {
     return (1..length).map { chars[rnd.nextInt(chars.length)] }.joinToString("")
 }
 
-@Preview(showBackground = true, name = "Strict Mode Inactive")
+@Preview(showBackground = true, name = "Strict Mode Inactive Light")
 @Composable
-private fun StrictModeScreenInactivePreview() {
+private fun StrictModeScreenInactivePreviewLight() {
     MultiToolTheme {
         SetupStrictModeContent(
             selectedMethod = UnlockMethod.TEXT,
@@ -669,9 +669,37 @@ private fun StrictModeScreenInactivePreview() {
     }
 }
 
-@Preview(showBackground = true, name = "Strict Mode Active")
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Strict Mode Inactive Dark"
+)
 @Composable
-private fun StrictModeScreenActivePreview() {
+private fun StrictModeScreenInactivePreviewDark() {
+    MultiToolTheme {
+        SetupStrictModeContent(
+            selectedMethod = UnlockMethod.TEXT,
+            onMethodSelected = {},
+            selectedDurationHours = 4,
+            onDurationSelected = {},
+            customTextLength = 100,
+            onTextLengthChanged = {},
+            pinValue = "",
+            onPinChanged = {},
+            cooldownMinutes = 15,
+            onCooldownChanged = {},
+            qrSecretValue = "STRICT-UNLOCK-DEMO",
+            onQrSecretChanged = {},
+            tamperAlarmEnabled = false,
+            onTamperAlarmChanged = {},
+            onActivateClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Strict Mode Active Light")
+@Composable
+private fun StrictModeScreenActivePreviewLight() {
     MultiToolTheme {
         ActiveStrictModeContent(
             state = StrictModeState(
@@ -686,3 +714,26 @@ private fun StrictModeScreenActivePreview() {
         )
     }
 }
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Strict Mode Active Dark"
+)
+@Composable
+private fun StrictModeScreenActivePreviewDark() {
+    MultiToolTheme {
+        ActiveStrictModeContent(
+            state = StrictModeState(
+                isActive = true,
+                startedAt = System.currentTimeMillis() - 3600_000L,
+                endAt = System.currentTimeMillis() + 7200_000L,
+                unlockMethod = UnlockMethod.COOLDOWN,
+                pendingDeactivationAt = 0L
+            ),
+            tamperAlarmEnabled = true,
+            onDeactivateClick = {}
+        )
+    }
+}
+

@@ -21,8 +21,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 import kotlinx.coroutines.delay
 import java.util.Locale
 
@@ -195,3 +197,44 @@ fun CooldownChallenge(
         }
     }
 }
+
+@Preview(showBackground = true, name = "CooldownChallenge Running Light")
+@Composable
+private fun CooldownChallengeRunningPreviewLight() {
+    MultiToolTheme {
+        CooldownChallenge(
+            pendingDeactivationAt = System.currentTimeMillis() + 600_000L,
+            onSuccess = {},
+            onCancel = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "CooldownChallenge Running Dark"
+)
+@Composable
+private fun CooldownChallengeRunningPreviewDark() {
+    MultiToolTheme {
+        CooldownChallenge(
+            pendingDeactivationAt = System.currentTimeMillis() + 600_000L,
+            onSuccess = {},
+            onCancel = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "CooldownChallenge Complete Light")
+@Composable
+private fun CooldownChallengeCompletePreviewLight() {
+    MultiToolTheme {
+        CooldownChallenge(
+            pendingDeactivationAt = System.currentTimeMillis() - 1000L,
+            onSuccess = {},
+            onCancel = {}
+        )
+    }
+}
+

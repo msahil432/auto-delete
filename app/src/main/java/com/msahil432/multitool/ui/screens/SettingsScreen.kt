@@ -16,8 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.msahil432.multitool.data.DeletionMode
 import com.msahil432.multitool.data.FolderConfig
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 
 // NOTE: SettingsScreen composable was replaced by FilesHomeScreen (02-navigation-hub.md).
 // This file now only contains shared helper composables used by FilesHomeScreen.
@@ -160,5 +163,60 @@ fun PermissionHealthBanner(
         )
     }
 }
+
+@Preview(showBackground = true, name = "FolderConfigItem Light")
+@Composable
+private fun FolderConfigItemPreviewLight() {
+    MultiToolTheme {
+        FolderConfigItem(
+            config = FolderConfig(
+                id = 1L,
+                path = "/storage/emulated/0/Pictures/Screenshots",
+                displayName = "Screenshots",
+                isDefaultScreenshotsFolder = true,
+                enabled = true,
+                deletionMode = DeletionMode.TRASH,
+                defaultActionOnIgnore = "KEEP",
+                candidateTimePeriods = "[]",
+                recentlyUsedPeriods = "[]",
+                fileTypeExcludeList = "[]",
+                fileTypeIncludeList = null,
+                createdAt = System.currentTimeMillis()
+            ),
+            onClick = {},
+            onToggle = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "FolderConfigItem Dark"
+)
+@Composable
+private fun FolderConfigItemPreviewDark() {
+    MultiToolTheme {
+        FolderConfigItem(
+            config = FolderConfig(
+                id = 1L,
+                path = "/storage/emulated/0/Pictures/Screenshots",
+                displayName = "Screenshots",
+                isDefaultScreenshotsFolder = true,
+                enabled = true,
+                deletionMode = DeletionMode.TRASH,
+                defaultActionOnIgnore = "KEEP",
+                candidateTimePeriods = "[]",
+                recentlyUsedPeriods = "[]",
+                fileTypeExcludeList = "[]",
+                fileTypeIncludeList = null,
+                createdAt = System.currentTimeMillis()
+            ),
+            onClick = {},
+            onToggle = {}
+        )
+    }
+}
+
 
 

@@ -8,9 +8,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import com.msahil432.multitool.blocking.StrictModeController
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.UnlockMethod
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 
 /**
  * Host container routing to the active unlock challenge.
@@ -41,6 +43,32 @@ fun ChallengeHost(
         onCancel()
     }
 
+    ChallengeHostContent(
+        method = method,
+        textLength = textLength,
+        masterPasswordHash = masterPasswordHash,
+        qrExpectedValue = qrExpectedValue,
+        pendingDeactivationAt = strictState.pendingDeactivationAt,
+        onSuccess = handleSuccess,
+        onCancel = handleCancel,
+        modifier = modifier
+    )
+}
+
+/**
+ * Stateless content composable for [ChallengeHost], rendering the appropriate challenge based on [method].
+ */
+@Composable
+fun ChallengeHostContent(
+    method: UnlockMethod,
+    textLength: Int = 100,
+    masterPasswordHash: String? = null,
+    qrExpectedValue: String? = null,
+    pendingDeactivationAt: Long = 0L,
+    onSuccess: () -> Unit = {},
+    onCancel: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -50,31 +78,62 @@ fun ChallengeHost(
             UnlockMethod.TEXT -> {
                 TextMatchChallenge(
                     targetLength = textLength,
-                    onSuccess = handleSuccess,
-                    onCancel = handleCancel
+                    onSuccess = onSuccess,
+                    onCancel = onCancel
                 )
             }
             UnlockMethod.PIN -> {
                 PinChallenge(
                     storedPasswordHash = masterPasswordHash,
-                    onSuccess = handleSuccess,
-                    onCancel = handleCancel
+                    onSuccess = onSuccess,
+                    onCancel = onCancel
                 )
             }
             UnlockMethod.COOLDOWN -> {
                 CooldownChallenge(
-                    pendingDeactivationAt = strictState.pendingDeactivationAt,
-                    onSuccess = handleSuccess,
-                    onCancel = handleCancel
+                    pendingDeactivationAt = pendingDeactivationAt,
+                    onSuccess = onSuccess,
+                    onCancel = onCancel
                 )
             }
             UnlockMethod.QR -> {
                 QrChallenge(
                     expectedQrValue = qrExpectedValue,
-                    onSuccess = handleSuccess,
-                    onCancel = handleCancel
+                    onSuccess = onSuccess,
+                    onCancel = onCancel
                 )
             }
         }
     }
 }
+
+@Preview(showBackground = true, name = "ChallengeHost Text Light")
+@Composable
+private fun ChallengeHostPreviewLight() {
+    MultiToolTheme {
+        ChallengeHostContent(
+            method = UnlockMethod.TEXT,
+            textLength = 50,
+            onSuccess = {},
+            onCancel = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "ChallengeHost Text Dark"
+)
+@Composable
+private fun ChallengeHostPreviewDark() {
+    MultiToolTheme {
+        ChallengeHostContent(
+            method = UnlockMethod.TEXT,
+            textLength = 50,
+            onSuccess = {},
+            onCancel = {}
+        )
+    }
+}
+

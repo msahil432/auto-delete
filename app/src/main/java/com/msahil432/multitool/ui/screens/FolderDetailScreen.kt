@@ -30,10 +30,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.msahil432.multitool.data.*
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 import kotlinx.coroutines.launch
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -42,7 +44,6 @@ import kotlinx.coroutines.launch
  * Detailed configuration screen for a monitored folder, allowing path changes, deletion mode selection,
  * move rules, candidate time periods, file type filter lists, and monitor deletion.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderDetailScreen(
     folderId: Long,
@@ -60,118 +61,16 @@ fun FolderDetailScreen(
 
     val currentConfig = config
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        currentConfig?.displayName ?: "Loading…",
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    if (currentConfig != null) {
-                        IconButton(onClick = { showDeleteConfirmDialog = true }) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Delete folder",
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
+    FolderDetailContent(
+        config = currentConfig,
+        innerPadding = innerPadding,
+        onBack = onBack,
+        onDeleteFolderClick = { showDeleteConfirmDialog = true },
+        onConfigUpdated = { updated ->
+            config = updated
+            coroutineScope.launch { appDao.updateFolderConfig(updated) }
         }
-    ) { padding ->
-        if (currentConfig == null) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            val bottomNavPadding = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding())
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = padding.calculateTopPadding(), start = 0.dp, end = 0.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                // ── 1. Folder Path ──
-                FolderPathSection(
-                    config = currentConfig,
-                    onConfigUpdated = { updated ->
-                        config = updated
-                        coroutineScope.launch { appDao.updateFolderConfig(updated) }
-                    }
-                )
-
-                SectionDivider()
-
-                // ── 2. Deletion Mode ──
-                DeletionModeSection(
-                    config = currentConfig,
-                    onConfigUpdated = { updated ->
-                        config = updated
-                        coroutineScope.launch { appDao.updateFolderConfig(updated) }
-                    }
-                )
-
-                SectionDivider()
-
-                // ── 2b. Move Rule ──
-                MoveRuleSection(
-                    config = currentConfig,
-                    onConfigUpdated = { updated ->
-                        config = updated
-                        coroutineScope.launch { appDao.updateFolderConfig(updated) }
-                    }
-                )
-
-                SectionDivider()
-
-                // ── 3. Time Period Presets ──
-                TimePeriodPresetsSection(
-                    config = currentConfig,
-                    onConfigUpdated = { updated ->
-                        config = updated
-                        coroutineScope.launch { appDao.updateFolderConfig(updated) }
-                    }
-                )
-
-                SectionDivider()
-
-                // ── 4. File Filters ──
-                FileFiltersSection(
-                    config = currentConfig,
-                    onConfigUpdated = { updated ->
-                        config = updated
-                        coroutineScope.launch { appDao.updateFolderConfig(updated) }
-                    }
-                )
-
-                SectionDivider()
-
-                // ── 5. Delete Folder Monitoring ──
-                DeleteFolderSection(
-                    folderName = currentConfig.displayName,
-                    onDeleteClick = { showDeleteConfirmDialog = true }
-                )
-
-                Spacer(Modifier.height(bottomNavPadding + 32.dp))
-            }
-        }
-    }
+    )
 
     if (showDeleteConfirmDialog && currentConfig != null) {
         AlertDialog(
@@ -221,6 +120,117 @@ fun FolderDetailScreen(
                 }
             }
         )
+    }
+}
+
+/**
+ * Stateless content composable for [FolderDetailScreen], rendering all configuration sections for a folder.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FolderDetailContent(
+    config: FolderConfig?,
+    innerPadding: PaddingValues = PaddingValues(),
+    onBack: () -> Unit,
+    onDeleteFolderClick: () -> Unit,
+    onConfigUpdated: (FolderConfig) -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        config?.displayName ?: "Loading…",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (config != null) {
+                        IconButton(onClick = onDeleteFolderClick) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete folder",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        }
+    ) { padding ->
+        if (config == null) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            val bottomNavPadding = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding())
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = padding.calculateTopPadding(), start = 0.dp, end = 0.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                // ── 1. Folder Path ──
+                FolderPathSection(
+                    config = config,
+                    onConfigUpdated = onConfigUpdated
+                )
+
+                SectionDivider()
+
+                // ── 2. Deletion Mode ──
+                DeletionModeSection(
+                    config = config,
+                    onConfigUpdated = onConfigUpdated
+                )
+
+                SectionDivider()
+
+                // ── 2b. Move Rule ──
+                MoveRuleSection(
+                    config = config,
+                    onConfigUpdated = onConfigUpdated
+                )
+
+                SectionDivider()
+
+                // ── 3. Time Period Presets ──
+                TimePeriodPresetsSection(
+                    config = config,
+                    onConfigUpdated = onConfigUpdated
+                )
+
+                SectionDivider()
+
+                // ── 4. File Filters ──
+                FileFiltersSection(
+                    config = config,
+                    onConfigUpdated = onConfigUpdated
+                )
+
+                SectionDivider()
+
+                // ── 5. Delete Folder Monitoring ──
+                DeleteFolderSection(
+                    folderName = config.displayName,
+                    onDeleteClick = onDeleteFolderClick
+                )
+
+                Spacer(Modifier.height(bottomNavPadding + 32.dp))
+            }
+        }
     }
 }
 
@@ -1447,4 +1457,61 @@ fun DeleteFolderSection(
         }
     }
 }
+
+@Preview(showBackground = true, name = "FolderDetailScreen Light")
+@Composable
+private fun FolderDetailScreenPreviewLight() {
+    MultiToolTheme {
+        FolderDetailContent(
+            config = FolderConfig(
+                id = 1L,
+                path = "/storage/emulated/0/Pictures/Screenshots",
+                displayName = "Screenshots",
+                isDefaultScreenshotsFolder = true,
+                enabled = true,
+                deletionMode = DeletionMode.TRASH,
+                defaultActionOnIgnore = "KEEP",
+                candidateTimePeriods = "[]",
+                recentlyUsedPeriods = "[]",
+                fileTypeExcludeList = "[]",
+                fileTypeIncludeList = null,
+                createdAt = System.currentTimeMillis()
+            ),
+            onBack = {},
+            onDeleteFolderClick = {},
+            onConfigUpdated = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "FolderDetailScreen Dark"
+)
+@Composable
+private fun FolderDetailScreenPreviewDark() {
+    MultiToolTheme {
+        FolderDetailContent(
+            config = FolderConfig(
+                id = 1L,
+                path = "/storage/emulated/0/Pictures/Screenshots",
+                displayName = "Screenshots",
+                isDefaultScreenshotsFolder = true,
+                enabled = true,
+                deletionMode = DeletionMode.TRASH,
+                defaultActionOnIgnore = "KEEP",
+                candidateTimePeriods = "[]",
+                recentlyUsedPeriods = "[]",
+                fileTypeExcludeList = "[]",
+                fileTypeIncludeList = null,
+                createdAt = System.currentTimeMillis()
+            ),
+            onBack = {},
+            onDeleteFolderClick = {},
+            onConfigUpdated = {}
+        )
+    }
+}
+
 
