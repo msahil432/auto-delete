@@ -14,6 +14,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/**
+ * [BroadcastReceiver] receiving Google Play Services geofence transition callbacks and enabling/disabling block groups.
+ */
 class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -48,6 +51,9 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
     }
 
     companion object {
+        /**
+         * Processes an enter or exit geofence transition, enabling/disabling target block groups and logging timeline events.
+         */
         suspend fun handleGeofenceTransition(
             transitionType: Int,
             triggeringGeofenceIds: List<String>,

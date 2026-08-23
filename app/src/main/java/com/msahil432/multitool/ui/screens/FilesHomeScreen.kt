@@ -21,9 +21,11 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
+import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.tooling.preview.Preview
 import com.msahil432.multitool.data.AppDao
 import com.msahil432.multitool.data.DeletionMode
 import com.msahil432.multitool.data.FolderConfig
@@ -34,10 +36,14 @@ import com.msahil432.multitool.data.encodeFilterRules
 import com.msahil432.multitool.data.encodeTimePeriodPresets
 import com.msahil432.multitool.ui.components.EmptyState
 import com.msahil432.multitool.ui.components.ModuleActivationCard
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Primary file cleanup dashboard showing configured monitored folders, permissions status,
+ * and quick actions to add new folder monitors or view activity logs.
+ */
 @Composable
 fun FilesHomeScreen(
   settingsRepository: SettingsRepository,
@@ -95,13 +101,89 @@ fun FilesHomeScreen(
     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
   }
 
+  val activateModule: () -> Unit = {
+    coroutineScope.launch {
+      settingsRepository.setModuleFileCleanup(true)
+      // Seed the default Screenshots folder if All Files access is already granted
+      if (allFilesGranted) {
+        val defaultMode = settingsRepository.globalDeletionMode.firstOrNull() ?: "TRASH"
+        val defaultPresets = encodeTimePeriodPresets(DEFAULT_TIME_PRESETS)
+        val picturesDir = Environment.getExternalStoragePublicDirectory(
+          Environment.DIRECTORY_PICTURES
+        )
+        val screenshotsDir = "${picturesDir.absolutePath}/Screenshots"
+        appDao.insertFolderConfig(
+          FolderConfig(
+            path = screenshotsDir,
+            displayName = "Screenshots",
+            isDefaultScreenshotsFolder = true,
+            enabled = true,
+            deletionMode = DeletionMode.valueOf(defaultMode),
+            defaultActionOnIgnore = "KEEP",
+            candidateTimePeriods = defaultPresets,
+            recentlyUsedPeriods = defaultPresets,
+            fileTypeExcludeList = encodeFilterRules(DEFAULT_EXCLUSION_RULES),
+            fileTypeIncludeList = null,
+            createdAt = System.currentTimeMillis()
+          )
+        )
+      } else {
+        // Request All Files permission first
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+          try {
+            context.startActivity(
+              Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                .setData(Uri.parse("package:${context.packageName}"))
+            )
+          } catch (e: Exception) {
+            Log.w("FilesHomeScreen", "Failed to launch package ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION", e)
+            try {
+              context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+            } catch (fallbackEx: Exception) {
+              Log.w("FilesHomeScreen", "Failed to launch generic ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION", fallbackEx)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  FilesHomeScreenContent(
+    folderConfigs = folderConfigs,
+    isModuleActive = isModuleActive,
+    onAddNewFolder = addNewFolder,
+    onNavigateToActivityLog = onNavigateToActivityLog,
+    onNavigateToFolder = onNavigateToFolder,
+    onToggleFolder = { config, enabled ->
+      coroutineScope.launch { appDao.updateFolderConfig(config.copy(enabled = enabled)) }
+    },
+    onActivateModule = activateModule,
+    innerPadding = innerPadding
+  )
+}
+
+/**
+ * Stateless content composable for [FilesHomeScreen].
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FilesHomeScreenContent(
+  folderConfigs: List<FolderConfig>,
+  isModuleActive: Boolean,
+  onAddNewFolder: () -> Unit,
+  onNavigateToActivityLog: () -> Unit,
+  onNavigateToFolder: (Long) -> Unit,
+  onToggleFolder: (FolderConfig, Boolean) -> Unit,
+  onActivateModule: () -> Unit,
+  innerPadding: PaddingValues = PaddingValues()
+) {
   Scaffold(
     topBar = {
       TopAppBar(
         title = { Text("Files", style = MaterialTheme.typography.headlineSmall) },
         actions = {
           if (isModuleActive) {
-            IconButton(onClick = addNewFolder) {
+            IconButton(onClick = onAddNewFolder) {
               Icon(Icons.Default.Add, contentDescription = "Add Folder")
             }
             IconButton(onClick = onNavigateToActivityLog) {
@@ -130,47 +212,7 @@ fun FilesHomeScreen(
           Icons.Default.MoveToInbox to "Keep Google Photos safe with move-not-delete"
         ),
         ctaLabel = "Activate File Cleanup",
-        onActivate = {
-          coroutineScope.launch {
-            settingsRepository.setModuleFileCleanup(true)
-            // Seed the default Screenshots folder if All Files access is already granted
-            if (allFilesGranted) {
-              val defaultMode = settingsRepository.globalDeletionMode.firstOrNull() ?: "TRASH"
-              val defaultPresets = encodeTimePeriodPresets(DEFAULT_TIME_PRESETS)
-              val picturesDir = Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_PICTURES
-              )
-              val screenshotsDir = "${picturesDir.absolutePath}/Screenshots"
-              appDao.insertFolderConfig(
-                FolderConfig(
-                  path = screenshotsDir,
-                  displayName = "Screenshots",
-                  isDefaultScreenshotsFolder = true,
-                  enabled = true,
-                  deletionMode = DeletionMode.valueOf(defaultMode),
-                  defaultActionOnIgnore = "KEEP",
-                  candidateTimePeriods = defaultPresets,
-                  recentlyUsedPeriods = defaultPresets,
-                  fileTypeExcludeList = encodeFilterRules(DEFAULT_EXCLUSION_RULES),
-                  fileTypeIncludeList = null,
-                  createdAt = System.currentTimeMillis()
-                )
-              )
-            } else {
-              // Request All Files permission first
-              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                try {
-                  context.startActivity(
-                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                      .setData(Uri.parse("package:${context.packageName}"))
-                  )
-                } catch (_: Exception) {
-                  context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
-                }
-              }
-            }
-          }
-        },
+        onActivate = onActivateModule,
         modifier = Modifier.padding(combinedPadding)
       )
     } else {
@@ -192,7 +234,7 @@ fun FilesHomeScreen(
               title = "No folders monitored",
               message = "Add a folder to start auto-deleting files on a schedule.",
               actionLabel = "Add Folder",
-              onAction = addNewFolder
+              onAction = onAddNewFolder
             )
           }
         } else {
@@ -200,13 +242,11 @@ fun FilesHomeScreen(
             FolderConfigItem(
               config = config,
               onClick = { onNavigateToFolder(config.id) },
-              onToggle = { enabled ->
-                coroutineScope.launch { appDao.updateFolderConfig(config.copy(enabled = enabled)) }
-              }
+              onToggle = { enabled -> onToggleFolder(config, enabled) }
             )
           }
           item {
-            AddFolderCard(onClick = addNewFolder)
+            AddFolderCard(onClick = onAddNewFolder)
           }
         }
       }
@@ -214,6 +254,9 @@ fun FilesHomeScreen(
   }
 }
 
+/**
+ * Outlined card prompting the user to create and configure a new folder monitor.
+ */
 @Composable
 fun AddFolderCard(
   onClick: () -> Unit,
@@ -241,7 +284,7 @@ fun AddFolderCard(
         Box(contentAlignment = Alignment.Center) {
           Icon(
             imageVector = Icons.Default.Add,
-            contentDescription = null,
+            contentDescription = "Add folder icon",
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.size(24.dp)
           )
@@ -263,3 +306,136 @@ fun AddFolderCard(
     }
   }
 }
+
+@Preview(showBackground = true, name = "FilesHomeScreen Content Light")
+@Composable
+private fun FilesHomeScreenContentPreviewLight() {
+  MultiToolTheme {
+    FilesHomeScreenContent(
+      folderConfigs = listOf(
+        FolderConfig(
+          id = 1L,
+          path = "/storage/emulated/0/Pictures/Screenshots",
+          displayName = "Screenshots",
+          isDefaultScreenshotsFolder = true,
+          enabled = true,
+          deletionMode = DeletionMode.TRASH,
+          defaultActionOnIgnore = "KEEP",
+          candidateTimePeriods = "[]",
+          recentlyUsedPeriods = "[]",
+          fileTypeExcludeList = "[]",
+          fileTypeIncludeList = null,
+          createdAt = System.currentTimeMillis()
+        ),
+        FolderConfig(
+          id = 2L,
+          path = "/storage/emulated/0/Download",
+          displayName = "Downloads",
+          isDefaultScreenshotsFolder = false,
+          enabled = false,
+          deletionMode = DeletionMode.DELETE,
+          defaultActionOnIgnore = "KEEP",
+          candidateTimePeriods = "[]",
+          recentlyUsedPeriods = "[]",
+          fileTypeExcludeList = "[]",
+          fileTypeIncludeList = null,
+          createdAt = System.currentTimeMillis()
+        )
+      ),
+      isModuleActive = true,
+      onAddNewFolder = {},
+      onNavigateToActivityLog = {},
+      onNavigateToFolder = {},
+      onToggleFolder = { _, _ -> },
+      onActivateModule = {}
+    )
+  }
+}
+
+@Preview(
+  showBackground = true,
+  uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+  name = "FilesHomeScreen Content Dark"
+)
+@Composable
+private fun FilesHomeScreenContentPreviewDark() {
+  MultiToolTheme {
+    FilesHomeScreenContent(
+      folderConfigs = listOf(
+        FolderConfig(
+          id = 1L,
+          path = "/storage/emulated/0/Pictures/Screenshots",
+          displayName = "Screenshots",
+          isDefaultScreenshotsFolder = true,
+          enabled = true,
+          deletionMode = DeletionMode.TRASH,
+          defaultActionOnIgnore = "KEEP",
+          candidateTimePeriods = "[]",
+          recentlyUsedPeriods = "[]",
+          fileTypeExcludeList = "[]",
+          fileTypeIncludeList = null,
+          createdAt = System.currentTimeMillis()
+        )
+      ),
+      isModuleActive = true,
+      onAddNewFolder = {},
+      onNavigateToActivityLog = {},
+      onNavigateToFolder = {},
+      onToggleFolder = { _, _ -> },
+      onActivateModule = {}
+    )
+  }
+}
+
+@Preview(showBackground = true, name = "FilesHomeScreen Empty State")
+@Composable
+private fun FilesHomeScreenEmptyPreview() {
+  MultiToolTheme {
+    FilesHomeScreenContent(
+      folderConfigs = emptyList(),
+      isModuleActive = true,
+      onAddNewFolder = {},
+      onNavigateToActivityLog = {},
+      onNavigateToFolder = {},
+      onToggleFolder = { _, _ -> },
+      onActivateModule = {}
+    )
+  }
+}
+
+@Preview(showBackground = true, name = "FilesHomeScreen Inactive Module")
+@Composable
+private fun FilesHomeScreenInactivePreview() {
+  MultiToolTheme {
+    FilesHomeScreenContent(
+      folderConfigs = emptyList(),
+      isModuleActive = false,
+      onAddNewFolder = {},
+      onNavigateToActivityLog = {},
+      onNavigateToFolder = {},
+      onToggleFolder = { _, _ -> },
+      onActivateModule = {}
+    )
+  }
+}
+
+@Preview(showBackground = true, name = "AddFolderCard Light")
+@Composable
+private fun AddFolderCardPreviewLight() {
+  MultiToolTheme {
+    AddFolderCard(onClick = {})
+  }
+}
+
+@Preview(
+  showBackground = true,
+  uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+  name = "AddFolderCard Dark"
+)
+@Composable
+private fun AddFolderCardPreviewDark() {
+  MultiToolTheme {
+    AddFolderCard(onClick = {})
+  }
+}
+

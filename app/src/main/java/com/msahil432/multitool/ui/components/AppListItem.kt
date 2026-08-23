@@ -18,6 +18,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.filled.Android
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
+/**
+ * Standard list row displaying an application's icon, label, package name, and optional trailing composable.
+ */
 @Composable
 fun AppListItem(
   appLabel: String,
@@ -44,14 +47,14 @@ fun AppListItem(
       if (icon != null) {
         Icon(
           painter = icon,
-          contentDescription = null,
+          contentDescription = "$appLabel icon",
           modifier = Modifier.padding(8.dp),
           tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
       } else {
         Icon(
           imageVector = Icons.Default.Android,
-          contentDescription = null,
+          contentDescription = "$appLabel icon",
           modifier = Modifier.padding(8.dp),
           tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -92,7 +95,7 @@ private fun AppListItemPreviewLight() {
           trailing = {
             Icon(
               Icons.AutoMirrored.Filled.ArrowForward,
-              contentDescription = null,
+              contentDescription = "Open item",
               tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
           }

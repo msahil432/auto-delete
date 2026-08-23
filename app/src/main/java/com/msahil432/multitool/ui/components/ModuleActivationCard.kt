@@ -11,6 +11,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.MoveToInbox
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,8 +23,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 
 /**
  * Full-screen (fills its container) card shown when a module has not been activated yet.
@@ -86,7 +91,7 @@ fun ModuleActivationCard(
                 ) {
                     Icon(
                         imageVector = icon,
-                        contentDescription = null,
+                        contentDescription = "$title icon",
                         modifier = Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -138,7 +143,7 @@ fun ModuleActivationCard(
                             ) {
                                 Icon(
                                     imageVector = featureIcon,
-                                    contentDescription = null,
+                                    contentDescription = "$featureText icon",
                                     modifier = Modifier.size(17.dp),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
@@ -170,7 +175,7 @@ fun ModuleActivationCard(
                 ) {
                     Icon(
                         Icons.Default.Check,
-                        contentDescription = null,
+                        contentDescription = "Check icon",
                         modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.tertiary
                     )
@@ -200,3 +205,46 @@ fun ModuleActivationCard(
         }
     }
 }
+
+@Preview(showBackground = true, name = "ModuleActivationCard Light")
+@Composable
+private fun ModuleActivationCardPreviewLight() {
+    MultiToolTheme {
+        ModuleActivationCard(
+            icon = Icons.Default.FolderOpen,
+            title = "File Cleanup",
+            tagline = "Automatically delete or move files on a schedule you define.",
+            features = listOf(
+                Icons.Default.FolderOpen to "Monitor Screenshots, Downloads, or any folder",
+                Icons.Default.Timer to "Delete or move files after a delay you choose",
+                Icons.Default.MoveToInbox to "Keep Google Photos safe with move-not-delete"
+            ),
+            ctaLabel = "Activate File Cleanup",
+            onActivate = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "ModuleActivationCard Dark"
+)
+@Composable
+private fun ModuleActivationCardPreviewDark() {
+    MultiToolTheme {
+        ModuleActivationCard(
+            icon = Icons.Default.FolderOpen,
+            title = "File Cleanup",
+            tagline = "Automatically delete or move files on a schedule you define.",
+            features = listOf(
+                Icons.Default.FolderOpen to "Monitor Screenshots, Downloads, or any folder",
+                Icons.Default.Timer to "Delete or move files after a delay you choose",
+                Icons.Default.MoveToInbox to "Keep Google Photos safe with move-not-delete"
+            ),
+            ctaLabel = "Activate File Cleanup",
+            onActivate = {}
+        )
+    }
+}
+

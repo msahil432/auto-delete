@@ -45,6 +45,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/**
+ * Main application scaffold hosting the persistent bottom navigation bar and nested tab routes
+ * (Files, Usage, Blocking, Settings).
+ */
 @Composable
 fun BottomNavScaffold(
   settingsRepository: SettingsRepository,

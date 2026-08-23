@@ -30,15 +30,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.msahil432.multitool.data.*
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 import kotlinx.coroutines.launch
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Detailed configuration screen for a monitored folder, allowing path changes, deletion mode selection,
+ * move rules, candidate time periods, file type filter lists, and monitor deletion.
+ */
 @Composable
 fun FolderDetailScreen(
     folderId: Long,
@@ -56,118 +61,16 @@ fun FolderDetailScreen(
 
     val currentConfig = config
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        currentConfig?.displayName ?: "Loading…",
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    if (currentConfig != null) {
-                        IconButton(onClick = { showDeleteConfirmDialog = true }) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Delete folder",
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
+    FolderDetailContent(
+        config = currentConfig,
+        innerPadding = innerPadding,
+        onBack = onBack,
+        onDeleteFolderClick = { showDeleteConfirmDialog = true },
+        onConfigUpdated = { updated ->
+            config = updated
+            coroutineScope.launch { appDao.updateFolderConfig(updated) }
         }
-    ) { padding ->
-        if (currentConfig == null) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            val bottomNavPadding = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding())
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = padding.calculateTopPadding(), start = 0.dp, end = 0.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                // ── 1. Folder Path ──
-                FolderPathSection(
-                    config = currentConfig,
-                    onConfigUpdated = { updated ->
-                        config = updated
-                        coroutineScope.launch { appDao.updateFolderConfig(updated) }
-                    }
-                )
-
-                SectionDivider()
-
-                // ── 2. Deletion Mode ──
-                DeletionModeSection(
-                    config = currentConfig,
-                    onConfigUpdated = { updated ->
-                        config = updated
-                        coroutineScope.launch { appDao.updateFolderConfig(updated) }
-                    }
-                )
-
-                SectionDivider()
-
-                // ── 2b. Move Rule ──
-                MoveRuleSection(
-                    config = currentConfig,
-                    onConfigUpdated = { updated ->
-                        config = updated
-                        coroutineScope.launch { appDao.updateFolderConfig(updated) }
-                    }
-                )
-
-                SectionDivider()
-
-                // ── 3. Time Period Presets ──
-                TimePeriodPresetsSection(
-                    config = currentConfig,
-                    onConfigUpdated = { updated ->
-                        config = updated
-                        coroutineScope.launch { appDao.updateFolderConfig(updated) }
-                    }
-                )
-
-                SectionDivider()
-
-                // ── 4. File Filters ──
-                FileFiltersSection(
-                    config = currentConfig,
-                    onConfigUpdated = { updated ->
-                        config = updated
-                        coroutineScope.launch { appDao.updateFolderConfig(updated) }
-                    }
-                )
-
-                SectionDivider()
-
-                // ── 5. Delete Folder Monitoring ──
-                DeleteFolderSection(
-                    folderName = currentConfig.displayName,
-                    onDeleteClick = { showDeleteConfirmDialog = true }
-                )
-
-                Spacer(Modifier.height(bottomNavPadding + 32.dp))
-            }
-        }
-    }
+    )
 
     if (showDeleteConfirmDialog && currentConfig != null) {
         AlertDialog(
@@ -175,7 +78,7 @@ fun FolderDetailScreen(
             icon = {
                 Icon(
                     Icons.Default.DeleteForever,
-                    contentDescription = null,
+                    contentDescription = "Delete confirmation icon",
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(28.dp)
                 )
@@ -217,6 +120,117 @@ fun FolderDetailScreen(
                 }
             }
         )
+    }
+}
+
+/**
+ * Stateless content composable for [FolderDetailScreen], rendering all configuration sections for a folder.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FolderDetailContent(
+    config: FolderConfig?,
+    innerPadding: PaddingValues = PaddingValues(),
+    onBack: () -> Unit,
+    onDeleteFolderClick: () -> Unit,
+    onConfigUpdated: (FolderConfig) -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        config?.displayName ?: "Loading…",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (config != null) {
+                        IconButton(onClick = onDeleteFolderClick) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete folder",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        }
+    ) { padding ->
+        if (config == null) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            val bottomNavPadding = maxOf(padding.calculateBottomPadding(), innerPadding.calculateBottomPadding())
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = padding.calculateTopPadding(), start = 0.dp, end = 0.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                // ── 1. Folder Path ──
+                FolderPathSection(
+                    config = config,
+                    onConfigUpdated = onConfigUpdated
+                )
+
+                SectionDivider()
+
+                // ── 2. Deletion Mode ──
+                DeletionModeSection(
+                    config = config,
+                    onConfigUpdated = onConfigUpdated
+                )
+
+                SectionDivider()
+
+                // ── 2b. Move Rule ──
+                MoveRuleSection(
+                    config = config,
+                    onConfigUpdated = onConfigUpdated
+                )
+
+                SectionDivider()
+
+                // ── 3. Time Period Presets ──
+                TimePeriodPresetsSection(
+                    config = config,
+                    onConfigUpdated = onConfigUpdated
+                )
+
+                SectionDivider()
+
+                // ── 4. File Filters ──
+                FileFiltersSection(
+                    config = config,
+                    onConfigUpdated = onConfigUpdated
+                )
+
+                SectionDivider()
+
+                // ── 5. Delete Folder Monitoring ──
+                DeleteFolderSection(
+                    folderName = config.displayName,
+                    onDeleteClick = onDeleteFolderClick
+                )
+
+                Spacer(Modifier.height(bottomNavPadding + 32.dp))
+            }
+        }
     }
 }
 
@@ -267,7 +281,7 @@ fun FolderPathSection(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(
                     Icons.Default.Folder,
-                    contentDescription = null,
+                    contentDescription = "Monitored Folder icon",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
@@ -363,7 +377,7 @@ fun FolderPathSection(
         ) {
             Icon(
                 Icons.Default.Info,
-                contentDescription = null,
+                contentDescription = "Info icon",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(14.dp)
             )
@@ -390,7 +404,7 @@ fun DeletionModeSection(
         ) {
             Icon(
                 Icons.Default.DeleteSweep,
-                contentDescription = null,
+                contentDescription = "Deletion Mode icon",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
@@ -444,7 +458,7 @@ fun DeletionModeRow(
     ) {
         Icon(
             icon,
-            contentDescription = null,
+            contentDescription = "$label icon",
             tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
             else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(22.dp)
@@ -495,7 +509,7 @@ fun TimePeriodPresetsSection(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(
                     Icons.Default.Timer,
-                    contentDescription = null,
+                    contentDescription = "Time Period Presets icon",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
@@ -693,7 +707,7 @@ fun AddTimePeriodDialog(
                     ) {
                         Icon(
                             Icons.Default.Timer,
-                            contentDescription = null,
+                            contentDescription = "Timer preview icon",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
@@ -751,7 +765,7 @@ fun FileFiltersSection(
         ) {
             Icon(
                 Icons.Default.FilterList,
-                contentDescription = null,
+                contentDescription = "File Filters icon",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
@@ -861,7 +875,7 @@ fun FilterListCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(18.dp))
+                Icon(icon, contentDescription = "$title icon", tint = iconTint, modifier = Modifier.size(18.dp))
                 Column {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -893,7 +907,7 @@ fun FilterListCard(
                 }
                 Icon(
                     if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null,
+                    contentDescription = if (expanded) "Collapse $title" else "Expand $title",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )
@@ -1062,7 +1076,7 @@ fun AddFilterRuleDialog(
                     ) {
                         Icon(
                             Icons.Default.Preview,
-                            contentDescription = null,
+                            contentDescription = "Rule preview icon",
                             tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(16.dp)
                         )
@@ -1158,7 +1172,7 @@ fun MoveRuleSection(
         ) {
             Icon(
                 Icons.AutoMirrored.Filled.DriveFileMove,
-                contentDescription = null,
+                contentDescription = "Move Rule icon",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
@@ -1183,7 +1197,7 @@ fun MoveRuleSection(
         ) {
             Icon(
                 Icons.Default.Info,
-                contentDescription = null,
+                contentDescription = "Move Rule info icon",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(16.dp).padding(top = 2.dp)
             )
@@ -1251,7 +1265,7 @@ fun MoveRuleSection(
                     ) {
                         Icon(
                             Icons.Default.FolderCopy,
-                            contentDescription = null,
+                            contentDescription = "Destination Folder icon",
                             tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(18.dp)
                         )
@@ -1338,7 +1352,7 @@ fun MoveRuleSection(
                         ) {
                             Icon(
                                 Icons.Default.Warning,
-                                contentDescription = null,
+                                contentDescription = "Destination warning icon",
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(14.dp)
                             )
@@ -1402,7 +1416,7 @@ fun DeleteFolderSection(
         ) {
             Icon(
                 Icons.Default.DeleteOutline,
-                contentDescription = null,
+                contentDescription = "Delete Folder Monitoring icon",
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(20.dp)
             )
@@ -1435,7 +1449,7 @@ fun DeleteFolderSection(
         ) {
             Icon(
                 Icons.Default.Delete,
-                contentDescription = null,
+                contentDescription = "Delete folder monitoring action icon",
                 modifier = Modifier.size(18.dp)
             )
             Spacer(Modifier.width(8.dp))
@@ -1443,4 +1457,61 @@ fun DeleteFolderSection(
         }
     }
 }
+
+@Preview(showBackground = true, name = "FolderDetailScreen Light")
+@Composable
+private fun FolderDetailScreenPreviewLight() {
+    MultiToolTheme {
+        FolderDetailContent(
+            config = FolderConfig(
+                id = 1L,
+                path = "/storage/emulated/0/Pictures/Screenshots",
+                displayName = "Screenshots",
+                isDefaultScreenshotsFolder = true,
+                enabled = true,
+                deletionMode = DeletionMode.TRASH,
+                defaultActionOnIgnore = "KEEP",
+                candidateTimePeriods = "[]",
+                recentlyUsedPeriods = "[]",
+                fileTypeExcludeList = "[]",
+                fileTypeIncludeList = null,
+                createdAt = System.currentTimeMillis()
+            ),
+            onBack = {},
+            onDeleteFolderClick = {},
+            onConfigUpdated = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "FolderDetailScreen Dark"
+)
+@Composable
+private fun FolderDetailScreenPreviewDark() {
+    MultiToolTheme {
+        FolderDetailContent(
+            config = FolderConfig(
+                id = 1L,
+                path = "/storage/emulated/0/Pictures/Screenshots",
+                displayName = "Screenshots",
+                isDefaultScreenshotsFolder = true,
+                enabled = true,
+                deletionMode = DeletionMode.TRASH,
+                defaultActionOnIgnore = "KEEP",
+                candidateTimePeriods = "[]",
+                recentlyUsedPeriods = "[]",
+                fileTypeExcludeList = "[]",
+                fileTypeIncludeList = null,
+                createdAt = System.currentTimeMillis()
+            ),
+            onBack = {},
+            onDeleteFolderClick = {},
+            onConfigUpdated = {}
+        )
+    }
+}
+
 

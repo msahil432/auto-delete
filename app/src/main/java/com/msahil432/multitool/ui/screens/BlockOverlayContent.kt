@@ -201,7 +201,7 @@ private fun QuotaProgressCard(
             ) {
                 Icon(
                     imageVector = Icons.Default.Timer,
-                    contentDescription = null,
+                    contentDescription = "Daily quota timer icon",
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(20.dp)
                 )
@@ -264,7 +264,7 @@ private fun CountdownCard(
         ) {
             Icon(
                 imageVector = Icons.Default.HourglassTop,
-                contentDescription = null,
+                contentDescription = "Block countdown hourglass icon",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(28.dp)
             )

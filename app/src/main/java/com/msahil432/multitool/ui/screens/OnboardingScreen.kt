@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Environment
 import android.os.PowerManager
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -41,6 +42,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -48,6 +50,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.msahil432.multitool.accessibility.AccessibilityUtil
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 
 import com.msahil432.multitool.data.AppDao
 import com.msahil432.multitool.data.DEFAULT_EXCLUSION_RULES
@@ -63,6 +66,7 @@ import com.msahil432.multitool.util.OemAutostart
 import com.msahil432.multitool.util.UsageAccess
 import kotlinx.coroutines.launch
 
+private const val TAG = "OnboardingScreen"
 
 // ─── Module definitions ──────────────────────────────────────────────────────
 
@@ -164,8 +168,13 @@ fun buildPermissionList(): List<AppPermission> = listOf(
                 val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
                     .setData(Uri.parse("package:${ctx.packageName}"))
                 ctx.startActivity(intent)
-            } catch (_: Exception) {
-                ctx.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to launch package ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION", e)
+                try {
+                    ctx.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                } catch (fallbackEx: Exception) {
+                    Log.w(TAG, "Failed to launch generic ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION", fallbackEx)
+                }
             }
         }
     ),
@@ -257,6 +266,10 @@ fun computePermissions(
 
 // ─── Onboarding screen ───────────────────────────────────────────────────────
 
+/**
+ * Multi-step onboarding experience walking the user through tool selection, dynamic permission granting,
+ * initial configuration, and ready-to-use confirmation.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingScreen(
@@ -458,7 +471,7 @@ private fun WelcomeStep(
         ) {
             Icon(
                 Icons.Default.Build,
-                contentDescription = null,
+                contentDescription = "Multi Tool icon",
                 modifier = Modifier.size(52.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -502,7 +515,7 @@ private fun WelcomeStep(
                 ) {
                     Icon(
                         module.icon,
-                        contentDescription = null,
+                        contentDescription = "${module.title} icon",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -690,7 +703,7 @@ private fun ModuleSelectionCard(
             ) {
                 Icon(
                     module.icon,
-                    contentDescription = null,
+                    contentDescription = "${module.title} icon",
                     tint = if (isSelected) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(22.dp)
@@ -791,7 +804,8 @@ private fun PermissionStep(
                 showUsageDisclosure = false
                 try {
                     settingsLauncher.launch(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to launch ACTION_USAGE_ACCESS_SETTINGS", e)
                     UsageAccess.openSettings(context)
                 }
             },
@@ -812,10 +826,15 @@ private fun PermissionStep(
                             Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
                                 .setData(Uri.parse("package:${context.packageName}"))
                         )
-                    } catch (_: Exception) {
-                        settingsLauncher.launch(
-                            Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                        )
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to launch package ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION", e)
+                        try {
+                            settingsLauncher.launch(
+                                Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                            )
+                        } catch (fallbackEx: Exception) {
+                            Log.w(TAG, "Failed to launch generic ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION", fallbackEx)
+                        }
                     }
                 }
             },
@@ -879,7 +898,7 @@ private fun PermissionStep(
         ) {
             Icon(
                 permission.icon,
-                contentDescription = null,
+                contentDescription = "${permission.title} icon",
                 modifier = Modifier.size(44.dp),
                 tint = if (granted) MaterialTheme.colorScheme.tertiary
                        else if (permission.isRequired) MaterialTheme.colorScheme.error
@@ -934,7 +953,7 @@ private fun PermissionStep(
                     containerColor = MaterialTheme.colorScheme.tertiary
                 )
             ) {
-                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Check, contentDescription = "Continue icon", modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Continue", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             }
@@ -970,7 +989,8 @@ private fun PermissionStep(
                         "battery" -> {
                             try {
                                 settingsLauncher.launch(BatteryOptimization.createRequestIntent(context))
-                            } catch (_: Exception) {
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Failed to launch BatteryOptimization request intent", e)
                                 BatteryOptimization.requestIgnore(context)
                             }
                         }
@@ -982,7 +1002,7 @@ private fun PermissionStep(
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp)
             ) {
-                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Grant permission icon", modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Grant Permission", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             }
@@ -1017,7 +1037,7 @@ fun PermissionStatusChip(granted: Boolean) {
     ) {
         Icon(
             if (granted) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-            contentDescription = null,
+            contentDescription = if (granted) "Permission granted status" else "Permission not granted status",
             modifier = Modifier.size(16.dp),
             tint = if (granted) MaterialTheme.colorScheme.tertiary
                    else MaterialTheme.colorScheme.onSurfaceVariant
@@ -1055,7 +1075,7 @@ private fun DefaultConfigStep(onNext: (DeletionMode, String) -> Unit) {
         ) {
             Icon(
                 Icons.Default.Settings,
-                contentDescription = null,
+                contentDescription = "Default Setup icon",
                 modifier = Modifier.size(44.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -1177,7 +1197,7 @@ private fun AllSetStep(
         ) {
             Icon(
                 Icons.Default.CheckCircle,
-                contentDescription = null,
+                contentDescription = "Success icon",
                 modifier = Modifier.size(52.dp),
                 tint = MaterialTheme.colorScheme.tertiary
             )
@@ -1222,7 +1242,7 @@ private fun AllSetStep(
                     ) {
                         Icon(
                             if (granted) Icons.Default.CheckCircle else Icons.Default.Warning,
-                            contentDescription = null,
+                            contentDescription = if (granted) "${perm.title} granted icon" else "${perm.title} not granted icon",
                             tint = if (granted) MaterialTheme.colorScheme.tertiary
                                    else if (perm.isRequired) MaterialTheme.colorScheme.error
                                    else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1335,7 +1355,7 @@ fun PermissionCheckScreen(
                 ) {
                     Icon(
                         Icons.Default.CheckCircle,
-                        contentDescription = null,
+                        contentDescription = "All permissions granted icon",
                         tint = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.size(22.dp)
                     )
@@ -1358,7 +1378,7 @@ fun PermissionCheckScreen(
                 ) {
                     Icon(
                         Icons.Default.Warning,
-                        contentDescription = null,
+                        contentDescription = "Missing permissions warning icon",
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(22.dp)
                     )
@@ -1399,7 +1419,8 @@ fun PermissionCheckScreen(
                             settingsLauncher.launch(
                                 Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
                             )
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Failed to launch ACTION_USAGE_ACCESS_SETTINGS", e)
                             UsageAccess.openSettings(context)
                         }
                     },
@@ -1420,10 +1441,15 @@ fun PermissionCheckScreen(
                                     Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
                                         .setData(Uri.parse("package:${context.packageName}"))
                                 )
-                            } catch (_: Exception) {
-                                settingsLauncher.launch(
-                                    Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                                )
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Failed to launch package ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION", e)
+                                try {
+                                    settingsLauncher.launch(
+                                        Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                                    )
+                                } catch (fallbackEx: Exception) {
+                                    Log.w(TAG, "Failed to launch generic ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION", fallbackEx)
+                                }
                             }
                         }
                     },
@@ -1477,7 +1503,8 @@ fun PermissionCheckScreen(
                             "battery" -> {
                                 try {
                                     settingsLauncher.launch(BatteryOptimization.createRequestIntent(context))
-                                } catch (_: Exception) {
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "Failed to launch BatteryOptimization request intent", e)
                                     BatteryOptimization.requestIgnore(context)
                                 }
                             }
@@ -1525,7 +1552,7 @@ private fun PermissionCard(
         ) {
             Icon(
                 permission.icon,
-                contentDescription = null,
+                contentDescription = "${permission.title} icon",
                 modifier = Modifier.size(24.dp),
                 tint = when {
                     granted -> MaterialTheme.colorScheme.tertiary
@@ -1580,10 +1607,117 @@ private fun PermissionCard(
                 else
                     ButtonDefaults.filledTonalButtonColors()
             ) {
-                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Grant in settings icon", modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Grant in Settings", fontWeight = FontWeight.Medium)
             }
         }
     }
 }
+
+@Preview(showBackground = true, name = "Onboarding WelcomeStep Light")
+@Composable
+private fun OnboardingWelcomeStepPreviewLight() {
+    MultiToolTheme {
+        WelcomeStep(
+            modules = buildModuleList(),
+            onNext = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Onboarding WelcomeStep Dark"
+)
+@Composable
+private fun OnboardingWelcomeStepPreviewDark() {
+    MultiToolTheme {
+        WelcomeStep(
+            modules = buildModuleList(),
+            onNext = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Onboarding ModuleSelectionStep Light")
+@Composable
+private fun OnboardingModuleSelectionStepPreviewLight() {
+    MultiToolTheme {
+        ModuleSelectionStep(
+            modules = buildModuleList(),
+            preSelected = setOf(MODULE_FILE_CLEANUP, MODULE_USAGE_STATS),
+            onBack = {},
+            onNext = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Onboarding ModuleSelectionStep Dark"
+)
+@Composable
+private fun OnboardingModuleSelectionStepPreviewDark() {
+    MultiToolTheme {
+        ModuleSelectionStep(
+            modules = buildModuleList(),
+            preSelected = setOf(MODULE_FILE_CLEANUP, MODULE_USAGE_STATS),
+            onBack = {},
+            onNext = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Onboarding DefaultConfigStep Light")
+@Composable
+private fun OnboardingDefaultConfigStepPreviewLight() {
+    MultiToolTheme {
+        DefaultConfigStep(
+            onNext = { _, _ -> }
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Onboarding DefaultConfigStep Dark"
+)
+@Composable
+private fun OnboardingDefaultConfigStepPreviewDark() {
+    MultiToolTheme {
+        DefaultConfigStep(
+            onNext = { _, _ -> }
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Onboarding AllSetStep Light")
+@Composable
+private fun OnboardingAllSetStepPreviewLight() {
+    MultiToolTheme {
+        AllSetStep(
+            permissions = buildPermissionList(),
+            onDone = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Onboarding AllSetStep Dark"
+)
+@Composable
+private fun OnboardingAllSetStepPreviewDark() {
+    MultiToolTheme {
+        AllSetStep(
+            permissions = buildPermissionList(),
+            onDone = {}
+        )
+    }
+}
+

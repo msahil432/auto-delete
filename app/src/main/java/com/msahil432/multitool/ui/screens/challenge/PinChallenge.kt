@@ -21,7 +21,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 import com.msahil432.multitool.util.PasswordSecurity
 import com.msahil432.multitool.util.SecureScreen
 import kotlinx.coroutines.delay
@@ -84,7 +86,7 @@ fun PinChallenge(
             ) {
                 Icon(
                     Icons.Default.Password,
-                    contentDescription = null,
+                    contentDescription = "Master PIN Challenge icon",
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
@@ -120,7 +122,7 @@ fun PinChallenge(
                 ) {
                     Icon(
                         Icons.Default.Lock,
-                        contentDescription = null,
+                        contentDescription = "Lockout icon",
                         tint = MaterialTheme.colorScheme.error
                     )
                     Column {
@@ -235,3 +237,32 @@ fun PinChallenge(
         }
     }
 }
+
+@Preview(showBackground = true, name = "PinChallenge Light")
+@Composable
+private fun PinChallengePreviewLight() {
+    MultiToolTheme {
+        PinChallenge(
+            storedPasswordHash = "dummy_hash",
+            onSuccess = {},
+            onCancel = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "PinChallenge Dark"
+)
+@Composable
+private fun PinChallengePreviewDark() {
+    MultiToolTheme {
+        PinChallenge(
+            storedPasswordHash = "dummy_hash",
+            onSuccess = {},
+            onCancel = {}
+        )
+    }
+}
+

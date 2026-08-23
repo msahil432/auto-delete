@@ -1,11 +1,17 @@
 package com.msahil432.multitool.data
 
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+/**
+ * Repository wrapping Jetpack DataStore preferences for all app settings, strict mode configuration,
+ * challenge settings, and module activations.
+ */
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
+    /** Preference keys for DataStore settings. */
     companion object {
         val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         val GLOBAL_DEFAULT_POOL = stringPreferencesKey("global_default_pool")
@@ -54,7 +60,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val rawMethod = preferences[STRICT_UNLOCK_METHOD] ?: UnlockMethod.TEXT.name
         val method = try {
             UnlockMethod.valueOf(rawMethod)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("SettingsRepository", "Failed to parse UnlockMethod '$rawMethod', defaulting to TEXT", e)
             UnlockMethod.TEXT
         }
         StrictModeState(

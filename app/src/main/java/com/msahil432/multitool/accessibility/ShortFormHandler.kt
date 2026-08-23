@@ -2,6 +2,7 @@ package com.msahil432.multitool.accessibility
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.msahil432.multitool.data.BlockRuleType
@@ -9,6 +10,7 @@ import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.TimelineEventType
 import com.msahil432.multitool.data.UsageRepository
+import io.sentry.Sentry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -91,7 +93,10 @@ class ShortFormHandler(
                         ruleType = BlockRuleType.SCHEDULE
                     )
                     usageRepository.recordTimeline(pkg, TimelineEventType.BLOCK_INTERCEPT)
-                } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    Log.e("ShortFormHandler", "Failed to log interception for $pkg", e)
+                    Sentry.captureException(e)
+                }
             }
 
             // 3. Recheck feed after delay; if still stuck in feed, route to home
@@ -166,10 +171,14 @@ class ShortFormHandler(
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             svc.startActivity(homeIntent)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("ShortFormHandler", "Failed to launch home intent, falling back to global action home", e)
             try {
                 svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
-            } catch (_: Exception) {}
+            } catch (fallbackEx: Exception) {
+                Log.e("ShortFormHandler", "Failed to perform GLOBAL_ACTION_HOME", fallbackEx)
+                Sentry.captureException(fallbackEx)
+            }
         }
     }
 }

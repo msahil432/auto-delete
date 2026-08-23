@@ -4,6 +4,9 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/**
+ * Entity representing a grouping of app packages that share common blocking rules and limits.
+ */
 @Entity(tableName = "block_groups")
 data class BlockGroup(
   @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -13,6 +16,9 @@ data class BlockGroup(
   val createdAt: Long
 )
 
+/**
+ * Entity defining a blocking restriction rule (e.g. schedule, daily quota, launch cap, session limit, or goal unlock).
+ */
 @Entity(tableName = "block_rules")
 data class BlockRule(
   @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -35,8 +41,14 @@ data class BlockRule(
   val goalRequiredMinutes: Int = 0
 )
 
+/**
+ * Types of blocking rules supported by the blocking engine.
+ */
 enum class BlockRuleType { SCHEDULE, DAILY_QUOTA, LAUNCH_LIMIT, SESSION_LIMIT, GOAL_UNLOCK }
 
+/**
+ * Entity representing an event where an app launch or usage was intercepted and blocked.
+ */
 @Entity(tableName = "block_interceptions", indices = [Index("timestamp")])
 data class BlockInterception(
   @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -46,7 +58,9 @@ data class BlockInterception(
   val ruleType: BlockRuleType
 )
 
-// Tracks live session/quota counters, reset daily.
+/**
+ * Entity tracking live daily usage and session counters for a block group, reset daily.
+ */
 @Entity(
   tableName = "block_counters",
   indices = [Index(value = ["dateEpochDay", "groupId"], unique = true)]
@@ -59,3 +73,4 @@ data class BlockCounter(
   val launchesUsed: Int = 0,
   val lockedUntil: Long = 0   // epoch millis for session cooldown lockout
 )
+

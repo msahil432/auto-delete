@@ -16,12 +16,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.msahil432.multitool.data.DeletionMode
 import com.msahil432.multitool.data.FolderConfig
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 
 // NOTE: SettingsScreen composable was replaced by FilesHomeScreen (02-navigation-hub.md).
 // This file now only contains shared helper composables used by FilesHomeScreen.
 
+/**
+ * List item card showing folder name, path, deletion mode, and an enabled toggle.
+ */
 @Composable
 fun FolderConfigItem(
     config: FolderConfig,
@@ -58,6 +64,9 @@ fun FolderConfigItem(
 
 // ─── Permission health banner ─────────────────────────────────────────────────
 
+/**
+ * Inline banner summarizing permission health and prompting the user if required or optional permissions are missing.
+ */
 @Composable
 fun PermissionHealthBanner(
     onFixPermissions: () -> Unit,
@@ -90,7 +99,7 @@ fun PermissionHealthBanner(
         ) {
             Icon(
                 Icons.Default.CheckCircle,
-                contentDescription = null,
+                contentDescription = "All permissions granted icon",
                 tint = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.size(16.dp)
             )
@@ -126,7 +135,7 @@ fun PermissionHealthBanner(
     ) {
         Icon(
             if (missingRequired.isNotEmpty()) Icons.Default.Warning else Icons.Default.Security,
-            contentDescription = null,
+            contentDescription = if (missingRequired.isNotEmpty()) "Missing required permissions icon" else "Missing optional permissions icon",
             tint = contentColor,
             modifier = Modifier.size(22.dp)
         )
@@ -148,11 +157,66 @@ fun PermissionHealthBanner(
         }
         Icon(
             Icons.AutoMirrored.Filled.ArrowForward,
-            contentDescription = null,
+            contentDescription = "Review permissions icon",
             tint = contentColor,
             modifier = Modifier.size(18.dp)
         )
     }
 }
+
+@Preview(showBackground = true, name = "FolderConfigItem Light")
+@Composable
+private fun FolderConfigItemPreviewLight() {
+    MultiToolTheme {
+        FolderConfigItem(
+            config = FolderConfig(
+                id = 1L,
+                path = "/storage/emulated/0/Pictures/Screenshots",
+                displayName = "Screenshots",
+                isDefaultScreenshotsFolder = true,
+                enabled = true,
+                deletionMode = DeletionMode.TRASH,
+                defaultActionOnIgnore = "KEEP",
+                candidateTimePeriods = "[]",
+                recentlyUsedPeriods = "[]",
+                fileTypeExcludeList = "[]",
+                fileTypeIncludeList = null,
+                createdAt = System.currentTimeMillis()
+            ),
+            onClick = {},
+            onToggle = {}
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "FolderConfigItem Dark"
+)
+@Composable
+private fun FolderConfigItemPreviewDark() {
+    MultiToolTheme {
+        FolderConfigItem(
+            config = FolderConfig(
+                id = 1L,
+                path = "/storage/emulated/0/Pictures/Screenshots",
+                displayName = "Screenshots",
+                isDefaultScreenshotsFolder = true,
+                enabled = true,
+                deletionMode = DeletionMode.TRASH,
+                defaultActionOnIgnore = "KEEP",
+                candidateTimePeriods = "[]",
+                recentlyUsedPeriods = "[]",
+                fileTypeExcludeList = "[]",
+                fileTypeIncludeList = null,
+                createdAt = System.currentTimeMillis()
+            ),
+            onClick = {},
+            onToggle = {}
+        )
+    }
+}
+
 
 

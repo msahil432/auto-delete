@@ -18,6 +18,9 @@ import com.msahil432.multitool.ui.screens.OnboardingScreen
 private const val ROUTE_ONBOARDING = "onboarding"
 private const val ROUTE_HUB = "hub"
 
+/**
+ * Root composable navigation graph routing between [OnboardingScreen] and [BottomNavScaffold].
+ */
 @Composable
 fun AppNavigation(
   settingsRepository: SettingsRepository,

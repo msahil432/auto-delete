@@ -4,6 +4,7 @@ import android.app.usage.UsageEvents
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -17,9 +18,14 @@ import com.msahil432.multitool.data.TimelineEventType
 import com.msahil432.multitool.data.UsageRepository
 import com.msahil432.multitool.dataStore
 import com.msahil432.multitool.util.UsageAccess
+import io.sentry.Sentry
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
+/**
+ * Periodic and one-time [CoroutineWorker] that queries system [android.app.usage.UsageEvents]
+ * to record application launches, compute foreground session durations, and populate daily usage metrics.
+ */
 class UsageCollectorWorker(
     private val appContext: Context,
     workerParams: WorkerParameters
@@ -92,6 +98,9 @@ class UsageCollectorWorker(
         const val PERIODIC_WORK_NAME = "usage_collector_periodic"
         const val ONE_TIME_WORK_NAME = "usage_collector_one_time"
 
+        /**
+         * Schedules periodic background execution (every 15 minutes) and enqueues an immediate run to collect usage events.
+         */
         fun schedule(context: Context) {
             try {
                 val periodicRequest = PeriodicWorkRequestBuilder<UsageCollectorWorker>(
@@ -110,8 +119,10 @@ class UsageCollectorWorker(
                     ExistingWorkPolicy.REPLACE,
                     oneTimeRequest
                 )
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Ignore in unit test or custom runner environments where WorkManager is uninitialized
+                Log.w("UsageCollectorWorker", "Failed to schedule UsageCollectorWorker", e)
+                Sentry.captureException(e)
             }
         }
     }

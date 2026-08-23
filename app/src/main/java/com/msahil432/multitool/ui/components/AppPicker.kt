@@ -9,7 +9,9 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.util.Log
 import androidx.compose.foundation.Image
+import io.sentry.Sentry
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -38,12 +40,18 @@ import com.msahil432.multitool.ui.theme.MultiToolTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/**
+ * Model item representing an installed application with its package name, localized label, and icon bitmap.
+ */
 data class InstalledAppItem(
   val packageName: String,
   val label: String,
   val icon: Bitmap? = null
 )
 
+/**
+ * Modal dialog for searching and selecting one or more installed applications.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppPicker(
@@ -134,7 +142,7 @@ fun AppPicker(
           modifier = Modifier.fillMaxWidth(),
           placeholder = { Text("Search apps…") },
           leadingIcon = {
-            Icon(Icons.Default.Search, contentDescription = null)
+            Icon(Icons.Default.Search, contentDescription = "Search apps")
           },
           trailingIcon = {
             if (searchQuery.isNotEmpty()) {
@@ -234,7 +242,7 @@ fun AppPicker(
                     if (app.icon != null) {
                       Image(
                         bitmap = app.icon.asImageBitmap(),
-                        contentDescription = null,
+                        contentDescription = "${app.label} icon",
                         modifier = Modifier
                           .fillMaxSize()
                           .padding(4.dp)
@@ -242,7 +250,7 @@ fun AppPicker(
                     } else {
                       Icon(
                         imageVector = Icons.Default.Android,
-                        contentDescription = null,
+                        contentDescription = "${app.label} icon",
                         modifier = Modifier.padding(8.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                       )
@@ -330,7 +338,8 @@ private fun loadInstalledApps(context: Context): List<InstalledAppItem> {
         @Suppress("DEPRECATION")
         pm.queryIntentActivities(launcherIntent, flags)
       }
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+      Log.w("AppPicker", "Failed to query launcher activities", e)
       emptyList()
     }
 
@@ -345,7 +354,8 @@ private fun loadInstalledApps(context: Context): List<InstalledAppItem> {
         @Suppress("DEPRECATION")
         pm.queryIntentActivities(tvIntent, flags)
       }
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+      Log.w("AppPicker", "Failed to query TV launcher activities", e)
       emptyList()
     }
 
@@ -357,13 +367,15 @@ private fun loadInstalledApps(context: Context): List<InstalledAppItem> {
       val label = try {
         val l = info.loadLabel(pm).toString()
         if (l.isNotBlank()) l else info.activityInfo.applicationInfo.loadLabel(pm).toString()
-      } catch (_: Exception) {
+      } catch (e: Exception) {
+        Log.w("AppPicker", "Failed to load label for $pkg", e)
         pkg
       }
 
       val icon = try {
         info.loadIcon(pm).toBitmapOrNull()
-      } catch (_: Exception) {
+      } catch (e: Exception) {
+        Log.w("AppPicker", "Failed to load icon for $pkg", e)
         null
       }
 
@@ -378,7 +390,8 @@ private fun loadInstalledApps(context: Context): List<InstalledAppItem> {
         @Suppress("DEPRECATION")
         pm.getInstalledApplications(0)
       }
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+      Log.w("AppPicker", "Failed to get installed applications", e)
       emptyList()
     }
 
@@ -394,12 +407,14 @@ private fun loadInstalledApps(context: Context): List<InstalledAppItem> {
         val label = try {
           val l = appInfo.loadLabel(pm).toString()
           if (l.isNotBlank()) l else pkg
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+          Log.w("AppPicker", "Failed to load label for $pkg", e)
           pkg
         }
         val icon = try {
           appInfo.loadIcon(pm).toBitmapOrNull()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+          Log.w("AppPicker", "Failed to load icon for $pkg", e)
           null
         }
         result.add(InstalledAppItem(packageName = pkg, label = label, icon = icon))
@@ -408,7 +423,9 @@ private fun loadInstalledApps(context: Context): List<InstalledAppItem> {
 
     result.sortBy { it.label.lowercase() }
     result
-  } catch (_: Exception) {
+  } catch (e: Exception) {
+    Log.e("AppPicker", "Critical error querying installed apps", e)
+    Sentry.captureException(e)
     emptyList()
   }
 }
@@ -426,7 +443,8 @@ private fun Drawable.toBitmapOrNull(): Bitmap? {
       draw(canvas)
       bitmap
     }
-  } catch (_: Exception) {
+  } catch (e: Exception) {
+    Log.w("AppPicker", "Failed to convert drawable to bitmap", e)
     null
   }
 }

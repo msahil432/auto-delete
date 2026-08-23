@@ -3,6 +3,7 @@ package com.msahil432.multitool.ui.screens
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,6 +42,9 @@ import kotlinx.coroutines.launch
 
 import com.msahil432.multitool.blocking.StrictModeController
 
+/**
+ * Screen for creating or editing a [BlockGroup], selecting targeted packages, and configuring blocking rules.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BlockGroupEditScreen(
@@ -229,7 +233,7 @@ fun BlockGroupEditScreen(
             ) {
               Icon(
                 Icons.Default.Apps,
-                contentDescription = null,
+                contentDescription = "Target Apps icon",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(22.dp)
               )
@@ -244,7 +248,7 @@ fun BlockGroupEditScreen(
               onClick = { showAppPicker = true },
               shape = RoundedCornerShape(12.dp)
             ) {
-              Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+              Icon(Icons.Default.Edit, contentDescription = "Edit target apps", modifier = Modifier.size(16.dp))
               Spacer(modifier = Modifier.width(6.dp))
               Text("Select (${selectedPackages.size})")
             }
@@ -264,7 +268,8 @@ fun BlockGroupEditScreen(
                 try {
                   val info = pm.getApplicationInfo(pkg, 0)
                   pm.getApplicationLabel(info).toString()
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                  Log.w("BlockGroupEditScreen", "Failed to resolve app label for $pkg", e)
                   pkg
                 }
               }.sorted()
@@ -420,7 +425,7 @@ fun BlockGroupEditScreen(
           .height(52.dp),
         shape = RoundedCornerShape(16.dp)
       ) {
-        Icon(Icons.Default.Save, contentDescription = null)
+        Icon(Icons.Default.Save, contentDescription = "Save Block Group")
         Spacer(modifier = Modifier.width(8.dp))
         Text("Save Block Group", style = MaterialTheme.typography.titleMedium)
       }
@@ -532,7 +537,7 @@ private fun RulesHeaderWithAddMenu(
     ) {
       Icon(
         Icons.Default.Security,
-        contentDescription = null,
+        contentDescription = "Enforcement Rules icon",
         tint = MaterialTheme.colorScheme.primary,
         modifier = Modifier.size(22.dp)
       )
@@ -548,7 +553,7 @@ private fun RulesHeaderWithAddMenu(
         onClick = { menuExpanded = true },
         shape = RoundedCornerShape(12.dp)
       ) {
-        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+        Icon(Icons.Default.Add, contentDescription = "Add rule", modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.width(4.dp))
         Text("Add Rule")
       }
@@ -561,7 +566,7 @@ private fun RulesHeaderWithAddMenu(
           DropdownMenuItem(
             text = { Text(type.displayName()) },
             leadingIcon = {
-              Icon(type.icon(), contentDescription = null, modifier = Modifier.size(20.dp))
+              Icon(type.icon(), contentDescription = "${type.displayName()} icon", modifier = Modifier.size(20.dp))
             },
             onClick = {
               menuExpanded = false
@@ -574,6 +579,9 @@ private fun RulesHeaderWithAddMenu(
   }
 }
 
+/**
+ * Configurable card for editing an individual [BlockRule] (schedule, quota, launch limit, session limit, goal unlock).
+ */
 @Composable
 fun RuleEditorCard(
   rule: BlockRule,
@@ -609,7 +617,7 @@ fun RuleEditorCard(
         ) {
           Icon(
             rule.type.icon(),
-            contentDescription = null,
+            contentDescription = "${rule.type.displayName()} icon",
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(20.dp)
           )
@@ -932,7 +940,8 @@ private fun GoalUnlockRuleEditor(
       try {
         val info = pm.getApplicationInfo(pkg, 0)
         pm.getApplicationLabel(info).toString()
-      } catch (_: Exception) {
+      } catch (e: Exception) {
+        Log.w("BlockGroupEditScreen", "Failed to resolve goal app label for $pkg", e)
         pkg
       }
     }

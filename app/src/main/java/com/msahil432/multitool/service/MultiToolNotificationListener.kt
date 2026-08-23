@@ -15,6 +15,10 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+/**
+ * [NotificationListenerService] that intercepts incoming status bar notifications, checks whether their source
+ * package is restricted under active focus schedules, vaults restricted notifications, and schedules digest delivery.
+ */
 class MultiToolNotificationListener : NotificationListenerService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var notificationRepo: NotificationRepository

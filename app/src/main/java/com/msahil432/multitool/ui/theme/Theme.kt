@@ -1,4 +1,4 @@
-﻿package com.msahil432.multitool.ui.theme
+package com.msahil432.multitool.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -30,6 +30,10 @@ private val LightColorScheme =
     */
   )
 
+/**
+ * Application Material 3 theme supporting Material You dynamic color schemes on Android 12+ (S+)
+ * and fallback light/dark schemes for older Android versions.
+ */
 @Composable
 fun MultiToolTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),

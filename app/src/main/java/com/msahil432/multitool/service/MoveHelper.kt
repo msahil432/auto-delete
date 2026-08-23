@@ -42,9 +42,16 @@ object MoveHelper {
         val db = (context.applicationContext as MultiToolApp).database
 
         // ── 1. Guard: MANAGE_EXTERNAL_STORAGE must be granted ───────────────────
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-            !Environment.isExternalStorageManager()
-        ) {
+        val isStorageManagerGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                Environment.isExternalStorageManager()
+            } catch (e: Exception) {
+                false
+            }
+        } else {
+            true
+        }
+        if (!isStorageManagerGranted) {
             val msg = "\"All Files Access\" permission not granted. " +
                     "Go to Settings → Apps → Multi Tool → Permissions → " +
                     "Files and Media → Allow access to all files."
@@ -183,6 +190,9 @@ object MoveHelper {
 
     // ── Error notification helper ─────────────────────────────────────────────────
 
+    /**
+     * Posts a notification informing the user that moving a file failed.
+     */
     fun fireErrorNotification(context: Context, filePath: String, message: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

@@ -40,6 +40,10 @@ import com.msahil432.multitool.util.UsageAccess
 import com.msahil432.multitool.util.toHms
 import java.text.NumberFormat
 
+/**
+ * Dashboard displaying daily device usage stats: total screen time, unlocks, app launch totals,
+ * per-app foreground time breakdown, and navigation to the detailed activity timeline.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UsageHomeScreen(
@@ -134,6 +138,9 @@ fun UsageHomeScreen(
   }
 }
 
+/**
+ * Main content layout for [UsageHomeScreen] with stat tiles and a per-app usage list.
+ */
 @Composable
 fun UsageHomeScreenContent(
   isUsageAccessGranted: Boolean,
@@ -269,7 +276,7 @@ fun UsageHomeScreenContent(
           ) {
             Icon(
               imageVector = Icons.Default.History,
-              contentDescription = null,
+              contentDescription = "View Timeline icon",
               modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))

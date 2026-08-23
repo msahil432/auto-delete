@@ -38,6 +38,10 @@ import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Place
 import com.msahil432.multitool.blocking.StrictModeController
 
+/**
+ * Primary blocking dashboard displaying configured [BlockGroup] cards, strict mode status banner,
+ * and quick navigation to group creation, geofences, and strict mode.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BlockingHomeScreen(
@@ -82,7 +86,7 @@ fun BlockingHomeScreen(
     floatingActionButton = {
       ExtendedFloatingActionButton(
         onClick = { onNavigateToGroup(0L) },
-        icon = { Icon(Icons.Default.Add, contentDescription = null) },
+        icon = { Icon(Icons.Default.Add, contentDescription = "Add new block group") },
         text = { Text("New group") }
       )
     },
@@ -218,7 +222,7 @@ fun StrictModeActiveBanner(
       ) {
         Icon(
           Icons.Default.Lock,
-          contentDescription = null,
+          contentDescription = "Strict mode active icon",
           tint = MaterialTheme.colorScheme.primary
         )
         Column {
@@ -361,6 +365,9 @@ private fun formatGroupRulesSummary(rules: List<BlockRule>): String {
   return "$countText · ${summaries.joinToString(", ")}"
 }
 
+/**
+ * Formats a minute-of-day integer (0-1439) into a 24-hour "HH:mm" string representation.
+ */
 fun formatMinuteOfDay(minuteOfDay: Int): String {
   val clamped = minuteOfDay.coerceIn(0, 1439)
   val hours = clamped / 60
@@ -368,6 +375,9 @@ fun formatMinuteOfDay(minuteOfDay: Int): String {
   return "%02d:%02d".format(hours, minutes)
 }
 
+/**
+ * Formats a 7-bit days-of-week bitmask into a human-readable summary (e.g. "Weekdays", "Daily", "Mon,Wed,Fri").
+ */
 fun formatDaysOfWeekMask(mask: Int): String {
   if (mask == 0) return "Never"
   if (mask == 0x7F) return "Daily"

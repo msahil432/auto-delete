@@ -14,6 +14,10 @@ import java.util.concurrent.TimeUnit
 import android.util.Log
 import io.sentry.Sentry
 
+/**
+ * [CoroutineWorker] executing deferred file actions (trashing, permanent deletion, or re-prompting)
+ * when a scheduled pending action timer elapses.
+ */
 class FileActionWorker(
     private val appContext: Context,
     workerParams: WorkerParameters
@@ -28,6 +32,8 @@ class FileActionWorker(
         val db = (appContext.applicationContext as MultiToolApp).database
         val config = db.appDao().getFolderConfigById(folderId).firstOrNull() ?: return Result.failure()
         
+        Sentry.addBreadcrumb("Executing file action: ${config.deletionMode} for $filePath")
+
         // Wait, what if the action was cancelled? We should check PendingAction.
         val pendingAction = db.appDao().getPendingActionByUri(filePath)
         if (pendingAction == null || pendingAction.status != ActionStatus.PENDING) {
@@ -107,6 +113,7 @@ class FileActionWorker(
             return Result.success()
         } catch (e: Exception) {
             Log.e("FileActionWorker", "Error processing file: $filePath", e)
+            Sentry.captureException(e)
             val briefTrace = e.stackTrace.take(3)
                 .joinToString("\n") { "  at ${it.className.substringAfterLast('.')}.${it.methodName}(${it.fileName}:${it.lineNumber})" }
             val errorDetails = "${e::class.simpleName}: ${e.message}\n$briefTrace"
@@ -130,6 +137,9 @@ class FileActionWorker(
     }
 
     companion object {
+        /**
+         * Enqueues a unique delayed work request to process the scheduled action on [filePath] after [delayMillis].
+         */
         fun schedule(context: Context, folderId: Long, filePath: String, delayMillis: Long) {
             val inputData = workDataOf(
                 "folderId" to folderId,

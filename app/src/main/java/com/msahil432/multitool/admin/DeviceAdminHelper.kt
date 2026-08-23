@@ -5,16 +5,22 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 
+/**
+ * Helper object for querying, activating, and deactivating Device Administrator privileges (anti-uninstall protection).
+ */
 object DeviceAdminHelper {
 
+    /** Returns the [ComponentName] of [MultiToolDeviceAdminReceiver]. */
     fun component(ctx: Context): ComponentName =
         ComponentName(ctx, MultiToolDeviceAdminReceiver::class.java)
 
+    /** Returns true if MultiTool is currently active as a device administrator. */
     fun isActive(ctx: Context): Boolean {
         val dpm = ctx.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
         return dpm?.isAdminActive(component(ctx)) == true
     }
 
+    /** Prompts the user to activate Device Administrator privileges. */
     fun requestActivation(ctx: Context) {
         val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
             putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, component(ctx))
@@ -27,8 +33,10 @@ object DeviceAdminHelper {
         ctx.startActivity(intent)
     }
 
+    /** Deactivates Device Administrator privileges when focus sessions or strict mode end. */
     fun deactivate(ctx: Context) {
         val dpm = ctx.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
         dpm?.removeActiveAdmin(component(ctx))
     }
 }
+

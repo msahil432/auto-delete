@@ -14,6 +14,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
+/**
+ * Standard settings item row with an optional leading icon, title, optional subtitle, and trailing control.
+ */
 @Composable
 fun SettingRow(
   title: String,
@@ -37,7 +40,7 @@ fun SettingRow(
     if (leadingIcon != null) {
       Icon(
         imageVector = leadingIcon,
-        contentDescription = null,
+        contentDescription = "$title icon",
         tint = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.size(24.dp)
       )

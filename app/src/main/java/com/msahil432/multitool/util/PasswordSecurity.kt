@@ -1,5 +1,6 @@
 package com.msahil432.multitool.util
 
+import android.util.Log
 import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
@@ -58,7 +59,8 @@ object PasswordSecurity {
             val spec = PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH_BITS)
             val factory = SecretKeyFactory.getInstance(ALGORITHM)
             factory.generateSecret(spec).encoded
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("PasswordSecurity", "PBKDF2 factory unavailable, falling back to SHA-256 with salt", e)
             // Fallback to SHA-256 with salt if PBKDF2 factory is unavailable
             val digest = MessageDigest.getInstance("SHA-256")
             digest.update(salt)
@@ -72,7 +74,8 @@ object PasswordSecurity {
             ByteArray(hex.length / 2) { i ->
                 hex.substring(i * 2, i * 2 + 2).toInt(16).toByte()
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("PasswordSecurity", "Failed to parse hex string", e)
             null
         }
     }

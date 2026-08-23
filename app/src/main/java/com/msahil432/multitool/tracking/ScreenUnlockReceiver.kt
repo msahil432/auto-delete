@@ -5,6 +5,9 @@ import android.content.Context
 import android.content.Intent
 import com.msahil432.multitool.data.UnlockType
 
+/**
+ * [BroadcastReceiver] listening for [Intent.ACTION_SCREEN_ON] and [Intent.ACTION_USER_PRESENT] system broadcasts.
+ */
 class ScreenUnlockReceiver(private val onEvent: (UnlockType) -> Unit) : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {

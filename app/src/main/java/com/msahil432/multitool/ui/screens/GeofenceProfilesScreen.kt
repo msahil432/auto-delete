@@ -45,6 +45,10 @@ import com.msahil432.multitool.ui.components.PermissionTile
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 import kotlinx.coroutines.launch
 
+/**
+ * Dashboard listing all configured location [GeofenceProfile] items, permissions status banners,
+ * and options to toggle or configure new location geofences.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GeofenceProfilesScreen(
@@ -115,7 +119,7 @@ fun GeofenceProfilesScreen(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { onNavigateToEdit(0L) },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                icon = { Icon(Icons.Default.Add, contentDescription = "New geofence profile icon") },
                 text = { Text("New profile") },
                 modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
             )
@@ -160,7 +164,7 @@ fun GeofenceProfilesScreen(
     if (showBackgroundDisclosure) {
         AlertDialog(
             onDismissRequest = { showBackgroundDisclosure = false },
-            icon = { Icon(Icons.Default.Place, contentDescription = null) },
+            icon = { Icon(Icons.Default.Place, contentDescription = "Location icon") },
             title = { Text("Background Location Required") },
             text = {
                 Text(
@@ -188,6 +192,9 @@ fun GeofenceProfilesScreen(
     }
 }
 
+/**
+ * List content displaying geofence cards, location permission warning cards, or an empty state placeholder.
+ */
 @Composable
 fun GeofenceProfilesContent(
     profiles: List<GeofenceProfile>?,

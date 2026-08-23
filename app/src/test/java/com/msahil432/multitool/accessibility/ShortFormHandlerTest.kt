@@ -204,6 +204,7 @@ class ShortFormHandlerTest {
             cooldownMs = 1000L,
             clock = testClock
         )
+        testScheduler.advanceUntilIdle()
         for (i in 1..20) {
             if (handler.isBlockingEnabledForPackage(ShortFormSignatures.PKG_INSTAGRAM)) break
             testScheduler.advanceTimeBy(100)

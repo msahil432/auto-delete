@@ -41,6 +41,8 @@ import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.delay
 import java.util.concurrent.Executors
 import io.sentry.Sentry
+import androidx.compose.ui.tooling.preview.Preview as ComposePreview
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 
 /**
  * High-friction QR Code Scan Challenge.
@@ -105,7 +107,7 @@ fun QrChallenge(
             ) {
                 Icon(
                     Icons.Default.QrCodeScanner,
-                    contentDescription = null,
+                    contentDescription = "QR Code Challenge icon",
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
@@ -145,7 +147,7 @@ fun QrChallenge(
                 ) {
                     Icon(
                         Icons.Default.CameraAlt,
-                        contentDescription = null,
+                        contentDescription = "Camera Permission icon",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(56.dp)
                     )
@@ -167,7 +169,7 @@ fun QrChallenge(
                         onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.VpnKey, contentDescription = null)
+                        Icon(Icons.Default.VpnKey, contentDescription = "Grant Permission icon")
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Grant Permission")
                     }
@@ -308,7 +310,7 @@ fun QrChallenge(
                 ) {
                     Icon(
                         Icons.Default.ErrorOutline,
-                        contentDescription = null,
+                        contentDescription = "Error icon",
                         tint = MaterialTheme.colorScheme.error
                     )
                     Text(
@@ -332,3 +334,32 @@ fun QrChallenge(
         }
     }
 }
+
+@ComposePreview(showBackground = true, name = "QrChallenge Permission Required Light")
+@Composable
+private fun QrChallengePermissionRequiredPreviewLight() {
+    MultiToolTheme {
+        QrChallenge(
+            expectedQrValue = "STRICT-UNLOCK-SECRET",
+            onSuccess = {},
+            onCancel = {}
+        )
+    }
+}
+
+@ComposePreview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "QrChallenge Permission Required Dark"
+)
+@Composable
+private fun QrChallengePermissionRequiredPreviewDark() {
+    MultiToolTheme {
+        QrChallenge(
+            expectedQrValue = "STRICT-UNLOCK-SECRET",
+            onSuccess = {},
+            onCancel = {}
+        )
+    }
+}
+

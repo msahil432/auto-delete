@@ -9,8 +9,26 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 
+/**
+ * Decision returned by [BlockEngine] indicating whether an application is allowed or blocked.
+ */
 sealed interface BlockDecision
+
+/**
+ * Outcome indicating that the application is allowed to run.
+ */
 data object Allowed : BlockDecision
+
+/**
+ * Outcome indicating that the application is blocked according to a specific rule and group.
+ *
+ * @property rule The [BlockRule] that triggered the block.
+ * @property reason Human-readable explanation of why the block occurred.
+ * @property group The [BlockGroup] containing the blocked package.
+ * @property usedSeconds Foreground duration already consumed today in seconds, if applicable.
+ * @property limitSeconds Maximum duration allowed by the rule in seconds, if applicable.
+ * @property endsAtMillis Timestamp in epoch milliseconds when the block expires, if applicable.
+ */
 data class Blocked(
     val rule: BlockRule,
     val reason: String,

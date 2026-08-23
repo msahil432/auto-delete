@@ -1,5 +1,8 @@
 package com.msahil432.multitool.accessibility
 
+/**
+ * Registry of supported web browser package names and their respective address bar resource view IDs.
+ */
 object BrowserSignatures {
   const val PKG_CHROME = "com.android.chrome"
   const val PKG_FIREFOX = "org.mozilla.firefox"

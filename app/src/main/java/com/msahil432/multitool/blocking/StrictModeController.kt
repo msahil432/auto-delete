@@ -10,6 +10,7 @@ import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.StrictModeState
 import com.msahil432.multitool.data.UnlockMethod
 import com.msahil432.multitool.data.UnlockParams
+import io.sentry.Sentry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -84,6 +85,7 @@ object StrictModeController {
         endAt: Long = 0L,
         params: UnlockParams = UnlockParams()
     ) {
+        Sentry.addBreadcrumb("Strict mode activated")
         val now = clock()
         val newState = StrictModeState(
             isActive = true,

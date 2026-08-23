@@ -6,9 +6,17 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
+import io.sentry.Sentry
 
+/**
+ * Helper for detecting aggressive OEM background killers (Xiaomi, Samsung, Huawei, Oppo, Vivo)
+ * and directing users to OEM-specific autostart and background battery whitelist settings.
+ */
 object OemAutostart {
+    private const val TAG = "OemAutostart"
 
+    /** Supported OEM brand categories with custom power managers. */
     enum class OemBrand(val displayName: String) {
         XIAOMI("Xiaomi / Redmi / POCO"),
         SAMSUNG("Samsung"),
@@ -18,6 +26,7 @@ object OemAutostart {
         OTHER("Other / Stock Android")
     }
 
+    /** Detects the current device's OEM brand based on [Build.MANUFACTURER]. */
     fun detectOem(): OemBrand {
         val manufacturer = Build.MANUFACTURER?.lowercase() ?: ""
         return when {
@@ -30,6 +39,7 @@ object OemAutostart {
         }
     }
 
+    /** Returns step-by-step instructions for allowing autostart on the detected or given OEM [brand]. */
     fun getInstructions(brand: OemBrand = detectOem()): String {
         return when (brand) {
             OemBrand.XIAOMI -> "Enable 'Autostart' and set Battery saver to 'No restrictions'."
@@ -41,6 +51,7 @@ object OemAutostart {
         }
     }
 
+    /** Returns candidate [Intent]s targeting known OEM autostart management screens. */
     fun getOemIntentCandidates(context: Context): List<Intent> {
         val brand = detectOem()
         val componentNames = when (brand) {
@@ -84,6 +95,7 @@ object OemAutostart {
         }
     }
 
+    /** Attempts to open OEM-specific autostart settings, falling back to standard app details if unavailable. */
     fun open(context: Context) {
         val candidates = getOemIntentCandidates(context)
         for (intent in candidates) {
@@ -92,8 +104,9 @@ object OemAutostart {
                     context.startActivity(intent)
                     return
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Try next candidate
+                Log.w(TAG, "Failed to launch OEM autostart candidate: ${intent.component}", e)
             }
         }
 
@@ -101,6 +114,7 @@ object OemAutostart {
         openAppDetails(context)
     }
 
+    /** Opens standard system application details settings for MultiTool. */
     fun openAppDetails(context: Context) {
         try {
             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -108,13 +122,18 @@ object OemAutostart {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to launch ACTION_APPLICATION_DETAILS_SETTINGS, falling back to ACTION_SETTINGS", e)
             val intent = Intent(Settings.ACTION_SETTINGS).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             try {
                 context.startActivity(intent)
-            } catch (_: Exception) {}
+            } catch (fallbackEx: Exception) {
+                Log.e(TAG, "Failed to launch fallback ACTION_SETTINGS", fallbackEx)
+                Sentry.captureException(fallbackEx)
+            }
         }
     }
 }
+

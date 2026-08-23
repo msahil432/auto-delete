@@ -28,6 +28,10 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
 import io.sentry.Sentry
 
+/**
+ * Foreground service that monitors watched directories for file creation/movement,
+ * manages blocking enforcement loops, and tracks screen unlock events.
+ */
 class FileMonitorService : Service() {
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val observers = mutableListOf<RecursiveFileObserver>()
@@ -81,6 +85,7 @@ class FileMonitorService : Service() {
     }
 
     private fun restartObservers(configs: List<FolderConfig>) {
+        Sentry.addBreadcrumb("Restarting ${configs.size} file observers")
         observers.forEach { it.stopWatching() }
         observers.clear()
 
@@ -141,6 +146,9 @@ class FileMonitorService : Service() {
     }
 }
 
+/**
+ * [FileObserver] that watches a directory for new or moved files and filters events against inclusion/exclusion rules.
+ */
 class RecursiveFileObserver(
     private val rootPath: String,
     private val config: FolderConfig,

@@ -4,14 +4,20 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import com.msahil432.multitool.MultiToolApp
 import com.msahil432.multitool.data.GeofenceRepository
 import com.msahil432.multitool.location.GeofenceManager
 import com.msahil432.multitool.tracking.UsageCollectorWorker
+import io.sentry.Sentry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/**
+ * [BroadcastReceiver] triggered on system boot to restart the file monitor service,
+ * schedule usage tracking work, and re-register geofences.
+ */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
@@ -32,7 +38,9 @@ class BootReceiver : BroadcastReceiver() {
                         val geofenceRepo = GeofenceRepository(app.database.geofenceDao())
                         val geofenceManager = GeofenceManager(context)
                         geofenceManager.reRegisterAll(geofenceRepo)
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        Log.e("BootReceiver", "Failed to re-register geofences on boot", e)
+                        Sentry.captureException(e)
                     } finally {
                         pendingResult?.finish()
                     }

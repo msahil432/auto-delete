@@ -7,4 +7,6 @@
     <exclude domain="database" path="multi_tool_db-journal" />
     <!-- Exclude temporary cache directories -->
     <exclude domain="root" path="cache" />
+    <!-- Exclude installation metadata so each device/reinstall gets a fresh install ID -->
+    <exclude domain="sharedpref" path="app_install_meta.xml" />
 </full-backup-content>

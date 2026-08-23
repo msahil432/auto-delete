@@ -18,6 +18,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import io.sentry.Sentry
 
+/**
+ * Main application entry activity configuring edge-to-edge rendering, launching background services if enabled,
+ * and hosting the root Jetpack Compose navigation UI.
+ */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

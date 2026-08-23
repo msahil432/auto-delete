@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -47,6 +48,9 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+/**
+ * Screen displaying notifications that were silenced and vaulted during active focus schedules.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationVaultScreen(
@@ -71,13 +75,15 @@ fun NotificationVaultScreen(
                 val label = try {
                     val info = pm.getApplicationInfo(pkg, 0)
                     pm.getApplicationLabel(info).toString()
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Log.w("NotificationVault", "Failed to resolve app label for $pkg", e)
                     pkg
                 }
                 val iconBitmap = try {
                     val drawable = pm.getApplicationIcon(pkg)
                     drawableToBitmap(drawable)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Log.w("NotificationVault", "Failed to resolve app icon for $pkg", e)
                     null
                 }
                 label to iconBitmap
@@ -88,6 +94,48 @@ fun NotificationVaultScreen(
         }
     }
 
+    NotificationVaultContent(
+        notifications = notifications,
+        appInfoMap = appInfoMap,
+        innerPadding = innerPadding,
+        onBack = onBack,
+        onClearAll = { showClearConfirm = true },
+        onDelete = { id ->
+            coroutineScope.launch {
+                notificationRepository.deleteById(id)
+            }
+        }
+    )
+
+    if (showClearConfirm) {
+        ConfirmDialog(
+            title = "Clear Notification Vault?",
+            text = "All vaulted notifications will be permanently removed.",
+            confirmLabel = "Clear All",
+            onConfirm = {
+                showClearConfirm = false
+                coroutineScope.launch {
+                    notificationRepository.clearAll()
+                }
+            },
+            onDismiss = { showClearConfirm = false }
+        )
+    }
+}
+
+/**
+ * Stateless content composable for [NotificationVaultScreen], rendering the list of vaulted notifications or empty/loading state.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NotificationVaultContent(
+    notifications: List<VaultedNotification>?,
+    appInfoMap: Map<String, Pair<String, Bitmap?>>,
+    innerPadding: PaddingValues = PaddingValues(),
+    onBack: () -> Unit,
+    onClearAll: () -> Unit,
+    onDelete: (Long) -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -107,16 +155,16 @@ fun NotificationVaultScreen(
                         onClick = onBack,
                         modifier = Modifier.semantics { contentDescription = "Navigate back" }
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Navigate back")
                     }
                 },
                 actions = {
                     if (!notifications.isNullOrEmpty()) {
                         IconButton(
-                            onClick = { showClearConfirm = true },
+                            onClick = onClearAll,
                             modifier = Modifier.semantics { contentDescription = "Clear all notifications" }
                         ) {
-                            Icon(Icons.Default.DeleteSweep, contentDescription = null)
+                            Icon(Icons.Default.DeleteSweep, contentDescription = "Clear all notifications")
                         }
                     }
                 }
@@ -131,10 +179,9 @@ fun NotificationVaultScreen(
         ) {
             when {
                 notifications == null -> {
-                    // Todo: add message: "Loading vaulted notifications..."
                     LoadingState()
                 }
-                notifications!!.isEmpty() -> {
+                notifications.isEmpty() -> {
                     EmptyState(
                         icon = Icons.Default.NotificationsOff,
                         title = "No held notifications",
@@ -142,7 +189,6 @@ fun NotificationVaultScreen(
                     )
                 }
                 else -> {
-                    val list = notifications!!
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
@@ -153,7 +199,7 @@ fun NotificationVaultScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(list, key = { it.id }) { item ->
+                        items(notifications, key = { it.id }) { item ->
                             val (appLabel, appIcon) = appInfoMap[item.packageName]
                                 ?: (item.packageName to null)
 
@@ -161,11 +207,7 @@ fun NotificationVaultScreen(
                                 item = item,
                                 appLabel = appLabel,
                                 appIcon = appIcon,
-                                onDelete = {
-                                    coroutineScope.launch {
-                                        notificationRepository.deleteById(item.id)
-                                    }
-                                }
+                                onDelete = { onDelete(item.id) }
                             )
                         }
                     }
@@ -173,23 +215,11 @@ fun NotificationVaultScreen(
             }
         }
     }
-
-    if (showClearConfirm) {
-        ConfirmDialog(
-            title = "Clear Notification Vault?",
-            text = "All vaulted notifications will be permanently removed.",
-            confirmLabel = "Clear All",
-            onConfirm = {
-                showClearConfirm = false
-                coroutineScope.launch {
-                    notificationRepository.clearAll()
-                }
-            },
-            onDismiss = { showClearConfirm = false }
-        )
-    }
 }
 
+/**
+ * Card displaying an individual vaulted notification with resolved app icon/label, post timestamp, and delete action.
+ */
 @Composable
 fun VaultedNotificationCard(
     item: VaultedNotification,
@@ -224,7 +254,7 @@ fun VaultedNotificationCard(
                 if (appIcon != null) {
                     Image(
                         bitmap = appIcon.asImageBitmap(),
-                        contentDescription = null,
+                        contentDescription = "$appLabel icon",
                         modifier = Modifier
                             .size(28.dp)
                             .clip(RoundedCornerShape(6.dp))
@@ -239,7 +269,7 @@ fun VaultedNotificationCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Android,
-                            contentDescription = null,
+                            contentDescription = "$appLabel icon",
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -291,7 +321,7 @@ fun VaultedNotificationCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = null,
+                        contentDescription = "Delete notification",
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -388,3 +418,81 @@ private fun VaultedNotificationCardPreviewDark() {
         )
     }
 }
+
+@Preview(name = "NotificationVaultScreen Light", showBackground = true)
+@Composable
+private fun NotificationVaultScreenPreviewLight() {
+    MultiToolTheme {
+        NotificationVaultContent(
+            notifications = listOf(
+                VaultedNotification(
+                    id = 1,
+                    packageName = "com.instagram.android",
+                    title = "alex_smith sent you a message",
+                    text = "Hey, are you free for a call tonight?",
+                    postedAt = System.currentTimeMillis() - 15 * 60_000,
+                    delivered = false
+                ),
+                VaultedNotification(
+                    id = 2,
+                    packageName = "com.whatsapp",
+                    title = "Project Team (3 messages)",
+                    text = "Sarah: The release is scheduled for tomorrow at 10 AM.",
+                    postedAt = System.currentTimeMillis() - 3600_000,
+                    delivered = true
+                )
+            ),
+            appInfoMap = mapOf(
+                "com.instagram.android" to ("Instagram" to null),
+                "com.whatsapp" to ("WhatsApp" to null)
+            ),
+            onBack = {},
+            onClearAll = {},
+            onDelete = {}
+        )
+    }
+}
+
+@Preview(
+    name = "NotificationVaultScreen Dark",
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES
+)
+@Composable
+private fun NotificationVaultScreenPreviewDark() {
+    MultiToolTheme {
+        NotificationVaultContent(
+            notifications = listOf(
+                VaultedNotification(
+                    id = 1,
+                    packageName = "com.instagram.android",
+                    title = "alex_smith sent you a message",
+                    text = "Hey, are you free for a call tonight?",
+                    postedAt = System.currentTimeMillis() - 15 * 60_000,
+                    delivered = false
+                )
+            ),
+            appInfoMap = mapOf(
+                "com.instagram.android" to ("Instagram" to null)
+            ),
+            onBack = {},
+            onClearAll = {},
+            onDelete = {}
+        )
+    }
+}
+
+@Preview(name = "NotificationVaultScreen Empty", showBackground = true)
+@Composable
+private fun NotificationVaultScreenEmptyPreview() {
+    MultiToolTheme {
+        NotificationVaultContent(
+            notifications = emptyList(),
+            appInfoMap = emptyMap(),
+            onBack = {},
+            onClearAll = {},
+            onDelete = {}
+        )
+    }
+}
+
