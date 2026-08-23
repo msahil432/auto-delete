@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
@@ -14,6 +15,7 @@ import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
 import com.msahil432.multitool.data.GeofenceProfile
 import com.msahil432.multitool.data.GeofenceRepository
+import io.sentry.Sentry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -77,6 +79,7 @@ class GeofenceManager(
 
     @SuppressLint("MissingPermission")
     fun registerGeofence(profile: GeofenceProfile, onComplete: ((Boolean) -> Unit)? = null) {
+        Sentry.addBreadcrumb("Adding geofence: ${profile.id}")
         if (!profile.enabled) {
             unregisterGeofence(profile.id, onComplete)
             return
@@ -93,6 +96,7 @@ class GeofenceManager(
                 .addOnSuccessListener { onComplete?.invoke(true) }
                 .addOnFailureListener { onComplete?.invoke(false) }
         } catch (e: SecurityException) {
+            Log.w("GeofenceManager", "Security exception registering geofence ${profile.id}", e)
             onComplete?.invoke(false)
         }
     }
@@ -119,8 +123,10 @@ class GeofenceManager(
             geofencingClient.addGeofences(request, getGeofencePendingIntent())
         } catch (e: SecurityException) {
             // Permission revoked concurrently
+            Log.w("GeofenceManager", "Security exception re-registering geofences", e)
         } catch (e: Exception) {
-            // Ignore failure on best effort
+            Log.e("GeofenceManager", "Failed to re-register geofences", e)
+            Sentry.captureException(e)
         }
     }
 

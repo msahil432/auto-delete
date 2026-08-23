@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Environment
 import android.os.PowerManager
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -63,6 +64,7 @@ import com.msahil432.multitool.util.OemAutostart
 import com.msahil432.multitool.util.UsageAccess
 import kotlinx.coroutines.launch
 
+private const val TAG = "OnboardingScreen"
 
 // ─── Module definitions ──────────────────────────────────────────────────────
 
@@ -164,8 +166,13 @@ fun buildPermissionList(): List<AppPermission> = listOf(
                 val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
                     .setData(Uri.parse("package:${ctx.packageName}"))
                 ctx.startActivity(intent)
-            } catch (_: Exception) {
-                ctx.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to launch package ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION", e)
+                try {
+                    ctx.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                } catch (fallbackEx: Exception) {
+                    Log.w(TAG, "Failed to launch generic ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION", fallbackEx)
+                }
             }
         }
     ),
@@ -791,7 +798,8 @@ private fun PermissionStep(
                 showUsageDisclosure = false
                 try {
                     settingsLauncher.launch(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to launch ACTION_USAGE_ACCESS_SETTINGS", e)
                     UsageAccess.openSettings(context)
                 }
             },
@@ -812,10 +820,15 @@ private fun PermissionStep(
                             Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
                                 .setData(Uri.parse("package:${context.packageName}"))
                         )
-                    } catch (_: Exception) {
-                        settingsLauncher.launch(
-                            Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                        )
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to launch package ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION", e)
+                        try {
+                            settingsLauncher.launch(
+                                Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                            )
+                        } catch (fallbackEx: Exception) {
+                            Log.w(TAG, "Failed to launch generic ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION", fallbackEx)
+                        }
                     }
                 }
             },
@@ -970,7 +983,8 @@ private fun PermissionStep(
                         "battery" -> {
                             try {
                                 settingsLauncher.launch(BatteryOptimization.createRequestIntent(context))
-                            } catch (_: Exception) {
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Failed to launch BatteryOptimization request intent", e)
                                 BatteryOptimization.requestIgnore(context)
                             }
                         }
@@ -1399,7 +1413,8 @@ fun PermissionCheckScreen(
                             settingsLauncher.launch(
                                 Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
                             )
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Failed to launch ACTION_USAGE_ACCESS_SETTINGS", e)
                             UsageAccess.openSettings(context)
                         }
                     },
@@ -1420,10 +1435,15 @@ fun PermissionCheckScreen(
                                     Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
                                         .setData(Uri.parse("package:${context.packageName}"))
                                 )
-                            } catch (_: Exception) {
-                                settingsLauncher.launch(
-                                    Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                                )
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Failed to launch package ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION", e)
+                                try {
+                                    settingsLauncher.launch(
+                                        Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                                    )
+                                } catch (fallbackEx: Exception) {
+                                    Log.w(TAG, "Failed to launch generic ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION", fallbackEx)
+                                }
                             }
                         }
                     },
@@ -1477,7 +1497,8 @@ fun PermissionCheckScreen(
                             "battery" -> {
                                 try {
                                     settingsLauncher.launch(BatteryOptimization.createRequestIntent(context))
-                                } catch (_: Exception) {
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "Failed to launch BatteryOptimization request intent", e)
                                     BatteryOptimization.requestIgnore(context)
                                 }
                             }

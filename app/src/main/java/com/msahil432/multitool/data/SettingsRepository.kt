@@ -1,5 +1,6 @@
 package com.msahil432.multitool.data
 
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import kotlinx.coroutines.flow.Flow
@@ -54,7 +55,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val rawMethod = preferences[STRICT_UNLOCK_METHOD] ?: UnlockMethod.TEXT.name
         val method = try {
             UnlockMethod.valueOf(rawMethod)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("SettingsRepository", "Failed to parse UnlockMethod '$rawMethod', defaulting to TEXT", e)
             UnlockMethod.TEXT
         }
         StrictModeState(

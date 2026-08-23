@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.util.Log
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.WindowManager
@@ -21,6 +22,7 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.msahil432.multitool.ui.screens.BlockOverlayContent
 import com.msahil432.multitool.ui.theme.MultiToolTheme
+import io.sentry.Sentry
 
 /**
  * Manages full-screen blocking overlay display over restricted apps using WindowManager
@@ -174,7 +176,10 @@ object BlockOverlayManager {
             if (view.parent != null) {
                 try {
                     windowManager.removeViewImmediate(view)
-                } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    Log.w("BlockOverlayManager", "Failed to removeViewImmediate from WindowManager", e)
+                    Sentry.captureException(e)
+                }
             }
         }
         currentView = null
@@ -194,7 +199,10 @@ object BlockOverlayManager {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             context.startActivity(homeIntent)
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Log.w("BlockOverlayManager", "Failed to navigate to home", e)
+            Sentry.captureException(e)
+        }
     }
 
     private fun runOnMainThread(block: () -> Unit) {

@@ -3,6 +3,9 @@ package com.msahil432.multitool.accessibility
 import android.accessibilityservice.AccessibilityService
 import android.view.accessibility.AccessibilityEvent
 
+import android.util.Log
+import io.sentry.Sentry
+
 import com.msahil432.multitool.MultiToolApp
 import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.BrowsingRepository
@@ -18,6 +21,7 @@ class MultiToolAccessibilityService : AccessibilityService() {
 
   override fun onServiceConnected() {
     super.onServiceConnected()
+    Sentry.addBreadcrumb("Accessibility service connected")
     try {
       val app = application as MultiToolApp
       val db = app.database
@@ -47,7 +51,10 @@ class MultiToolAccessibilityService : AccessibilityService() {
       )
       tamperHandler = tHandler
       Dispatcher.register(tHandler)
-    } catch (_: Exception) {}
+    } catch (e: Exception) {
+      Log.e("MultiToolAccessService", "Failed to initialize accessibility handlers", e)
+      Sentry.captureException(e)
+    }
   }
 
   override fun onAccessibilityEvent(event: AccessibilityEvent?) {

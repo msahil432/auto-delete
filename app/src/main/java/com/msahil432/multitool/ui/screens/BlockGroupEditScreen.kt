@@ -3,6 +3,7 @@ package com.msahil432.multitool.ui.screens
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -264,7 +265,8 @@ fun BlockGroupEditScreen(
                 try {
                   val info = pm.getApplicationInfo(pkg, 0)
                   pm.getApplicationLabel(info).toString()
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                  Log.w("BlockGroupEditScreen", "Failed to resolve app label for $pkg", e)
                   pkg
                 }
               }.sorted()
@@ -932,7 +934,8 @@ private fun GoalUnlockRuleEditor(
       try {
         val info = pm.getApplicationInfo(pkg, 0)
         pm.getApplicationLabel(info).toString()
-      } catch (_: Exception) {
+      } catch (e: Exception) {
+        Log.w("BlockGroupEditScreen", "Failed to resolve goal app label for $pkg", e)
         pkg
       }
     }

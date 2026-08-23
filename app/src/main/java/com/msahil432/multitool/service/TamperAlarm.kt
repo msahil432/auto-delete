@@ -7,6 +7,8 @@ import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
+import io.sentry.Sentry
 
 /**
  * Controller responsible for playing and stopping the audible tamper siren.
@@ -56,8 +58,9 @@ object TamperAlarm {
                 start()
             }
             mediaPlayer = player
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // In unit tests or devices with audio backend failure, keep alarm state flag tracked
+            Log.w("TamperAlarm", "Failed to initialize or play alarm sound", e)
         }
 
         isAlarmPlaying = true
@@ -88,7 +91,10 @@ object TamperAlarm {
                     player.stop()
                 }
                 player.release()
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Log.w("TamperAlarm", "Failed to release MediaPlayer", e)
+                Sentry.captureException(e)
+            }
         }
         mediaPlayer = null
         isAlarmPlaying = false

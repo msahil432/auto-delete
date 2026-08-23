@@ -21,6 +21,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
+import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -164,8 +165,13 @@ fun FilesHomeScreen(
                     Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
                       .setData(Uri.parse("package:${context.packageName}"))
                   )
-                } catch (_: Exception) {
-                  context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                } catch (e: Exception) {
+                  Log.w("FilesHomeScreen", "Failed to launch package ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION", e)
+                  try {
+                    context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                  } catch (fallbackEx: Exception) {
+                    Log.w("FilesHomeScreen", "Failed to launch generic ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION", fallbackEx)
+                  }
                 }
               }
             }

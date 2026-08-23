@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.*
@@ -49,7 +50,8 @@ class NotificationDigestWorker(
             try {
                 val appInfo = pm.getApplicationInfo(item.packageName, 0)
                 pm.getApplicationLabel(appInfo).toString()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to resolve application label for ${item.packageName}", e)
                 item.packageName
             }
         }.distinct()
@@ -67,7 +69,8 @@ class NotificationDigestWorker(
             val label = try {
                 val appInfo = pm.getApplicationInfo(item.packageName, 0)
                 pm.getApplicationLabel(appInfo).toString()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to resolve application label for ${item.packageName}", e)
                 item.packageName
             }
             val line = if (!item.title.isNullOrBlank()) {
@@ -93,8 +96,8 @@ class NotificationDigestWorker(
 
         try {
             NotificationManagerCompat.from(appContext).notify(DIGEST_NOTIFICATION_ID, notification)
-        } catch (_: SecurityException) {
-            // POST_NOTIFICATIONS permission not granted
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Failed to post digest notification: permission not granted", e)
         }
 
         // Mark rows delivered
@@ -104,6 +107,7 @@ class NotificationDigestWorker(
     }
 
     companion object {
+        private const val TAG = "NotificationDigestWorker"
         const val CHANNEL_ID = "notification_vault_digest"
         const val DIGEST_NOTIFICATION_ID = 2002
         const val WORK_NAME_SCHEDULED = "notification_vault_digest_scheduled"

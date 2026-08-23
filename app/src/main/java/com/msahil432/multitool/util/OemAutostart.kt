@@ -6,8 +6,11 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
+import io.sentry.Sentry
 
 object OemAutostart {
+    private const val TAG = "OemAutostart"
 
     enum class OemBrand(val displayName: String) {
         XIAOMI("Xiaomi / Redmi / POCO"),
@@ -92,8 +95,9 @@ object OemAutostart {
                     context.startActivity(intent)
                     return
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Try next candidate
+                Log.w(TAG, "Failed to launch OEM autostart candidate: ${intent.component}", e)
             }
         }
 
@@ -108,13 +112,17 @@ object OemAutostart {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to launch ACTION_APPLICATION_DETAILS_SETTINGS, falling back to ACTION_SETTINGS", e)
             val intent = Intent(Settings.ACTION_SETTINGS).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             try {
                 context.startActivity(intent)
-            } catch (_: Exception) {}
+            } catch (fallbackEx: Exception) {
+                Log.e(TAG, "Failed to launch fallback ACTION_SETTINGS", fallbackEx)
+                Sentry.captureException(fallbackEx)
+            }
         }
     }
 }

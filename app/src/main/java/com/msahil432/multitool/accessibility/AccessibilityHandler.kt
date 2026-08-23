@@ -1,7 +1,9 @@
 package com.msahil432.multitool.accessibility
 
 import android.accessibilityservice.AccessibilityService
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import io.sentry.Sentry
 import java.util.concurrent.CopyOnWriteArrayList
 
 interface AccessibilityHandler {
@@ -25,8 +27,10 @@ object Dispatcher {
     for (handler in handlers) {
       try {
         handler.onEvent(svc, event)
-      } catch (_: Exception) {
+      } catch (e: Exception) {
         // Prevent any handler failure from interrupting event dispatch
+        Log.e("Dispatcher", "Handler ${handler::class.simpleName} threw exception in onEvent", e)
+        Sentry.captureException(e)
       }
     }
   }

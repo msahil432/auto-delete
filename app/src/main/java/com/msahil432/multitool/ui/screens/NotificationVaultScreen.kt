@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -71,13 +72,15 @@ fun NotificationVaultScreen(
                 val label = try {
                     val info = pm.getApplicationInfo(pkg, 0)
                     pm.getApplicationLabel(info).toString()
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Log.w("NotificationVault", "Failed to resolve app label for $pkg", e)
                     pkg
                 }
                 val iconBitmap = try {
                     val drawable = pm.getApplicationIcon(pkg)
                     drawableToBitmap(drawable)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Log.w("NotificationVault", "Failed to resolve app icon for $pkg", e)
                     null
                 }
                 label to iconBitmap

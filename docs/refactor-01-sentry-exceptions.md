@@ -1,6 +1,7 @@
 # Refactoring Plan: Sentry — Add Missing Exception Reporting
 
-**Guideline violated:** §2 Error Handling & Sentry — "Never silently swallow exceptions — at minimum log + report."
+**Status:** Done ✓  
+**Guideline:** §2 Error Handling & Sentry — "Never silently swallow exceptions — at minimum log + report."
 
 ## Problem
 

@@ -81,6 +81,7 @@ class FileMonitorService : Service() {
     }
 
     private fun restartObservers(configs: List<FolderConfig>) {
+        Sentry.addBreadcrumb("Restarting ${configs.size} file observers")
         observers.forEach { it.stopWatching() }
         observers.clear()
 

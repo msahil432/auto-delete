@@ -2,11 +2,13 @@ package com.msahil432.multitool.blocking
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.util.Log
 import com.msahil432.multitool.accessibility.ForegroundAppState
 import com.msahil432.multitool.data.BlockRuleType
 import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.TimelineEventType
 import com.msahil432.multitool.data.UsageRepository
+import io.sentry.Sentry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -41,6 +43,7 @@ class BlockEnforcementController(
      */
     fun start(context: Context) {
         stop()
+        Sentry.addBreadcrumb("Block enforcement started")
 
         val appContext = context.applicationContext
 
@@ -208,7 +211,8 @@ class BlockEnforcementController(
                 pm.getApplicationInfo(packageName, 0)
             }
             pm.getApplicationLabel(appInfo).toString()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("BlockEnforcementCtrl", "Failed to resolve app label for $packageName", e)
             packageName
         }
     }
