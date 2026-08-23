@@ -38,6 +38,10 @@ import com.msahil432.multitool.ui.components.ModuleActivationCard
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
+/**
+ * Primary file cleanup dashboard showing configured monitored folders, permissions status,
+ * and quick actions to add new folder monitors or view activity logs.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilesHomeScreen(
@@ -220,6 +224,9 @@ fun FilesHomeScreen(
   }
 }
 
+/**
+ * Outlined card prompting the user to create and configure a new folder monitor.
+ */
 @Composable
 fun AddFolderCard(
   onClick: () -> Unit,

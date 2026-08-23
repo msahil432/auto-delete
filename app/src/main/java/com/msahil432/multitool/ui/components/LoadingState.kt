@@ -8,6 +8,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
+/**
+ * Centered indeterminate progress indicator representing an in-flight loading state.
+ */
 @Composable
 fun LoadingState(modifier: Modifier = Modifier) {
   Box(

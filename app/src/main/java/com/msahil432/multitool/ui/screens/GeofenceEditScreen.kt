@@ -42,6 +42,9 @@ import com.msahil432.multitool.ui.components.SectionHeader
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 import kotlinx.coroutines.launch
 
+/**
+ * Screen for creating or editing a location [GeofenceProfile], setting GPS coordinates, radius, and trigger groups.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GeofenceEditScreen(
@@ -296,6 +299,9 @@ fun GeofenceEditScreen(
     }
 }
 
+/**
+ * Form content displaying geofence name, coordinates, radius slider, and enter/exit block group selectors.
+ */
 @Composable
 fun GeofenceEditContent(
     name: String,

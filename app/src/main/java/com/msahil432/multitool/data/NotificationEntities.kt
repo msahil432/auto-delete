@@ -4,6 +4,9 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/**
+ * Entity representing an intercepted and vaulted notification that was silenced or queued for digest delivery.
+ */
 @Entity(tableName = "vaulted_notifications", indices = [Index("postedAt")])
 data class VaultedNotification(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -13,3 +16,4 @@ data class VaultedNotification(
     val postedAt: Long,
     val delivered: Boolean = false
 )
+

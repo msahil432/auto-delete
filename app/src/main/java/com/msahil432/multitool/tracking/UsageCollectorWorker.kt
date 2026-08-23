@@ -22,6 +22,10 @@ import io.sentry.Sentry
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
+/**
+ * Periodic and one-time [CoroutineWorker] that queries system [android.app.usage.UsageEvents]
+ * to record application launches, compute foreground session durations, and populate daily usage metrics.
+ */
 class UsageCollectorWorker(
     private val appContext: Context,
     workerParams: WorkerParameters
@@ -94,6 +98,9 @@ class UsageCollectorWorker(
         const val PERIODIC_WORK_NAME = "usage_collector_periodic"
         const val ONE_TIME_WORK_NAME = "usage_collector_one_time"
 
+        /**
+         * Schedules periodic background execution (every 15 minutes) and enqueues an immediate run to collect usage events.
+         */
         fun schedule(context: Context) {
             try {
                 val periodicRequest = PeriodicWorkRequestBuilder<UsageCollectorWorker>(

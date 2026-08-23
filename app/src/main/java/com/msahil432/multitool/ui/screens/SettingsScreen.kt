@@ -22,6 +22,9 @@ import com.msahil432.multitool.data.FolderConfig
 // NOTE: SettingsScreen composable was replaced by FilesHomeScreen (02-navigation-hub.md).
 // This file now only contains shared helper composables used by FilesHomeScreen.
 
+/**
+ * List item card showing folder name, path, deletion mode, and an enabled toggle.
+ */
 @Composable
 fun FolderConfigItem(
     config: FolderConfig,
@@ -58,6 +61,9 @@ fun FolderConfigItem(
 
 // ─── Permission health banner ─────────────────────────────────────────────────
 
+/**
+ * Inline banner summarizing permission health and prompting the user if required or optional permissions are missing.
+ */
 @Composable
 fun PermissionHealthBanner(
     onFixPermissions: () -> Unit,

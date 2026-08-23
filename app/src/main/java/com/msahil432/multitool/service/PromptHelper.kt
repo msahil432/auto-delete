@@ -37,7 +37,14 @@ import com.msahil432.multitool.data.decodeTimePeriodPresets
 import com.msahil432.multitool.data.encodeTimePeriodPresets
 import kotlinx.coroutines.*
 
+/**
+ * Helper object for displaying file cleanup prompts via system alert overlay or status bar notifications.
+ */
 object PromptHelper {
+    /**
+     * Displays a cleanup prompt for the newly created or moved file at [filePath] according to [config].
+     * Uses an overlay prompt if overlay permission is granted, otherwise posts a notification.
+     */
     fun showPrompt(context: Context, config: FolderConfig, filePath: String) {
         if (Settings.canDrawOverlays(context)) {
             showOverlayPrompt(context, config, filePath)
@@ -269,6 +276,9 @@ object PromptHelper {
     }
 }
 
+/**
+ * Composable UI content rendered inside the system overlay window for prompt choices.
+ */
 @Composable
 fun PromptContent(
     config: FolderConfig,
@@ -318,6 +328,9 @@ fun PromptContent(
     }
 }
 
+/**
+ * Custom [LifecycleOwner] and [SavedStateRegistryOwner] enabling Jetpack Compose views in window manager overlays.
+ */
 class MyLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)

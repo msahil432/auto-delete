@@ -40,12 +40,18 @@ import com.msahil432.multitool.ui.theme.MultiToolTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/**
+ * Model item representing an installed application with its package name, localized label, and icon bitmap.
+ */
 data class InstalledAppItem(
   val packageName: String,
   val label: String,
   val icon: Bitmap? = null
 )
 
+/**
+ * Modal dialog for searching and selecting one or more installed applications.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppPicker(

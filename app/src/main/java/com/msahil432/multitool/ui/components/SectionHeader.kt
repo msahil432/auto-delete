@@ -9,6 +9,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
+/**
+ * Styled category header text used to demarcate sections within list views.
+ */
 @Composable
 fun SectionHeader(
   title: String,

@@ -48,6 +48,9 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+/**
+ * Screen displaying notifications that were silenced and vaulted during active focus schedules.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationVaultScreen(
@@ -193,6 +196,9 @@ fun NotificationVaultScreen(
     }
 }
 
+/**
+ * Card displaying an individual vaulted notification with resolved app icon/label, post timestamp, and delete action.
+ */
 @Composable
 fun VaultedNotificationCard(
     item: VaultedNotification,

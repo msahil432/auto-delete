@@ -7,6 +7,9 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 
+/**
+ * Primary navigation destinations displayed in the bottom navigation bar.
+ */
 enum class TopLevelDest(
   val route: String,
   val label: String,

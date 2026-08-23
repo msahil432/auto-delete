@@ -1,5 +1,7 @@
 # Refactoring Plan: KDoc Comments — Add Missing Documentation
 
+**Status: Done ✓**
+
 **Guideline violated:** §6 Documentation — "Every public/internal function and class must have a KDoc comment."
 
 ## Problem

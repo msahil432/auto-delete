@@ -4,8 +4,17 @@ import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 
+/**
+ * Reader wrapping system [UsageStatsManager] to query Android usage events across a specified time window.
+ */
 open class UsageStatsReader(private val context: Context) {
-    // Returns events since [sinceMillis] up to now.
+    /**
+     * Queries and returns all [UsageEvents.Event] records between [sinceMillis] and [nowMillis].
+     *
+     * @param sinceMillis Epoch millisecond start boundary.
+     * @param nowMillis Epoch millisecond end boundary.
+     * @return List of retrieved usage events.
+     */
     open fun queryEvents(sinceMillis: Long, nowMillis: Long): List<UsageEvents.Event> {
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
             ?: return emptyList()
@@ -19,3 +28,4 @@ open class UsageStatsReader(private val context: Context) {
         return out
     }
 }
+

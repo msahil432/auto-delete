@@ -39,6 +39,10 @@ import androidx.compose.material.icons.filled.Warning
 import com.msahil432.multitool.blocking.StrictModeController
 
 
+/**
+ * Global settings screen providing switches and navigation tiles for permissions, location profiles,
+ * notification vault, short-form video blocking, browser tracking, strict mode, and anti-uninstall protection.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppSettingsScreen(

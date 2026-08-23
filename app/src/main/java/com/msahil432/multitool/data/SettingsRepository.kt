@@ -6,7 +6,12 @@ import androidx.datastore.preferences.core.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+/**
+ * Repository wrapping Jetpack DataStore preferences for all app settings, strict mode configuration,
+ * challenge settings, and module activations.
+ */
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
+    /** Preference keys for DataStore settings. */
     companion object {
         val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         val GLOBAL_DEFAULT_POOL = stringPreferencesKey("global_default_pool")

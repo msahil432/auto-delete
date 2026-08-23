@@ -38,6 +38,10 @@ import kotlinx.coroutines.launch
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
+/**
+ * Detailed configuration screen for a monitored folder, allowing path changes, deletion mode selection,
+ * move rules, candidate time periods, file type filter lists, and monitor deletion.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderDetailScreen(

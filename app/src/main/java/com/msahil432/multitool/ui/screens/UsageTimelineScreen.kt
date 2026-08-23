@@ -41,6 +41,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Detailed chronological timeline view displaying app foreground/background transitions,
+ * device unlocks, geofence arrivals/departures, and block interceptions.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UsageTimelineScreen(
@@ -84,6 +88,9 @@ fun UsageTimelineScreen(
   }
 }
 
+/**
+ * Content composable rendering hour-bucketed activity rows or an empty state placeholder.
+ */
 @Composable
 fun UsageTimelineScreenContent(
   timeline: List<TimelineEvent>,

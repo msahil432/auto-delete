@@ -264,6 +264,10 @@ fun computePermissions(
 
 // ─── Onboarding screen ───────────────────────────────────────────────────────
 
+/**
+ * Multi-step onboarding experience walking the user through tool selection, dynamic permission granting,
+ * initial configuration, and ready-to-use confirmation.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingScreen(

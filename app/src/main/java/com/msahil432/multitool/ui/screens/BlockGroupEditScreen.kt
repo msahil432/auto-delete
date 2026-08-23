@@ -42,6 +42,9 @@ import kotlinx.coroutines.launch
 
 import com.msahil432.multitool.blocking.StrictModeController
 
+/**
+ * Screen for creating or editing a [BlockGroup], selecting targeted packages, and configuring blocking rules.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BlockGroupEditScreen(
@@ -576,6 +579,9 @@ private fun RulesHeaderWithAddMenu(
   }
 }
 
+/**
+ * Configurable card for editing an individual [BlockRule] (schedule, quota, launch limit, session limit, goal unlock).
+ */
 @Composable
 fun RuleEditorCard(
   rule: BlockRule,

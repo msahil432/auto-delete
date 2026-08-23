@@ -19,11 +19,15 @@ import io.sentry.Sentry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/**
+ * Manager class wrapping Google Play Services [GeofencingClient] to register, remove, and reconcile geofence profiles.
+ */
 class GeofenceManager(
     private val context: Context,
     private val geofencingClient: GeofencingClient = LocationServices.getGeofencingClient(context)
 ) {
 
+    /** Returns true if either fine or coarse foreground location permission has been granted. */
     fun hasForegroundLocationPermission(): Boolean {
         val fine = ContextCompat.checkSelfPermission(
             context,
@@ -36,6 +40,7 @@ class GeofenceManager(
         return fine || coarse
     }
 
+    /** Returns true if background location permission has been granted (or foreground on pre-Q). */
     fun hasBackgroundLocationPermission(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ContextCompat.checkSelfPermission(
@@ -47,10 +52,12 @@ class GeofenceManager(
         }
     }
 
+    /** Returns true if both foreground and background location permissions are granted. */
     fun hasAllLocationPermissions(): Boolean {
         return hasForegroundLocationPermission() && hasBackgroundLocationPermission()
     }
 
+    /** Builds a Google Play Services [Geofence] from a domain [GeofenceProfile]. */
     fun buildGeofence(profile: GeofenceProfile): Geofence {
         return Geofence.Builder()
             .setRequestId(profile.id.toString())
@@ -67,6 +74,7 @@ class GeofenceManager(
             .build()
     }
 
+    /** Returns the [PendingIntent] used by Play Services to broadcast geofence enter/exit transitions. */
     fun getGeofencePendingIntent(): PendingIntent {
         val intent = Intent(context, GeofenceBroadcastReceiver::class.java)
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -77,6 +85,12 @@ class GeofenceManager(
         return PendingIntent.getBroadcast(context, 0, intent, flags)
     }
 
+    /**
+     * Registers a single [GeofenceProfile] with Google Play Services.
+     *
+     * @param profile The geofence profile to register.
+     * @param onComplete Optional callback invoked with success status.
+     */
     @SuppressLint("MissingPermission")
     fun registerGeofence(profile: GeofenceProfile, onComplete: ((Boolean) -> Unit)? = null) {
         Sentry.addBreadcrumb("Adding geofence: ${profile.id}")
@@ -101,12 +115,18 @@ class GeofenceManager(
         }
     }
 
+    /**
+     * Unregisters a geofence by its profile ID.
+     */
     fun unregisterGeofence(profileId: Long, onComplete: ((Boolean) -> Unit)? = null) {
         geofencingClient.removeGeofences(listOf(profileId.toString()))
             .addOnSuccessListener { onComplete?.invoke(true) }
             .addOnFailureListener { onComplete?.invoke(false) }
     }
 
+    /**
+     * Re-registers all active geofence profiles from the repository (e.g. after boot or app startup).
+     */
     @SuppressLint("MissingPermission")
     suspend fun reRegisterAll(repository: GeofenceRepository) = withContext(Dispatchers.IO) {
         if (!hasAllLocationPermissions()) return@withContext
@@ -131,6 +151,7 @@ class GeofenceManager(
     }
 
     companion object {
+        /** Returns true if system location services (GPS or network provider) are enabled. */
         fun isLocationEnabled(context: Context): Boolean {
             val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? android.location.LocationManager
                 ?: return false
@@ -143,3 +164,4 @@ class GeofenceManager(
         }
     }
 }
+

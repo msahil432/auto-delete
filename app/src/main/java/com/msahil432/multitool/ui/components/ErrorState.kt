@@ -12,6 +12,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
+/**
+ * Standard error placeholder showing an error icon, explanatory message, and optional retry action button.
+ */
 @Composable
 fun ErrorState(
   message: String,

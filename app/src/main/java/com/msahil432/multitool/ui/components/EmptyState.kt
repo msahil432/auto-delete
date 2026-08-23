@@ -14,6 +14,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
+/**
+ * Generic empty-state placeholder view featuring an icon, title, description, and optional call-to-action button.
+ */
 @Composable
 fun EmptyState(
   icon: ImageVector,

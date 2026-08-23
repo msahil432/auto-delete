@@ -62,6 +62,9 @@ class BlockActivity : ComponentActivity() {
         const val EXTRA_LIMIT_SECONDS = "extra_limit_seconds"
         const val EXTRA_ENDS_AT_MILLIS = "extra_ends_at_millis"
 
+        /**
+         * Creates an [Intent] to launch [BlockActivity] populated with the provided [BlockOverlayManager.BlockInfo].
+         */
         fun createIntent(context: Context, info: BlockOverlayManager.BlockInfo): Intent {
             return Intent(context, BlockActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

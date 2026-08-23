@@ -13,6 +13,10 @@ import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.UsageRepository
 import com.msahil432.multitool.dataStore
 
+/**
+ * Background [AccessibilityService] capturing window state changes, short-form video events (Reels/Shorts),
+ * browser URLs, and settings tamper attempts.
+ */
 class MultiToolAccessibilityService : AccessibilityService() {
 
   private var shortFormHandler: ShortFormHandler? = null

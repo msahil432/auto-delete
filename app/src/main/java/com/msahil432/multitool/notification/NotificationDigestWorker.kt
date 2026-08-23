@@ -16,6 +16,9 @@ import com.msahil432.multitool.R
 import com.msahil432.multitool.data.NotificationRepository
 import java.util.concurrent.TimeUnit
 
+/**
+ * [CoroutineWorker] that compiles undelivered vaulted notifications into a single inbox-style digest notification.
+ */
 class NotificationDigestWorker(
     private val appContext: Context,
     workerParams: WorkerParameters
@@ -113,6 +116,9 @@ class NotificationDigestWorker(
         const val WORK_NAME_SCHEDULED = "notification_vault_digest_scheduled"
         const val WORK_NAME_ONETIME = "notification_vault_digest_onetime"
 
+        /**
+         * Creates the notification channel for delivering focus digest summaries on Android O+.
+         */
         fun createNotificationChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val channel = NotificationChannel(

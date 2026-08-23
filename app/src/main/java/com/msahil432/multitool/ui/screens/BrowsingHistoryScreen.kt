@@ -32,6 +32,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Screen displaying the chronology of recorded web browsing domains and search queries.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrowsingHistoryScreen(
@@ -68,6 +71,9 @@ fun BrowsingHistoryScreen(
     }
 }
 
+/**
+ * List content displaying browsing events or an empty state placeholder.
+ */
 @Composable
 fun BrowsingHistoryContent(
     events: List<BrowsingEvent>,

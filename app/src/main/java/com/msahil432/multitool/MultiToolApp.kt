@@ -17,6 +17,10 @@ import java.util.UUID
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
+/**
+ * Application class responsible for initializing Sentry error tracking, Room database instance,
+ * periodic workers, and strict mode controllers.
+ */
 class MultiToolApp : Application() {
     lateinit var database: AppDatabase
         private set

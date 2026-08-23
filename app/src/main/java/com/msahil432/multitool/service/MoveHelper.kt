@@ -183,6 +183,9 @@ object MoveHelper {
 
     // ── Error notification helper ─────────────────────────────────────────────────
 
+    /**
+     * Posts a notification informing the user that moving a file failed.
+     */
     fun fireErrorNotification(context: Context, filePath: String, message: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

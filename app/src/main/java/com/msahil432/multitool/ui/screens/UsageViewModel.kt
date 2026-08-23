@@ -24,11 +24,18 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/**
+ * UI metadata holding resolved application label and cached bitmap icon.
+ */
 data class AppMeta(
   val label: String,
   val icon: Bitmap? = null
 )
 
+/**
+ * ViewModel exposing reactive UI state for daily screen time totals, per-app breakdown,
+ * unlock counts, and activity timeline events.
+ */
 class UsageViewModel(
   private val repository: UsageRepository,
   private val context: Context
@@ -125,6 +132,9 @@ class UsageViewModel(
     }
   }
 
+  /**
+   * Factory for creating instances of [UsageViewModel] with injected dependencies.
+   */
   class Factory(
     private val repository: UsageRepository,
     private val context: Context

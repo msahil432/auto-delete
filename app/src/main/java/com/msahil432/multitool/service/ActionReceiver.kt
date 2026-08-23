@@ -19,6 +19,9 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import androidx.core.app.NotificationManagerCompat
 
+/**
+ * [BroadcastReceiver] that handles user responses (Keep, Move, Schedule) triggered from file prompt notifications.
+ */
 class ActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val folderId = intent.getLongExtra("folderId", -1L)

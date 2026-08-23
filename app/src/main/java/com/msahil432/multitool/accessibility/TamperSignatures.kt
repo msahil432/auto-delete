@@ -41,6 +41,9 @@ object TamperSignatures {
         "toggleaccessibilityservicepreferencefragment"
     )
 
+    /**
+     * Returns true if the given package name belongs to known system settings or device security managers.
+     */
     fun isSettingsPackage(pkg: String?): Boolean {
         if (pkg.isNullOrBlank()) return false
         return SETTINGS_PACKAGES.contains(pkg) || pkg.endsWith(".settings")

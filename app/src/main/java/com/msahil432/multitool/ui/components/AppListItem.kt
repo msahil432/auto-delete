@@ -18,6 +18,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.filled.Android
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
+/**
+ * Standard list row displaying an application's icon, label, package name, and optional trailing composable.
+ */
 @Composable
 fun AppListItem(
   appLabel: String,

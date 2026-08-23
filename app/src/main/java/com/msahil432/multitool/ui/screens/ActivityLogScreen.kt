@@ -18,6 +18,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Screen displaying the historical audit log of file actions (trashed, deleted, moved, kept, errored).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActivityLogScreen(
@@ -75,6 +78,9 @@ fun ActivityLogScreen(
     }
 }
 
+/**
+ * Card displaying an individual [ActivityLogEntry] with timestamp and optional undo button.
+ */
 @Composable
 fun ActivityLogItem(log: ActivityLogEntry, onUndo: () -> Unit) {
     val formatter = remember { SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()) }

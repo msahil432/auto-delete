@@ -8,7 +8,7 @@ Each plan is self-contained and can be assigned to a light agent independently.
 | # | Plan | Guideline | Severity | Scope | Status |
 |---|---|---|---|---|---|
 | 01 | [Sentry Exceptions](refactor-01-sentry-exceptions.md) | §2 Error Handling | **High** | ~35 catch blocks silently swallowing + 0 breadcrumbs | **Done ✓** |
-| 02 | [KDoc Comments](refactor-02-kdoc-comments.md) | §6 Documentation | **Medium** | ~50 files missing class/function KDoc | Pending |
+| 02 | [KDoc Comments](refactor-02-kdoc-comments.md) | §6 Documentation | **Medium** | ~50 files missing class/function KDoc | **Done ✓** |
 | 03 | [Compose Previews](refactor-03-compose-previews.md) | §3 UI/Dark Mode | **Medium** | 13 screens missing previews, 2 missing dark variant | Pending |
 | 04 | [Accessibility Content Descriptions](refactor-04-accessibility-content-descriptions.md) | §9 Accessibility | **High** | 85+ `contentDescription = null` | Pending |
 | 05 | [Test Coverage](refactor-05-test-coverage.md) | §7 Testing | **Medium** | notification/ fully untested, 6 data layer repos partially | Pending |

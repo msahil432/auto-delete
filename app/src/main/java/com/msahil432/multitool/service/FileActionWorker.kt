@@ -14,6 +14,10 @@ import java.util.concurrent.TimeUnit
 import android.util.Log
 import io.sentry.Sentry
 
+/**
+ * [CoroutineWorker] executing deferred file actions (trashing, permanent deletion, or re-prompting)
+ * when a scheduled pending action timer elapses.
+ */
 class FileActionWorker(
     private val appContext: Context,
     workerParams: WorkerParameters
@@ -133,6 +137,9 @@ class FileActionWorker(
     }
 
     companion object {
+        /**
+         * Enqueues a unique delayed work request to process the scheduled action on [filePath] after [delayMillis].
+         */
         fun schedule(context: Context, folderId: Long, filePath: String, delayMillis: Long) {
             val inputData = workDataOf(
                 "folderId" to folderId,

@@ -30,6 +30,17 @@ import io.sentry.Sentry
  */
 object BlockOverlayManager {
 
+    /**
+     * Metadata describing a block event to display on the overlay UI.
+     *
+     * @property packageName The package name of the blocked app.
+     * @property appLabel The display name of the blocked app.
+     * @property reason Human-readable reason for blocking.
+     * @property allowFriction Whether friction override is permitted under current settings.
+     * @property usedSeconds Consumed duration in seconds, if applicable.
+     * @property limitSeconds Quota duration limit in seconds, if applicable.
+     * @property endsAtMillis Timestamp when the block condition ends, if applicable.
+     */
     data class BlockInfo(
         val packageName: String,
         val appLabel: String,

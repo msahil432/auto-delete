@@ -4,6 +4,9 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/**
+ * Entity representing an observed browsing event, such as a visited URL or search query.
+ */
 @Entity(tableName = "browsing_events", indices = [Index("timestamp")])
 data class BrowsingEvent(
   @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -13,4 +16,8 @@ data class BrowsingEvent(
   val value: String             // domain/url or query text
 )
 
+/**
+ * Category of a captured [BrowsingEvent].
+ */
 enum class BrowsingKind { URL, SEARCH_QUERY }
+

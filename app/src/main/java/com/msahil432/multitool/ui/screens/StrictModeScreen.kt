@@ -52,6 +52,10 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+/**
+ * Strict mode configuration and status screen managing asymmetric lock-in rules, unlock methods,
+ * session duration, tamper siren settings, and deactivation challenge flows.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StrictModeScreen(

@@ -7,6 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
+/**
+ * Standard confirmation alert dialog with title, message body, confirm button, and cancel button.
+ */
 @Composable
 fun ConfirmDialog(
   title: String,

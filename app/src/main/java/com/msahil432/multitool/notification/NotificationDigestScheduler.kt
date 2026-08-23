@@ -13,6 +13,9 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
+/**
+ * Utility object for scheduling delayed or immediate notification digest delivery jobs using [WorkManager].
+ */
 object NotificationDigestScheduler {
 
     /**
@@ -47,6 +50,9 @@ object NotificationDigestScheduler {
         }
     }
 
+    /**
+     * Enqueues a delayed unique work request to deliver the notification digest after [delayMillis].
+     */
     fun scheduleDigestWithDelay(context: Context, delayMillis: Long) {
         val request = OneTimeWorkRequestBuilder<NotificationDigestWorker>()
             .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
@@ -59,6 +65,9 @@ object NotificationDigestScheduler {
         )
     }
 
+    /**
+     * Enqueues an immediate one-time work request to deliver the notification digest right away.
+     */
     fun deliverNow(context: Context) {
         val request = OneTimeWorkRequestBuilder<NotificationDigestWorker>().build()
         WorkManager.getInstance(context).enqueueUniqueWork(
