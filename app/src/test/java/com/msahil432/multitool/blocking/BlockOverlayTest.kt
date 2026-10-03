@@ -2,6 +2,14 @@ package com.msahil432.multitool.blocking
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.findViewTreeOnBackPressedDispatcherOwner
+import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
+import androidx.compose.ui.platform.ComposeView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.msahil432.multitool.service.MyLifecycleOwner
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -93,5 +101,56 @@ class BlockOverlayTest {
         BlockOverlayManager.hide()
         // verify after hide
         assertFalse(BlockOverlayManager.isShowing())
+    }
+
+    @Test
+    fun testBlockLifecycleOwner_implementsOnBackPressedDispatcherOwner() {
+        val owner = BlockOverlayManager.BlockLifecycleOwner()
+        assertNotNull(owner.onBackPressedDispatcher)
+
+        val composeView = ComposeView(context)
+        composeView.setViewTreeLifecycleOwner(owner)
+        composeView.setViewTreeSavedStateRegistryOwner(owner)
+        composeView.setViewTreeOnBackPressedDispatcherOwner(owner)
+
+        val retrievedOwner = composeView.findViewTreeOnBackPressedDispatcherOwner()
+        assertEquals(owner, retrievedOwner)
+        assertEquals(owner.onBackPressedDispatcher, retrievedOwner?.onBackPressedDispatcher)
+    }
+
+    @Test
+    fun testBlockLifecycleOwner_backDispatcherInvokesCallback() {
+        val owner = BlockOverlayManager.BlockLifecycleOwner()
+        owner.performRestore(null)
+        owner.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+        owner.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        owner.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+
+        var backInvoked = false
+        val callback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                backInvoked = true
+            }
+        }
+        owner.onBackPressedDispatcher.addCallback(owner, callback)
+
+        assertTrue(owner.onBackPressedDispatcher.hasEnabledCallbacks())
+        owner.onBackPressedDispatcher.onBackPressed()
+        assertTrue(backInvoked)
+    }
+
+    @Test
+    fun testMyLifecycleOwner_implementsOnBackPressedDispatcherOwner() {
+        val owner = MyLifecycleOwner()
+        assertNotNull(owner.onBackPressedDispatcher)
+
+        val composeView = ComposeView(context)
+        composeView.setViewTreeLifecycleOwner(owner)
+        composeView.setViewTreeSavedStateRegistryOwner(owner)
+        composeView.setViewTreeOnBackPressedDispatcherOwner(owner)
+
+        val retrievedOwner = composeView.findViewTreeOnBackPressedDispatcherOwner()
+        assertEquals(owner, retrievedOwner)
+        assertEquals(owner.onBackPressedDispatcher, retrievedOwner?.onBackPressedDispatcher)
     }
 }

@@ -11,6 +11,9 @@ import android.util.Log
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.WindowManager
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.OnBackPressedDispatcherOwner
+import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -100,6 +103,7 @@ object BlockOverlayManager {
 
         composeView.setViewTreeLifecycleOwner(lifecycleOwner)
         composeView.setViewTreeSavedStateRegistryOwner(lifecycleOwner)
+        composeView.setViewTreeOnBackPressedDispatcherOwner(lifecycleOwner)
 
         composeView.setContent {
             MultiToolTheme {
@@ -125,9 +129,13 @@ object BlockOverlayManager {
         composeView.isFocusableInTouchMode = true
         composeView.setOnKeyListener { _, keyCode, event ->
             if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
-                onClose()
-                navigateToHome(context)
-                hide()
+                if (lifecycleOwner.onBackPressedDispatcher.hasEnabledCallbacks()) {
+                    lifecycleOwner.onBackPressedDispatcher.onBackPressed()
+                } else {
+                    onClose()
+                    navigateToHome(context)
+                    hide()
+                }
                 true
             } else {
                 false
@@ -224,7 +232,13 @@ object BlockOverlayManager {
         }
     }
 
-    private class BlockLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
+    /**
+     * Custom [LifecycleOwner], [SavedStateRegistryOwner], and [OnBackPressedDispatcherOwner]
+     * enabling Jetpack Compose views and back handling in window manager overlays.
+     */
+    internal class BlockLifecycleOwner(
+        override val onBackPressedDispatcher: OnBackPressedDispatcher = OnBackPressedDispatcher()
+    ) : LifecycleOwner, SavedStateRegistryOwner, OnBackPressedDispatcherOwner {
         private val lifecycleRegistry = LifecycleRegistry(this)
         private val savedStateRegistryController = SavedStateRegistryController.create(this)
 

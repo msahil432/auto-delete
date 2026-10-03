@@ -9,6 +9,9 @@ import android.os.Build
 import android.provider.Settings
 import android.view.Gravity
 import android.view.WindowManager
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.OnBackPressedDispatcherOwner
+import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.setViewTreeLifecycleOwner
@@ -103,6 +106,7 @@ object PromptHelper {
         lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         composeView.setViewTreeLifecycleOwner(lifecycleOwner)
         composeView.setViewTreeSavedStateRegistryOwner(lifecycleOwner)
+        composeView.setViewTreeOnBackPressedDispatcherOwner(lifecycleOwner)
         lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_START)
         lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
 
@@ -329,9 +333,12 @@ fun PromptContent(
 }
 
 /**
- * Custom [LifecycleOwner] and [SavedStateRegistryOwner] enabling Jetpack Compose views in window manager overlays.
+ * Custom [LifecycleOwner], [SavedStateRegistryOwner], and [OnBackPressedDispatcherOwner]
+ * enabling Jetpack Compose views in window manager overlays.
  */
-class MyLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
+class MyLifecycleOwner(
+    override val onBackPressedDispatcher: OnBackPressedDispatcher = OnBackPressedDispatcher()
+) : LifecycleOwner, SavedStateRegistryOwner, OnBackPressedDispatcherOwner {
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
 
