@@ -1,6 +1,7 @@
 package com.msahil432.multitool.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -40,9 +41,12 @@ fun BlockOverlayContent(
     modifier: Modifier = Modifier,
     onUnlockAnyway: (() -> Unit)? = null
 ) {
-    // Intercept back gesture / press to navigate home
-    BackHandler(enabled = true) {
-        onGoBack()
+    // Intercept back gesture / press to navigate home if back dispatcher is provided
+    val backDispatcherOwner = LocalOnBackPressedDispatcherOwner.current
+    if (backDispatcherOwner != null) {
+        BackHandler(enabled = true) {
+            onGoBack()
+        }
     }
 
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
