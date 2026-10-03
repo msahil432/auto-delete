@@ -36,7 +36,7 @@ robolectric = "4.16.1"
 roborazzi = "1.73.0"
 mlkitBarcode = "17.3.0"
 profileinstaller = "1.4.1"
-sentry = "8.53.0"
+sentry = "8.54.0"
 sentryGradlePlugin = "6.19.0"
 
 
