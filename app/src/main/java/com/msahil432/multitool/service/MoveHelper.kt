@@ -14,6 +14,7 @@ import com.msahil432.multitool.data.FolderConfig
 import com.msahil432.multitool.data.LogAction
 import java.io.File
 import com.msahil432.multitool.util.Breadcrumbs
+import com.msahil432.multitool.util.MediaScanHelper
 import io.sentry.Sentry
 
 /**
@@ -128,6 +129,8 @@ object MoveHelper {
                 counter++
             }
 
+            val sourceLastModified = sourceFile.lastModified()
+
             // ── 5. Copy via ContentResolver streams ──────────────────────────────
             //    This works correctly when MANAGE_EXTERNAL_STORAGE is granted,
             //    unlike raw FileInputStream which may still get EACCES on some OEMs.
@@ -140,10 +143,23 @@ object MoveHelper {
                 } ?: throw IllegalStateException("Could not open output stream for ${destFile.absolutePath}")
             } ?: throw IllegalStateException("Could not open input stream for $filePath")
 
+            // Preserve original timestamp so gallery apps sort by the correct date
+            if (sourceLastModified > 0L) {
+                try {
+                    destFile.setLastModified(sourceLastModified)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Could not set lastModified on destination file: ${destFile.absolutePath}", e)
+                }
+            }
+
             // Delete the original only after a successful copy
             if (!sourceFile.delete()) {
                 Log.w(TAG, "Copied but could not delete source: $filePath")
             }
+
+            // Synchronize with MediaStore: index new file & remove deleted original
+            MediaScanHelper.scanAddedFile(context, destFile.absolutePath)
+            MediaScanHelper.deleteFromMediaStoreAndScan(context, sourceFile.absolutePath)
 
             // ── 6. Log success ────────────────────────────────────────────────────
             db.appDao().insertActivityLog(
@@ -194,7 +210,7 @@ object MoveHelper {
     // ── Path resolution (SAF tree URI → friendly /storage/emulated/0/... path) ──
 
     private fun resolvePath(uriString: String): File {
-        if (uriString.startsWith("/")) return File(uriString)
+        if (File(uriString).isAbsolute || uriString.startsWith("/")) return File(uriString)
         // SAF tree URI  (e.g. content://...externalstorage.../tree/primary:Photos/Backup)
         val uriPath = Uri.parse(uriString).path ?: uriString
         val friendlyPath = uriPath

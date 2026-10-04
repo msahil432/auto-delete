@@ -13,6 +13,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import android.util.Log
 import com.msahil432.multitool.util.Breadcrumbs
+import com.msahil432.multitool.util.MediaScanHelper
 import io.sentry.Sentry
 
 /**
@@ -80,12 +81,14 @@ class FileActionWorker(
                             Log.e("FileActionWorker", "Failed to trash via MediaStore, trying delete", e)
                             Sentry.captureException(e)
                             file.delete()
+                            MediaScanHelper.deleteFromMediaStoreAndScan(appContext, filePath)
                         }
                         cursor.close()
                     } else {
                         Log.w("FileActionWorker", "File not in MediaStore, deleting: $filePath")
                         Sentry.captureMessage("File not in MediaStore, deleting: $filePath")
                         file.delete()
+                        MediaScanHelper.deleteFromMediaStoreAndScan(appContext, filePath)
                     }
 
                     db.appDao().updatePendingAction(pendingAction.copy(status = ActionStatus.TRASHED))
@@ -101,6 +104,7 @@ class FileActionWorker(
                 }
                 DeletionMode.DELETE -> {
                     file.delete()
+                    MediaScanHelper.deleteFromMediaStoreAndScan(appContext, filePath)
                     db.appDao().updatePendingAction(pendingAction.copy(status = ActionStatus.DELETED))
                     db.appDao().insertActivityLog(
                         ActivityLogEntry(
