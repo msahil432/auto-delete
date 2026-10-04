@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Security
@@ -74,6 +75,7 @@ fun AppSettingsScreen(
   val notificationVaultEnabled by settingsRepository.notificationVaultEnabled.collectAsState(initial = false)
   val notificationBlockedPackages by settingsRepository.notificationBlockedPackages.collectAsState(initial = emptySet())
   val tamperAlarmEnabled by settingsRepository.tamperAlarmEnabled.collectAsState(initial = false)
+  val showFloatingTimerBubble by settingsRepository.showFloatingTimerBubble.collectAsState(initial = true)
 
   var isListenerGranted by remember { mutableStateOf(com.msahil432.multitool.util.NotificationAccess.isGranted(context)) }
   var isAdminActive by remember { mutableStateOf(DeviceAdminHelper.isActive(context)) }
@@ -144,6 +146,10 @@ fun AppSettingsScreen(
     },
     onToggleTamperAlarm = { checked ->
       coroutineScope.launch { settingsRepository.setTamperAlarmEnabled(checked) }
+    },
+    showFloatingTimerBubble = showFloatingTimerBubble,
+    onToggleFloatingTimerBubble = { checked ->
+      coroutineScope.launch { settingsRepository.setShowFloatingTimerBubble(checked) }
     }
   )
 
@@ -272,7 +278,9 @@ fun AppSettingsContent(
   onToggleBlockFbReels: (Boolean) -> Unit = {},
   onToggleTrackBrowserUrls: (Boolean) -> Unit = {},
   onToggleAntiUninstall: (Boolean) -> Unit = {},
-  onToggleTamperAlarm: (Boolean) -> Unit = {}
+  onToggleTamperAlarm: (Boolean) -> Unit = {},
+  showFloatingTimerBubble: Boolean = true,
+  onToggleFloatingTimerBubble: (Boolean) -> Unit = {}
 ) {
   Scaffold(
     topBar = {
@@ -368,6 +376,35 @@ fun AppSettingsContent(
           subtitle = "Review held notifications and delivery digest",
           leadingIcon = Icons.Default.Inbox,
           onClick = onNavigateToNotificationVault
+        )
+        HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+      }
+
+      // ── App Blocking & Timers ─────────────────────────────────────────────
+      SectionHeader(title = "App Blocking & Timers")
+      if (!isModuleAppFocusActive) {
+        InactiveModuleBanner(
+          moduleName = "App Tracking & Focus",
+          onActivate = onActivateAppFocus
+        )
+      } else {
+        SettingRow(
+          title = "Floating Timer Bubble",
+          subtitle = if (showFloatingTimerBubble) {
+            "Showing live countdown bubble over apps with active quotas or session limits"
+          } else {
+            "Disabled — no floating bubble is displayed"
+          },
+          leadingIcon = Icons.Default.HourglassTop,
+          trailing = {
+            Switch(
+              checked = showFloatingTimerBubble,
+              onCheckedChange = onToggleFloatingTimerBubble,
+              modifier = Modifier.semantics {
+                contentDescription = "Toggle Floating Timer Bubble"
+              }
+            )
+          }
         )
         HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
       }

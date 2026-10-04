@@ -19,10 +19,12 @@ import com.msahil432.multitool.blocking.BlockEngine
 import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.FolderConfig
 import com.msahil432.multitool.data.FilterRule
+import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.TimelineEventType
 import com.msahil432.multitool.data.UnlockType
 import com.msahil432.multitool.data.UsageRepository
 import com.msahil432.multitool.data.decodeFilterRules
+import com.msahil432.multitool.dataStore
 import com.msahil432.multitool.tracking.ScreenUnlockReceiver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
@@ -58,6 +60,7 @@ class FileMonitorService : Service() {
         }
 
         val db = (application as MultiToolApp).database
+        val settingsRepo = SettingsRepository(applicationContext.dataStore)
         usageRepo = UsageRepository(db.usageDao())
         blockingRepo = BlockingRepository(db.blockingDao())
         blockEngine = BlockEngine(blockingRepo, usageRepo)
@@ -66,7 +69,8 @@ class FileMonitorService : Service() {
             engine = blockEngine,
             blockingRepo = blockingRepo,
             usageRepo = usageRepo,
-            isStrictAllowFriction = { com.msahil432.multitool.blocking.StrictModeController.isActive.value }
+            isStrictAllowFriction = { com.msahil432.multitool.blocking.StrictModeController.isActive.value },
+            settingsRepo = settingsRepo
         )
         blockController.start(this)
 
