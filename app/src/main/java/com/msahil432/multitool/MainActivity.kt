@@ -14,6 +14,7 @@ import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.service.FileMonitorService
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 import com.msahil432.multitool.ui.navigation.AppNavigation
+import com.msahil432.multitool.util.Breadcrumbs
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import io.sentry.Sentry
@@ -40,6 +41,11 @@ class MainActivity : ComponentActivity() {
         val isFileCleanupActive = runBlocking {
             settingsRepository.moduleFileCleanup.first()
         }
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_NAVIGATION,
+            message = "MainActivity onCreate",
+            data = mapOf("fileCleanupActive" to isFileCleanupActive)
+        )
         if (isFileCleanupActive) {
             val serviceIntent = Intent(this, FileMonitorService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

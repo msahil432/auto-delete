@@ -17,6 +17,7 @@ import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.TimelineEventType
 import com.msahil432.multitool.data.UsageRepository
 import com.msahil432.multitool.dataStore
+import com.msahil432.multitool.util.Breadcrumbs
 import com.msahil432.multitool.util.UsageAccess
 import io.sentry.Sentry
 import kotlinx.coroutines.flow.first
@@ -47,6 +48,11 @@ class UsageCollectorWorker(
         }
 
         val events = reader.queryEvents(since, now)
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_USAGE,
+            message = "UsageCollectorWorker processing events",
+            data = mapOf("eventCount" to events.size)
+        )
 
         val ownPackage = appContext.packageName
         val homePackage = getHomePackage(appContext)
@@ -102,6 +108,10 @@ class UsageCollectorWorker(
          * Schedules periodic background execution (every 15 minutes) and enqueues an immediate run to collect usage events.
          */
         fun schedule(context: Context) {
+            Breadcrumbs.record(
+                category = Breadcrumbs.CAT_USAGE,
+                message = "Scheduling UsageCollectorWorker"
+            )
             try {
                 val periodicRequest = PeriodicWorkRequestBuilder<UsageCollectorWorker>(
                     15, TimeUnit.MINUTES

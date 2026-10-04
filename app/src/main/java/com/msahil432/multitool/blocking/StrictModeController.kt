@@ -10,6 +10,7 @@ import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.StrictModeState
 import com.msahil432.multitool.data.UnlockMethod
 import com.msahil432.multitool.data.UnlockParams
+import com.msahil432.multitool.util.Breadcrumbs
 import io.sentry.Sentry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -85,7 +86,11 @@ object StrictModeController {
         endAt: Long = 0L,
         params: UnlockParams = UnlockParams()
     ) {
-        Sentry.addBreadcrumb("Strict mode activated")
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_BLOCKING,
+            message = "Strict mode activated",
+            data = mapOf("method" to method.name, "endAt" to endAt)
+        )
         val now = clock()
         val newState = StrictModeState(
             isActive = true,
@@ -260,6 +265,10 @@ object StrictModeController {
      * Cancels any pending deactivation countdown and keeps strict mode active.
      */
     fun cancelPendingDeactivation() {
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_BLOCKING,
+            message = "Strict mode pending deactivation cancelled"
+        )
         val current = _state.value
         if (current.pendingDeactivationAt > 0L) {
             val updatedState = current.copy(pendingDeactivationAt = 0L)
@@ -275,6 +284,10 @@ object StrictModeController {
      * Clears strict mode flags and deactivates Device Admin protection.
      */
     fun completeDeactivation() {
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_BLOCKING,
+            message = "Strict mode deactivation completed"
+        )
         val resetState = StrictModeState(
             isActive = false,
             startedAt = 0L,

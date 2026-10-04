@@ -43,6 +43,7 @@ import java.util.concurrent.Executors
 import io.sentry.Sentry
 import androidx.compose.ui.tooling.preview.Preview as ComposePreview
 import com.msahil432.multitool.ui.theme.MultiToolTheme
+import com.msahil432.multitool.util.Breadcrumbs
 
 /**
  * High-friction QR Code Scan Challenge.
@@ -216,7 +217,13 @@ fun QrChallenge(
                                                 if (!raw.isNullOrBlank()) {
                                                     scannedValue = raw
                                                     val expected = expectedQrValue.orEmpty()
-                                                    if (expected.isEmpty() || raw == expected) {
+                                                    val isMatch = expected.isEmpty() || raw == expected
+                                                    Breadcrumbs.record(
+                                                        category = Breadcrumbs.CAT_CHALLENGE,
+                                                        message = "QR code scan evaluated",
+                                                        data = mapOf("match" to isMatch)
+                                                    )
+                                                    if (isMatch) {
                                                         isVerifying = true
                                                         onSuccess()
                                                     } else {

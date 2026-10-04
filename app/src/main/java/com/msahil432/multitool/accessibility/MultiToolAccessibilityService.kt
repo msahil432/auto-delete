@@ -12,6 +12,7 @@ import com.msahil432.multitool.data.BrowsingRepository
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.UsageRepository
 import com.msahil432.multitool.dataStore
+import com.msahil432.multitool.util.Breadcrumbs
 
 /**
  * Background [AccessibilityService] capturing window state changes, short-form video events (Reels/Shorts),
@@ -95,10 +96,13 @@ class MultiToolAccessibilityService : AccessibilityService() {
     Dispatcher.dispatch(this, event)
   }
 
-  override fun onInterrupt() {}
+  override fun onInterrupt() {
+    Breadcrumbs.record(Breadcrumbs.CAT_ACCESSIBILITY, "Accessibility service interrupted")
+  }
 
   override fun onDestroy() {
     super.onDestroy()
+    Breadcrumbs.record(Breadcrumbs.CAT_ACCESSIBILITY, "Accessibility service destroyed")
     shortFormHandler?.let { handler ->
       Dispatcher.unregister(handler)
     }

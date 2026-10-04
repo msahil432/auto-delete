@@ -1,6 +1,7 @@
 package com.msahil432.multitool.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.navigation.compose.NavHost
@@ -14,6 +15,7 @@ import com.msahil432.multitool.data.NotificationRepository
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.UsageRepository
 import com.msahil432.multitool.ui.screens.OnboardingScreen
+import com.msahil432.multitool.util.Breadcrumbs
 
 private const val ROUTE_ONBOARDING = "onboarding"
 private const val ROUTE_HUB = "hub"
@@ -33,6 +35,16 @@ fun AppNavigation(
 ) {
   val navController = rememberNavController()
   val onboardingComplete by settingsRepository.onboardingComplete.collectAsState(initial = false)
+
+  LaunchedEffect(navController) {
+    navController.addOnDestinationChangedListener { _, destination, _ ->
+      Breadcrumbs.record(
+        category = Breadcrumbs.CAT_NAVIGATION,
+        message = "Navigated to destination",
+        data = mapOf("route" to (destination.route ?: "unknown"))
+      )
+    }
+  }
 
   val startDestination = if (onboardingComplete) ROUTE_HUB else ROUTE_ONBOARDING
 

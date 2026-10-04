@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import java.io.File
 import java.util.concurrent.TimeUnit
 import android.util.Log
+import com.msahil432.multitool.util.Breadcrumbs
 import io.sentry.Sentry
 
 /**
@@ -32,7 +33,14 @@ class FileActionWorker(
         val db = (appContext.applicationContext as MultiToolApp).database
         val config = db.appDao().getFolderConfigById(folderId).firstOrNull() ?: return Result.failure()
         
-        Sentry.addBreadcrumb("Executing file action: ${config.deletionMode} for $filePath")
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_FILES,
+            message = "Executing file action",
+            data = mapOf(
+                "mode" to config.deletionMode.name,
+                "folderId" to folderId
+            )
+        )
 
         // Wait, what if the action was cancelled? We should check PendingAction.
         val pendingAction = db.appDao().getPendingActionByUri(filePath)

@@ -19,6 +19,7 @@ object BatteryOptimization {
     /** Requests system battery optimization exemption by launching the system dialog. */
     @SuppressLint("BatteryLife")
     fun requestIgnore(ctx: Context) {
+        Breadcrumbs.record(Breadcrumbs.CAT_SYSTEM, "Requesting battery optimization exemption dialog")
         val intent = createRequestIntent(ctx)
         ctx.startActivity(intent)
     }

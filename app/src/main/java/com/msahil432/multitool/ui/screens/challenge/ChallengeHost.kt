@@ -13,6 +13,7 @@ import com.msahil432.multitool.blocking.StrictModeController
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.UnlockMethod
 import com.msahil432.multitool.ui.theme.MultiToolTheme
+import com.msahil432.multitool.util.Breadcrumbs
 
 /**
  * Host container routing to the active unlock challenge.
@@ -34,11 +35,21 @@ fun ChallengeHost(
     val textLength by settingsRepository.textChallengeLength.collectAsState(initial = 100)
 
     val handleSuccess = {
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_CHALLENGE,
+            message = "Challenge completed successfully",
+            data = mapOf("method" to method.name)
+        )
         StrictModeController.completeDeactivation()
         onSuccess()
     }
 
     val handleCancel = {
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_CHALLENGE,
+            message = "Challenge cancelled by user",
+            data = mapOf("method" to method.name)
+        )
         StrictModeController.cancelPendingDeactivation()
         onCancel()
     }

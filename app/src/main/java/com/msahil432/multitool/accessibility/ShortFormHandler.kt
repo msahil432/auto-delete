@@ -10,6 +10,7 @@ import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.TimelineEventType
 import com.msahil432.multitool.data.UsageRepository
+import com.msahil432.multitool.util.Breadcrumbs
 import io.sentry.Sentry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -81,6 +82,12 @@ class ShortFormHandler(
             }
             lastActionTime = now
 
+            Breadcrumbs.record(
+                category = Breadcrumbs.CAT_ACCESSIBILITY,
+                message = "Detected short-form feed, executing BACK action",
+                data = mapOf("pkg" to pkg, "className" to (e.className?.toString() ?: ""))
+            )
+
             // 1. Perform BACK action to dismiss short-form feed
             svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
 
@@ -103,6 +110,11 @@ class ShortFormHandler(
             coroutineScope.launch {
                 delay(recheckDelayMs)
                 if (isShortFormFeed(svc, pkg, null)) {
+                    Breadcrumbs.record(
+                        category = Breadcrumbs.CAT_ACCESSIBILITY,
+                        message = "Short-form feed still visible after delay, routing to home",
+                        data = mapOf("pkg" to pkg)
+                    )
                     routeToHome(svc)
                 }
             }

@@ -9,6 +9,7 @@ import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.TimelineEventType
 import com.msahil432.multitool.data.UsageRepository
+import com.msahil432.multitool.util.Breadcrumbs
 import io.sentry.Sentry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -177,6 +178,16 @@ class BlockEnforcementController(
         val decision = engine.evaluate(pkg)
         when (decision) {
             is Blocked -> {
+                Breadcrumbs.record(
+                    category = Breadcrumbs.CAT_BLOCKING,
+                    message = "App blocked: showing overlay",
+                    data = mapOf(
+                        "pkg" to pkg,
+                        "ruleId" to decision.rule.id,
+                        "ruleType" to decision.rule.type.name,
+                        "reason" to decision.reason
+                    )
+                )
                 FloatingTimerBubbleManager.hide()
                 stopTimerTicker()
 
@@ -219,6 +230,11 @@ class BlockEnforcementController(
             }
             is Allowed -> {
                 if (currentBlockedPkg == pkg || BlockOverlayManager.isShowing()) {
+                    Breadcrumbs.record(
+                        category = Breadcrumbs.CAT_BLOCKING,
+                        message = "App allowed: hiding overlay",
+                        data = mapOf("pkg" to pkg)
+                    )
                     BlockOverlayManager.hide()
                     currentBlockedPkg = null
                 }

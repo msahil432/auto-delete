@@ -7,6 +7,7 @@ import com.msahil432.multitool.blocking.BlockOverlayManager
 import com.msahil432.multitool.blocking.StrictModeController
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.service.TamperAlarm
+import com.msahil432.multitool.util.Breadcrumbs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -130,6 +131,12 @@ class TamperHandler(
     }
 
     private fun triggerTamperAlarm(svc: AccessibilityService) {
+        val targetPkg = svc.packageName ?: "com.msahil432.multitool"
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_ACCESSIBILITY,
+            message = "Tamper screen detected: activating alarm and block overlay",
+            data = mapOf("targetPkg" to targetPkg)
+        )
         isTamperTriggered = true
 
         // 1. Start siren playback with max-duration safety auto-stop
@@ -142,7 +149,7 @@ class TamperHandler(
         overlayManager.show(
             context = svc,
             info = BlockOverlayManager.BlockInfo(
-                packageName = svc.packageName ?: "com.msahil432.multitool",
+                packageName = targetPkg,
                 appLabel = "Multi Tool",
                 reason = "Tamper detected: System settings access is blocked during Strict Mode.",
                 allowFriction = false
@@ -157,6 +164,12 @@ class TamperHandler(
      * Resets tamper state, stops the alarm siren, and hides overlay.
      */
     fun stopTamperState() {
+        if (isTamperTriggered) {
+            Breadcrumbs.record(
+                category = Breadcrumbs.CAT_ACCESSIBILITY,
+                message = "Tamper state cleared: stopping alarm and hiding overlay"
+            )
+        }
         isTamperTriggered = false
         alarmController.stop()
         overlayManager.hide()

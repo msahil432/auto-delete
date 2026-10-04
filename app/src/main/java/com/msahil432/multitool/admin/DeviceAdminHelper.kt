@@ -4,6 +4,7 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import com.msahil432.multitool.util.Breadcrumbs
 
 /**
  * Helper object for querying, activating, and deactivating Device Administrator privileges (anti-uninstall protection).
@@ -22,6 +23,7 @@ object DeviceAdminHelper {
 
     /** Prompts the user to activate Device Administrator privileges. */
     fun requestActivation(ctx: Context) {
+        Breadcrumbs.record(Breadcrumbs.CAT_ADMIN, "Prompting user for Device Admin activation")
         val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
             putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, component(ctx))
             putExtra(
@@ -35,6 +37,7 @@ object DeviceAdminHelper {
 
     /** Deactivates Device Administrator privileges when focus sessions or strict mode end. */
     fun deactivate(ctx: Context) {
+        Breadcrumbs.record(Breadcrumbs.CAT_ADMIN, "Deactivating Device Admin privileges")
         val dpm = ctx.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
         dpm?.removeActiveAdmin(component(ctx))
     }

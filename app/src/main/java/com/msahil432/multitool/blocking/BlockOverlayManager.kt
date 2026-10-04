@@ -25,6 +25,7 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.msahil432.multitool.ui.screens.BlockOverlayContent
 import com.msahil432.multitool.ui.theme.MultiToolTheme
+import com.msahil432.multitool.util.Breadcrumbs
 import io.sentry.Sentry
 
 /**
@@ -77,6 +78,11 @@ object BlockOverlayManager {
         onFrictionCallback = onFriction
 
         runOnMainThread {
+            Breadcrumbs.record(
+                category = Breadcrumbs.CAT_BLOCKING,
+                message = "BlockOverlayManager.show requested",
+                data = mapOf("pkg" to info.packageName, "reason" to info.reason)
+            )
             if (Settings.canDrawOverlays(context)) {
                 showWindowOverlay(context, info, onClose, onFriction)
             } else {
@@ -156,12 +162,22 @@ object BlockOverlayManager {
         lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_START)
         lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
 
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_BLOCKING,
+            message = "BlockOverlayManager: Window overlay view added to WindowManager",
+            data = mapOf("pkg" to info.packageName)
+        )
         windowManager.addView(composeView, layoutParams)
         currentView = composeView
         currentLifecycleOwner = lifecycleOwner
     }
 
     private fun showFallbackActivity(context: Context, info: BlockInfo) {
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_BLOCKING,
+            message = "BlockOverlayManager: Missing overlay permission, launching BlockActivity fallback",
+            data = mapOf("pkg" to info.packageName)
+        )
         val intent = BlockActivity.createIntent(context, info)
         context.startActivity(intent)
     }
@@ -184,6 +200,10 @@ object BlockOverlayManager {
     }
 
     private fun hideOverlayView(windowManager: WindowManager) {
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_BLOCKING,
+            message = "BlockOverlayManager: Removing window overlay view"
+        )
         currentLifecycleOwner?.apply {
             handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
             handleLifecycleEvent(Lifecycle.Event.ON_STOP)
