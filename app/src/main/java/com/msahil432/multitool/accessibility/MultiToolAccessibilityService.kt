@@ -66,8 +66,29 @@ class MultiToolAccessibilityService : AccessibilityService() {
 
     if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
       val pkg = event.packageName?.toString()
+      val className = event.className?.toString()
       if (!pkg.isNullOrBlank()) {
-        ForegroundAppState.update(pkg)
+        try {
+          // If the event is from MultiTool itself, only treat it as an app switch
+          // if it represents one of our full-screen activities (MainActivity or BlockActivity).
+          // Floating overlays, compose views, and dialogs must not switch the active app.
+          val isOurApp = pkg == packageName
+          val isOurActivity = className == "com.msahil432.multitool.MainActivity" ||
+              className == "com.msahil432.multitool.blocking.BlockActivity"
+          if (isOurApp && !isOurActivity) {
+            Sentry.addBreadcrumb("Ignored internal MultiTool overlay window: class=$className")
+          } else if (pkg == "com.android.systemui") {
+            // Ignore system UI transitions (status bar, volume dialog, gesture bar, etc.)
+            // so transient system overlays do not disrupt active foreground app tracking or dismiss bubbles.
+            Sentry.addBreadcrumb("Ignored system UI window event: class=$className")
+          } else {
+            Sentry.addBreadcrumb("Foreground package changed via accessibility: pkg=$pkg, class=$className")
+            ForegroundAppState.update(pkg)
+          }
+        } catch (e: Exception) {
+          Log.e("MultiToolAccessService", "Failed to process window state event", e)
+          Sentry.captureException(e)
+        }
       }
     }
 

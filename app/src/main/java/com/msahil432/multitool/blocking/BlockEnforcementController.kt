@@ -85,45 +85,51 @@ class BlockEnforcementController(
     }
 
     private suspend fun handlePackageChanged(context: Context, newPkg: String) {
-        val prevPkg = activePkg
-        val now = clock()
+        try {
+            val prevPkg = activePkg
+            val now = clock()
+            Sentry.addBreadcrumb("BlockEnforcementCtrl: handlePackageChanged newPkg=$newPkg (prev was $prevPkg)")
 
-        if (prevPkg.isNotBlank() && prevPkg != newPkg) {
-            val sessionElapsed = (now - lastTickTime).coerceAtLeast(0L)
-            if (sessionElapsed > 0) {
-                updateForegroundDuration(prevPkg, sessionElapsed)
+            if (prevPkg.isNotBlank() && prevPkg != newPkg) {
+                val sessionElapsed = (now - lastTickTime).coerceAtLeast(0L)
+                if (sessionElapsed > 0) {
+                    updateForegroundDuration(prevPkg, sessionElapsed)
+                }
+                dismissedPackagesInSession.remove(prevPkg)
+                stopTimerTicker()
+                FloatingTimerBubbleManager.hide()
             }
-            dismissedPackagesInSession.remove(prevPkg)
-            stopTimerTicker()
-            FloatingTimerBubbleManager.hide()
-        }
 
-        activePkg = newPkg
-        sessionStartTime = now
-        lastTickTime = now
+            activePkg = newPkg
+            sessionStartTime = now
+            lastTickTime = now
 
-        if (newPkg.isBlank() || newPkg == context.packageName) {
-            if (BlockOverlayManager.isShowing()) {
-                BlockOverlayManager.hide()
+            if (newPkg.isBlank() || newPkg == context.packageName) {
+                if (BlockOverlayManager.isShowing()) {
+                    BlockOverlayManager.hide()
+                }
+                FloatingTimerBubbleManager.hide()
+                stopTimerTicker()
+                currentBlockedPkg = null
+                return
             }
-            FloatingTimerBubbleManager.hide()
-            stopTimerTicker()
-            currentBlockedPkg = null
-            return
+
+            // Increment launch counter for matching enabled groups
+            val groups = blockingRepo.enabledGroupsContaining(newPkg)
+            for (g in groups) {
+                val counter = blockingRepo.counterForToday(g.id)
+                blockingRepo.upsertCounter(counter.copy(launchesUsed = counter.launchesUsed + 1))
+            }
+
+            // Record launch in usage stats
+            usageRepo.recordLaunch(newPkg)
+
+            // Evaluate rule condition
+            evaluateAndEnforce(context, newPkg)
+        } catch (e: Exception) {
+            Log.e("BlockEnforcementCtrl", "Error in handlePackageChanged for $newPkg", e)
+            Sentry.captureException(e)
         }
-
-        // Increment launch counter for matching enabled groups
-        val groups = blockingRepo.enabledGroupsContaining(newPkg)
-        for (g in groups) {
-            val counter = blockingRepo.counterForToday(g.id)
-            blockingRepo.upsertCounter(counter.copy(launchesUsed = counter.launchesUsed + 1))
-        }
-
-        // Record launch in usage stats
-        usageRepo.recordLaunch(newPkg)
-
-        // Evaluate rule condition
-        evaluateAndEnforce(context, newPkg)
     }
 
     private suspend fun handlePeriodicTick(context: Context) {
@@ -222,32 +228,42 @@ class BlockEnforcementController(
     }
 
     private suspend fun updateFloatingBubble(context: Context, pkg: String) {
-        if (pkg.isBlank() || pkg == context.packageName || dismissedPackagesInSession.contains(pkg)) {
-            FloatingTimerBubbleManager.hide()
-            stopTimerTicker()
-            return
-        }
+        try {
+            if (pkg.isBlank() || pkg == context.packageName || dismissedPackagesInSession.contains(pkg)) {
+                Sentry.addBreadcrumb("BlockEnforcementCtrl: Hiding bubble (pkg=$pkg, dismissed=${dismissedPackagesInSession.contains(pkg)})")
+                FloatingTimerBubbleManager.hide()
+                stopTimerTicker()
+                return
+            }
 
-        if (!isBubbleEnabled()) {
-            FloatingTimerBubbleManager.hide()
-            stopTimerTicker()
-            return
-        }
+            if (!isBubbleEnabled()) {
+                Sentry.addBreadcrumb("BlockEnforcementCtrl: Floating timer bubble disabled in settings")
+                FloatingTimerBubbleManager.hide()
+                stopTimerTicker()
+                return
+            }
 
-        val timerInfo = calculateActiveTimer(context, pkg)
-        if (timerInfo != null && timerInfo.remainingMillis > 0) {
-            FloatingTimerBubbleManager.showOrUpdate(
-                context = context,
-                info = timerInfo,
-                onDismiss = {
-                    dismissedPackagesInSession.add(pkg)
-                    stopTimerTicker()
-                }
-            )
-            startTimerTicker(context, pkg)
-        } else {
-            FloatingTimerBubbleManager.hide()
-            stopTimerTicker()
+            val timerInfo = calculateActiveTimer(context, pkg)
+            if (timerInfo != null && timerInfo.remainingMillis > 0) {
+                Sentry.addBreadcrumb("BlockEnforcementCtrl: Showing bubble for $pkg (remaining=${timerInfo.remainingMillis}ms, rule=${timerInfo.ruleType})")
+                FloatingTimerBubbleManager.showOrUpdate(
+                    context = context,
+                    info = timerInfo,
+                    onDismiss = {
+                        Sentry.addBreadcrumb("BlockEnforcementCtrl: Bubble dismissed for session: $pkg")
+                        dismissedPackagesInSession.add(pkg)
+                        stopTimerTicker()
+                    }
+                )
+                startTimerTicker(context, pkg)
+            } else {
+                Sentry.addBreadcrumb("BlockEnforcementCtrl: No active timer for $pkg (info=$timerInfo) - hiding bubble")
+                FloatingTimerBubbleManager.hide()
+                stopTimerTicker()
+            }
+        } catch (e: Exception) {
+            Log.e("BlockEnforcementCtrl", "Error in updateFloatingBubble for $pkg", e)
+            Sentry.captureException(e)
         }
     }
 
@@ -255,30 +271,45 @@ class BlockEnforcementController(
         if (timerTickerJob?.isActive == true && activeTickerPkg == pkg) return
         stopTimerTicker()
         activeTickerPkg = pkg
+        Sentry.addBreadcrumb("BlockEnforcementCtrl: Started timer ticker for $pkg")
 
         timerTickerJob = scope.launch {
-            while (isActive && activePkg == pkg && !dismissedPackagesInSession.contains(pkg)) {
-                delay(1000L)
-                val updatedInfo = calculateActiveTimer(context, pkg)
-                if (updatedInfo != null && updatedInfo.remainingMillis > 0) {
-                    FloatingTimerBubbleManager.showOrUpdate(
-                        context = context,
-                        info = updatedInfo,
-                        onDismiss = {
-                            dismissedPackagesInSession.add(pkg)
-                            stopTimerTicker()
-                        }
-                    )
-                } else {
-                    FloatingTimerBubbleManager.hide()
-                    evaluateAndEnforce(context, pkg)
-                    break
+            try {
+                while (isActive && activePkg == pkg && !dismissedPackagesInSession.contains(pkg)) {
+                    delay(1000L)
+                    val updatedInfo = calculateActiveTimer(context, pkg)
+                    if (updatedInfo != null && updatedInfo.remainingMillis > 0) {
+                        FloatingTimerBubbleManager.showOrUpdate(
+                            context = context,
+                            info = updatedInfo,
+                            onDismiss = {
+                                Sentry.addBreadcrumb("BlockEnforcementCtrl: Bubble dismissed for session: $pkg")
+                                dismissedPackagesInSession.add(pkg)
+                                stopTimerTicker()
+                            }
+                        )
+                    } else if (updatedInfo != null && updatedInfo.remainingMillis <= 0) {
+                        Sentry.addBreadcrumb("BlockEnforcementCtrl: Timer expired (0s) for $pkg - triggering enforcement")
+                        FloatingTimerBubbleManager.hide()
+                        evaluateAndEnforce(context, pkg)
+                        break
+                    } else {
+                        Sentry.addBreadcrumb("BlockEnforcementCtrl: No timer active for $pkg during tick - hiding bubble")
+                        FloatingTimerBubbleManager.hide()
+                        break
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e("BlockEnforcementCtrl", "Error during timer ticker for $pkg", e)
+                Sentry.captureException(e)
             }
         }
     }
 
     private fun stopTimerTicker() {
+        if (activeTickerPkg != null) {
+            Sentry.addBreadcrumb("BlockEnforcementCtrl: Stopped timer ticker for $activeTickerPkg")
+        }
         timerTickerJob?.cancel()
         timerTickerJob = null
         activeTickerPkg = null
