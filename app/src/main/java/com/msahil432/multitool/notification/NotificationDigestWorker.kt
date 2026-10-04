@@ -14,6 +14,7 @@ import com.msahil432.multitool.MainActivity
 import com.msahil432.multitool.MultiToolApp
 import com.msahil432.multitool.R
 import com.msahil432.multitool.data.NotificationRepository
+import com.msahil432.multitool.util.Breadcrumbs
 import java.util.concurrent.TimeUnit
 
 /**
@@ -61,6 +62,12 @@ class NotificationDigestWorker(
 
         val appsSummary = distinctAppNames.take(3).joinToString(", ") +
                 if (distinctAppNames.size > 3) " +${distinctAppNames.size - 3} more" else ""
+
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_NOTIFICATION,
+            message = "Delivering notification digest",
+            data = mapOf("count" to count, "appsCount" to distinctAppNames.size)
+        )
 
         val title = if (count == 1) "1 notification while you were focused" else "$count notifications while you were focused"
         val contentText = "From $appsSummary"

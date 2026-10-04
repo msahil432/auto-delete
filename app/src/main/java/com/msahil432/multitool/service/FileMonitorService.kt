@@ -28,6 +28,7 @@ import com.msahil432.multitool.dataStore
 import com.msahil432.multitool.tracking.ScreenUnlockReceiver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
+import com.msahil432.multitool.util.Breadcrumbs
 import io.sentry.Sentry
 
 /**
@@ -52,6 +53,7 @@ class FileMonitorService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        Breadcrumbs.record(Breadcrumbs.CAT_FILES, "FileMonitorService created")
         createNotificationChannel()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(1, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
@@ -89,7 +91,11 @@ class FileMonitorService : Service() {
     }
 
     private fun restartObservers(configs: List<FolderConfig>) {
-        Sentry.addBreadcrumb("Restarting ${configs.size} file observers")
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_FILES,
+            message = "Restarting file observers",
+            data = mapOf("count" to configs.size)
+        )
         observers.forEach { it.stopWatching() }
         observers.clear()
 
@@ -117,6 +123,7 @@ class FileMonitorService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        Breadcrumbs.record(Breadcrumbs.CAT_FILES, "FileMonitorService destroyed")
         blockController.stop()
         observers.forEach { it.stopWatching() }
         try {

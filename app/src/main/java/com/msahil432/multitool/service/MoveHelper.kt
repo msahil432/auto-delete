@@ -13,6 +13,7 @@ import com.msahil432.multitool.data.ActivityLogEntry
 import com.msahil432.multitool.data.FolderConfig
 import com.msahil432.multitool.data.LogAction
 import java.io.File
+import com.msahil432.multitool.util.Breadcrumbs
 import io.sentry.Sentry
 
 /**
@@ -39,6 +40,11 @@ object MoveHelper {
      *  - IO / other failure → logs ERRORED + brief stack trace, fires error notification
      */
     suspend fun performMove(context: Context, config: FolderConfig, filePath: String) {
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_FILES,
+            message = "Starting file move operation",
+            data = mapOf("folderId" to config.id)
+        )
         val db = (context.applicationContext as MultiToolApp).database
 
         // ── 1. Guard: MANAGE_EXTERNAL_STORAGE must be granted ───────────────────
@@ -150,9 +156,19 @@ object MoveHelper {
                     destinationPath = destFile.absolutePath
                 )
             )
+            Breadcrumbs.record(
+                category = Breadcrumbs.CAT_FILES,
+                message = "File move completed successfully",
+                data = mapOf("folderId" to config.id)
+            )
             Log.d(TAG, "Moved ${sourceFile.name} → ${destFile.absolutePath}")
 
         } catch (e: Exception) {
+            Breadcrumbs.record(
+                category = Breadcrumbs.CAT_FILES,
+                message = "File move operation failed",
+                data = mapOf("folderId" to config.id, "error" to (e.message ?: "Unknown"))
+            )
             Log.e(TAG, "Move failed for $filePath", e)
             val briefTrace = e.stackTrace.take(3)
                 .joinToString("\n") {

@@ -97,6 +97,12 @@ object OemAutostart {
 
     /** Attempts to open OEM-specific autostart settings, falling back to standard app details if unavailable. */
     fun open(context: Context) {
+        val oem = detectOem()
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_SYSTEM,
+            message = "Opening OEM autostart settings",
+            data = mapOf("oem" to oem.name)
+        )
         val candidates = getOemIntentCandidates(context)
         for (intent in candidates) {
             try {

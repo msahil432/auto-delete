@@ -25,6 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.msahil432.multitool.ui.theme.MultiToolTheme
+import com.msahil432.multitool.util.Breadcrumbs
 import kotlinx.coroutines.delay
 import java.util.Locale
 
@@ -170,7 +171,13 @@ fun CooldownChallenge(
 
         // ── Actions ──
         Button(
-            onClick = onSuccess,
+            onClick = {
+                Breadcrumbs.record(
+                    category = Breadcrumbs.CAT_CHALLENGE,
+                    message = "Cooldown timer challenge completed by user"
+                )
+                onSuccess()
+            },
             enabled = isTimerComplete,
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(

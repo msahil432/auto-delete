@@ -27,6 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.msahil432.multitool.ui.theme.MultiToolTheme
+import com.msahil432.multitool.util.Breadcrumbs
 import java.security.SecureRandom
 
 /**
@@ -179,7 +180,13 @@ fun TextMatchChallenge(
         Button(
             onClick = {
                 focusManager.clearFocus()
-                if (userInput == targetText) {
+                val isMatch = userInput == targetText
+                Breadcrumbs.record(
+                    category = Breadcrumbs.CAT_CHALLENGE,
+                    message = "Text match challenge evaluated",
+                    data = mapOf("match" to isMatch, "targetLength" to targetText.length)
+                )
+                if (isMatch) {
                     isError = false
                     onSuccess()
                 } else {

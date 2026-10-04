@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.msahil432.multitool.ui.screens.BlockOverlayContent
 import com.msahil432.multitool.ui.theme.MultiToolTheme
+import com.msahil432.multitool.util.Breadcrumbs
 
 /**
  * Full-screen blocking fallback Activity when SYSTEM_ALERT_WINDOW (overlay) permission is missing.
@@ -20,6 +21,12 @@ class BlockActivity : ComponentActivity() {
 
         val info = BlockOverlayManager.currentInfo ?: parseInfoFromIntent(intent)
         val onFriction = BlockOverlayManager.onFrictionCallback
+
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_BLOCKING,
+            message = "BlockActivity onCreate: presenting fallback blocking UI",
+            data = mapOf("pkg" to info.packageName)
+        )
 
         setContent {
             MultiToolTheme {

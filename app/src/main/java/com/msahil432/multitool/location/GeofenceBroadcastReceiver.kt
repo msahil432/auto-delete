@@ -10,6 +10,7 @@ import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.GeofenceRepository
 import com.msahil432.multitool.data.TimelineEventType
 import com.msahil432.multitool.data.UsageRepository
+import com.msahil432.multitool.util.Breadcrumbs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -65,6 +66,15 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                 val profileId = requestId.toLongOrNull() ?: continue
                 val profile = geofenceRepository.getProfileById(profileId) ?: continue
                 if (!profile.enabled) continue
+
+                Breadcrumbs.record(
+                    category = Breadcrumbs.CAT_GEOFENCE,
+                    message = "Handling geofence transition",
+                    data = mapOf(
+                        "profileId" to profile.id,
+                        "transitionType" to if (transitionType == Geofence.GEOFENCE_TRANSITION_ENTER) "ENTER" else "EXIT"
+                    )
+                )
 
                 val enterGroupIds = GeofenceRepository.parseGroupIds(profile.onEnterGroupIds)
                 val exitGroupIds = GeofenceRepository.parseGroupIds(profile.onExitGroupIds)

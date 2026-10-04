@@ -8,6 +8,7 @@ import com.msahil432.multitool.blocking.BlockEngine
 import com.msahil432.multitool.data.*
 import com.msahil432.multitool.notification.NotificationDigestScheduler
 import com.msahil432.multitool.dataStore
+import com.msahil432.multitool.util.Breadcrumbs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -42,6 +43,16 @@ class MultiToolNotificationListener : NotificationListenerService() {
         serviceScope.cancel()
     }
 
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        Breadcrumbs.record(Breadcrumbs.CAT_NOTIFICATION, "Notification listener connected")
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        Breadcrumbs.record(Breadcrumbs.CAT_NOTIFICATION, "Notification listener disconnected")
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         super.onNotificationPosted(sbn)
         if (sbn == null) return
@@ -64,6 +75,12 @@ class MultiToolNotificationListener : NotificationListenerService() {
                 )
                 notificationRepo.vault(vaulted)
                 cancelNotification(sbn.key)
+
+                Breadcrumbs.record(
+                    category = Breadcrumbs.CAT_NOTIFICATION,
+                    message = "Notification vaulted and suppressed for restricted app",
+                    data = mapOf("pkg" to pkg)
+                )
 
                 NotificationDigestScheduler.scheduleDigestIfUpcoming(
                     applicationContext,

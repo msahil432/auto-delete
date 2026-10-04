@@ -215,6 +215,7 @@ class ShortFormHandlerTest {
             if (handler.isBlockingEnabledForPackage(ShortFormSignatures.PKG_INSTAGRAM)) break
             testScheduler.advanceTimeBy(100)
             testScheduler.runCurrent()
+            Thread.sleep(10)
         }
         assertTrue("Blocking should be enabled for Instagram", handler.isBlockingEnabledForPackage(ShortFormSignatures.PKG_INSTAGRAM))
 

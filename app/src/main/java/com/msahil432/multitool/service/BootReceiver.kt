@@ -9,6 +9,7 @@ import com.msahil432.multitool.MultiToolApp
 import com.msahil432.multitool.data.GeofenceRepository
 import com.msahil432.multitool.location.GeofenceManager
 import com.msahil432.multitool.tracking.UsageCollectorWorker
+import com.msahil432.multitool.util.Breadcrumbs
 import io.sentry.Sentry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +22,10 @@ import kotlinx.coroutines.launch
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+            Breadcrumbs.record(
+                category = Breadcrumbs.CAT_SYSTEM,
+                message = "BootReceiver: BOOT_COMPLETED received, restarting services & workers"
+            )
             val serviceIntent = Intent(context, FileMonitorService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(serviceIntent)

@@ -8,6 +8,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import com.msahil432.multitool.data.AppDatabase
 import com.msahil432.multitool.tracking.UsageCollectorWorker
+import com.msahil432.multitool.util.Breadcrumbs
 import io.sentry.Sentry
 import io.sentry.SentryReplayOptions.SentryReplayQuality
 import io.sentry.android.core.SentryAndroid
@@ -40,6 +41,12 @@ class MultiToolApp : Application() {
         super.onCreate()
 
         initSentry()
+
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_SYSTEM,
+            message = "MultiToolApp onCreate: application initialized",
+            data = mapOf("sentryConfigured" to BuildConfig.SENTRY_DSN.isNotBlank())
+        )
 
         UsageCollectorWorker.schedule(this)
 

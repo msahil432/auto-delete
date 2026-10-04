@@ -8,6 +8,7 @@ import com.msahil432.multitool.data.BrowsingKind
 import com.msahil432.multitool.data.BrowsingRepository
 import com.msahil432.multitool.data.SettingsRepository
 import com.msahil432.multitool.data.UsageRepository
+import com.msahil432.multitool.util.Breadcrumbs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -84,6 +85,11 @@ class BrowserUrlHandler(
             val job = coroutineScope.launch {
                 delay(debounceDelayMs)
                 lastRecordedEntry[pkg] = parsed
+                Breadcrumbs.record(
+                    category = Breadcrumbs.CAT_ACCESSIBILITY,
+                    message = "Recorded browsing event",
+                    data = mapOf("pkg" to pkg, "kind" to kind.name)
+                )
                 browsingRepository.recordBrowsing(
                     packageName = pkg,
                     kind = kind,

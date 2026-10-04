@@ -20,7 +20,26 @@ Package: `com.msahil432.multitool` | minSdk 35 | targetSdk 37 | Kotlin + Jetpack
   catch (e: Exception) { Sentry.captureException(e) }
   ```
 - Never silently swallow exceptions — at minimum log + report.
-- Use `Sentry.addBreadcrumb()` before critical operations for debugging context.
+- **Mandatory Sentry Breadcrumbs**:
+  - Add breadcrumbs across all flows for state transitions, decision branches, service/worker lifecycles, and immediately prior to risky operations.
+  - **Category Convention**: Use consistent prefixes/categories:
+    - `accessibility` (service connection, window/node detection, tamper & short-form actions)
+    - `blocking` (rule evaluation, overlay show/hide, bubble lifecycle, timer transitions)
+    - `files` (observer triggers, worker execution, file moves/deletions)
+    - `geofence` (geofence registration, transition events, profile activation)
+    - `notification` (listener connection, intercepted/vaulted metadata, digest worker)
+    - `usage` (worker sync intervals, unlock events, stats aggregation)
+    - `challenge` (challenge presentation, attempt result, completion/failure)
+    - `admin` (device admin status, receiver callbacks)
+    - `navigation` (screen route changes, modal transitions)
+    - `system` (boot receiver, battery optimization, OEM autostart)
+  - **Format**: Include structured context: `"Category: Action / Event (key=value, key2=value2)"` or configure `Breadcrumb` with explicit `category`, `message`, and structured data.
+  - **Ring Buffer Protection & Throttling**: Sentry maintains a default ring buffer of 100 breadcrumbs. **Never spam breadcrumbs in high-frequency loops, per-frame renders, or 1-second tickers**. Record only state transitions, timer start/stop, milestones, and terminal states.
+  - **Privacy & Security Constraints (Zero-PII)**:
+    - **Never** log passwords, PINs, challenge answers, or master password hashes.
+    - **Never** log raw notification message contents, contact names, or chat messages.
+    - **Never** log sensitive browser query parameters, auth tokens, or session credentials.
+    - **Never** log precise GPS coordinates; log profile IDs and transition types instead.
 - Sentry config lives in `MultiToolApp.initSentry()`. Don't re-initialize elsewhere.
 - Guard Sentry calls with `BuildConfig.SENTRY_DSN.isNotBlank()` check where appropriate.
 - Set `options.isDebug = BuildConfig.DEBUG` only — never enable debug logging in release.

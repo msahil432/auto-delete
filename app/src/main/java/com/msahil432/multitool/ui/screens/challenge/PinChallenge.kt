@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.msahil432.multitool.ui.theme.MultiToolTheme
+import com.msahil432.multitool.util.Breadcrumbs
 import com.msahil432.multitool.util.PasswordSecurity
 import com.msahil432.multitool.util.SecureScreen
 import kotlinx.coroutines.delay
@@ -201,6 +202,11 @@ fun PinChallenge(
                 }
 
                 val verified = PasswordSecurity.verifyPassword(pinInput, storedPasswordHash)
+                Breadcrumbs.record(
+                    category = Breadcrumbs.CAT_CHALLENGE,
+                    message = "Master PIN verification attempt evaluated",
+                    data = mapOf("success" to verified, "attemptsLeft" to (if (verified) remainingAttempts else remainingAttempts - 1))
+                )
                 if (verified) {
                     isError = false
                     onSuccess()

@@ -15,6 +15,7 @@ import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
 import com.msahil432.multitool.data.GeofenceProfile
 import com.msahil432.multitool.data.GeofenceRepository
+import com.msahil432.multitool.util.Breadcrumbs
 import io.sentry.Sentry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -93,7 +94,11 @@ class GeofenceManager(
      */
     @SuppressLint("MissingPermission")
     fun registerGeofence(profile: GeofenceProfile, onComplete: ((Boolean) -> Unit)? = null) {
-        Sentry.addBreadcrumb("Adding geofence: ${profile.id}")
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_GEOFENCE,
+            message = "Registering geofence profile",
+            data = mapOf("profileId" to profile.id, "enabled" to profile.enabled)
+        )
         if (!profile.enabled) {
             unregisterGeofence(profile.id, onComplete)
             return
@@ -119,6 +124,11 @@ class GeofenceManager(
      * Unregisters a geofence by its profile ID.
      */
     fun unregisterGeofence(profileId: Long, onComplete: ((Boolean) -> Unit)? = null) {
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_GEOFENCE,
+            message = "Unregistering geofence profile",
+            data = mapOf("profileId" to profileId)
+        )
         geofencingClient.removeGeofences(listOf(profileId.toString()))
             .addOnSuccessListener { onComplete?.invoke(true) }
             .addOnFailureListener { onComplete?.invoke(false) }
@@ -133,6 +143,11 @@ class GeofenceManager(
 
         try {
             val enabledProfiles = repository.getEnabledProfilesSync()
+            Breadcrumbs.record(
+                category = Breadcrumbs.CAT_GEOFENCE,
+                message = "Re-registering all enabled geofences",
+                data = mapOf("count" to enabledProfiles.size)
+            )
             if (enabledProfiles.isEmpty()) {
                 geofencingClient.removeGeofences(getGeofencePendingIntent())
                 return@withContext
