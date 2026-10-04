@@ -40,6 +40,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         // Tamper alarm preference
         val TAMPER_ALARM_ENABLED = booleanPreferencesKey("tamper_alarm_enabled")
 
+        // Floating timer bubble preference
+        val SHOW_FLOATING_TIMER_BUBBLE = booleanPreferencesKey("show_floating_timer_bubble")
+
         // Module activation — which tool modules the user has opted into
         val MODULE_FILE_CLEANUP = booleanPreferencesKey("module_file_cleanup")
         val MODULE_USAGE_STATS = booleanPreferencesKey("module_usage_stats")
@@ -53,6 +56,18 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun setTamperAlarmEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[TAMPER_ALARM_ENABLED] = enabled
+        }
+    }
+
+    /** Flow indicating whether the floating timer bubble is shown for apps with active timers. Defaults to true. */
+    val showFloatingTimerBubble: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[SHOW_FLOATING_TIMER_BUBBLE] ?: true
+    }
+
+    /** Updates the floating timer bubble display preference. */
+    suspend fun setShowFloatingTimerBubble(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[SHOW_FLOATING_TIMER_BUBBLE] = enabled
         }
     }
 
