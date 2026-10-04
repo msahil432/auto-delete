@@ -68,8 +68,8 @@ object FloatingTimerBubbleManager {
     private var dismissLifecycleOwner: BubbleLifecycleOwner? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    @Volatile
-    internal var currentInfo: AppTimerInfo? = null
+    internal var currentInfoState by mutableStateOf<AppTimerInfo?>(null)
+    internal val currentInfo: AppTimerInfo? get() = currentInfoState
     private var isExpandedState by mutableStateOf(false)
     private var isDismissHoveredState by mutableStateOf(false)
     private var onDismissCallback: (() -> Unit)? = null
@@ -90,21 +90,29 @@ object FloatingTimerBubbleManager {
         info: AppTimerInfo,
         onDismiss: () -> Unit
     ) {
-        currentInfo = info
         onDismissCallback = onDismiss
 
         runOnMainThread {
-            if (!Settings.canDrawOverlays(context)) {
-                Log.d(TAG, "Cannot draw overlays: missing SYSTEM_ALERT_WINDOW permission")
-                return@runOnMainThread
-            }
+            try {
+                currentInfoState = info
+                Sentry.addBreadcrumb("FloatingTimerBubbleManager.showOrUpdate: pkg=${info.packageName}, remaining=${info.remainingMillis}ms")
 
-            if (currentBubbleView != null && currentBubbleView?.parent != null) {
-                // Already attached: Compose reactivity automatically updates UI via currentInfo
-                return@runOnMainThread
-            }
+                if (!Settings.canDrawOverlays(context)) {
+                    Log.w(TAG, "Cannot draw overlays: missing SYSTEM_ALERT_WINDOW permission")
+                    Sentry.addBreadcrumb("FloatingTimerBubbleManager: Missing SYSTEM_ALERT_WINDOW permission")
+                    return@runOnMainThread
+                }
 
-            createAndShowBubble(context.applicationContext, info)
+                if (currentBubbleView != null && currentBubbleView?.parent != null) {
+                    // Already attached: Compose reactivity automatically updates UI via currentInfoState
+                    return@runOnMainThread
+                }
+
+                createAndShowBubble(context.applicationContext, info)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed in showOrUpdate", e)
+                Sentry.captureException(e)
+            }
         }
     }
 
@@ -113,17 +121,23 @@ object FloatingTimerBubbleManager {
      */
     fun hide() {
         runOnMainThread {
-            currentBubbleView?.let { view ->
-                val wm = view.context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
-                if (wm != null) {
-                    removeBubbleView(wm)
-                    removeDismissView(wm)
+            try {
+                Sentry.addBreadcrumb("FloatingTimerBubbleManager.hide: wasShowing=${isShowing()}")
+                currentBubbleView?.let { view ->
+                    val wm = view.context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+                    if (wm != null) {
+                        removeBubbleView(wm)
+                        removeDismissView(wm)
+                    }
                 }
+                currentInfoState = null
+                onDismissCallback = null
+                isExpandedState = false
+                isDismissHoveredState = false
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to hide floating timer bubble", e)
+                Sentry.captureException(e)
             }
-            currentInfo = null
-            onDismissCallback = null
-            isExpandedState = false
-            isDismissHoveredState = false
         }
     }
 
@@ -142,47 +156,7 @@ object FloatingTimerBubbleManager {
         removeBubbleView(windowManager)
         removeDismissView(windowManager)
 
-        // 1. Initialize Dismiss Target View
-        val dismissView = ComposeView(context)
-        val dismissLife = BubbleLifecycleOwner()
-        dismissLife.performRestore(null)
-        dismissLife.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-        dismissView.setViewTreeLifecycleOwner(dismissLife)
-        dismissView.setViewTreeSavedStateRegistryOwner(dismissLife)
-        dismissView.setViewTreeOnBackPressedDispatcherOwner(dismissLife)
-
-        dismissView.setContent {
-            MultiToolTheme {
-                DismissTargetContent(isHovered = isDismissHoveredState)
-            }
-        }
-
-        val dismissParams = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-            y = (60 * density).toInt()
-        }
-
-        dismissLife.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        dismissLife.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-        dismissView.visibility = View.GONE
-        try {
-            windowManager.addView(dismissView, dismissParams)
-            currentDismissView = dismissView
-            dismissLayoutParams = dismissParams
-            dismissLifecycleOwner = dismissLife
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to add dismiss target view", e)
-            Sentry.captureException(e)
-        }
-
-        // 2. Initialize Floating Bubble View
+        // Initialize Floating Bubble View
         val bubbleView = ComposeView(context)
         val bubbleLife = BubbleLifecycleOwner()
         bubbleLife.performRestore(null)
@@ -193,7 +167,7 @@ object FloatingTimerBubbleManager {
 
         bubbleView.setContent {
             MultiToolTheme {
-                val info = currentInfo ?: initialInfo
+                val info = currentInfoState ?: initialInfo
                 FloatingTimerBubbleContent(
                     info = info,
                     isExpanded = isExpandedState,
@@ -245,7 +219,7 @@ object FloatingTimerBubbleManager {
 
                     if (!isDragging && hypot(dx.toDouble(), dy.toDouble()) > touchSlop) {
                         isDragging = true
-                        currentDismissView?.visibility = View.VISIBLE
+                        showDismissView(windowManager, context, density)
                     }
 
                     if (isDragging) {
@@ -255,6 +229,7 @@ object FloatingTimerBubbleManager {
                             windowManager.updateViewLayout(bubbleView, layoutParams)
                         } catch (e: Exception) {
                             Log.w(TAG, "Failed to update bubble layout", e)
+                            Sentry.captureException(e)
                         }
 
                         // Check hover collision with dismiss zone
@@ -272,11 +247,12 @@ object FloatingTimerBubbleManager {
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    currentDismissView?.visibility = View.GONE
+                    removeDismissView(windowManager)
 
                     if (isDragging) {
                         if (isDismissHoveredState) {
                             // Dropped on dismiss target
+                            Sentry.addBreadcrumb("FloatingTimerBubbleManager: Dismissed via drag-to-target")
                             onDismissCallback?.invoke()
                             hide()
                         } else {
@@ -392,6 +368,52 @@ object FloatingTimerBubbleManager {
         }
         currentBubbleView = null
         bubbleLayoutParams = null
+    }
+
+    private fun showDismissView(windowManager: WindowManager, context: Context, density: Float) {
+        if (currentDismissView != null && currentDismissView?.parent != null) {
+            currentDismissView?.visibility = View.VISIBLE
+            return
+        }
+
+        try {
+            val dismissView = ComposeView(context)
+            val dismissLife = BubbleLifecycleOwner()
+            dismissLife.performRestore(null)
+            dismissLife.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+            dismissView.setViewTreeLifecycleOwner(dismissLife)
+            dismissView.setViewTreeSavedStateRegistryOwner(dismissLife)
+            dismissView.setViewTreeOnBackPressedDispatcherOwner(dismissLife)
+
+            dismissView.setContent {
+                MultiToolTheme {
+                    DismissTargetContent(isHovered = isDismissHoveredState)
+                }
+            }
+
+            val dismissParams = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                y = (60 * density).toInt()
+            }
+
+            dismissLife.handleLifecycleEvent(Lifecycle.Event.ON_START)
+            dismissLife.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+
+            windowManager.addView(dismissView, dismissParams)
+            currentDismissView = dismissView
+            dismissLayoutParams = dismissParams
+            dismissLifecycleOwner = dismissLife
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to show dismiss view", e)
+            Sentry.captureException(e)
+        }
     }
 
     private fun removeDismissView(windowManager: WindowManager) {
