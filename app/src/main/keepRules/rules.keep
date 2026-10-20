@@ -21,3 +21,32 @@
 # Suppresses warnings from dependencies that might reference missing classes.
 -dontwarn org.slf4j.**
 -dontwarn io.sentry.**
+
+# 4. Native Methods (JNI)
+# Retains native method names so JNI linkages from C/C++ libraries are preserved.
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# 5. FFmpegKit
+# Preserves FFmpegKit classes, callbacks, and suppress warnings for optional variants.
+-keep class com.arthenica.ffmpegkit.** { *; }
+-keep class com.arthenica.smartexception.** { *; }
+-keep class org.ffmpeg.** { *; }
+-dontwarn com.arthenica.ffmpegkit.**
+-dontwarn com.arthenica.smartexception.**
+-dontwarn org.ffmpeg.**
+
+# 6. WebView JavaScript Bridge
+# Preserves methods called via JavaScript interfaces from WebView.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# 7. Unresolved Platform / VM References (R8 Full Mode)
+# Suppresses warnings for optional classes not bundled into android.jar or device runtime.
+-dontwarn sun.misc.Unsafe
+-dontwarn androidx.window.extensions.**
+-dontwarn androidx.window.sidecar.**
+-dontwarn androidx.compose.animation.tooling.**
+
