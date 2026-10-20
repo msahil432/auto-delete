@@ -130,4 +130,69 @@ class VideoDownloaderViewModelTest {
         assertEquals("https://example.com/video.mp4", list[0].mediaUrl)
         assertEquals(DownloadStatus.QUEUED, list[0].status)
     }
+
+    @Test
+    fun `clearUrl resets currentUrl and detector state`() {
+        val media = DetectedMedia(
+            url = "https://example.com/video.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "video.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT
+        )
+        viewModel.onUrlChanged("https://example.com/test")
+        viewModel.detector.addDetectedMedia(media)
+
+        assertEquals("https://example.com/test", viewModel.currentUrl.value)
+        assertEquals(1, viewModel.detector.detectedMedia.value.size)
+
+        viewModel.clearUrl()
+
+        assertEquals("", viewModel.currentUrl.value)
+        assertEquals(0, viewModel.detector.detectedMedia.value.size)
+        assertEquals(com.msahil432.multitool.downloader.PageLoadState.IDLE, viewModel.detector.pageLoadingState.value)
+    }
+
+    @Test
+    fun `isMediaUrl accurately recognizes Reddit and RedGIFs streaming assets`() {
+        val detector = viewModel.detector
+
+        // Reddit URLs
+        assertTrue(detector.isMediaUrl("https://v.redd.it/abc123xyz/HLSPlaylist.m3u8"))
+        assertTrue(detector.isMediaUrl("https://v.redd.it/abc123xyz/HLSPlaylist.m3u8?source=fallback"))
+        assertTrue(detector.isMediaUrl("https://v.redd.it/abc123xyz/DASH_720.mp4"))
+        assertTrue(detector.isMediaUrl("https://v.redd.it/abc123xyz/DASHPlaylist.mpd"))
+        assertTrue(detector.isMediaUrl("https://v.redd.it/abc123xyz/DASH_1080"))
+
+        // Audio tracks on Reddit should be skipped to prioritize video/HLS
+        assertFalse(detector.isMediaUrl("https://v.redd.it/abc123xyz/DASH_AUDIO_128.mp4"))
+
+        // RedGIFs URLs
+        assertTrue(detector.isMediaUrl("https://media.redgifs.com/SampleVideoId.mp4"))
+        assertTrue(detector.isMediaUrl("https://media.redgifs.com/SampleVideoId-mobile.mp4"))
+        assertTrue(detector.isMediaUrl("https://thumbs2.redgifs.com/SampleVideoId.mp4"))
+        assertTrue(detector.isMediaUrl("https://media.redgifs.com/SampleVideoId.m3u8"))
+
+        // Non-media URLs
+        assertFalse(detector.isMediaUrl("https://www.reddit.com/r/technology/"))
+        assertFalse(detector.isMediaUrl("https://www.redgifs.com/watch/sample"))
+        assertFalse(detector.isMediaUrl("https://events.reddit.com/telemetry"))
+    }
+
+    @Test
+    fun `classifyUrl and extractFileName produce correct metadata for Reddit and RedGIFs`() {
+        val detector = viewModel.detector
+
+        val redditHls = "https://v.redd.it/abc123xyz/HLSPlaylist.m3u8"
+        assertEquals(MediaType.HLS_STREAM, detector.classifyUrl(redditHls))
+        assertEquals("reddit_abc123xyz_hls.mp4", detector.extractFileName(redditHls))
+
+        val redditDash = "https://v.redd.it/abc123xyz/DASH_720.mp4"
+        assertEquals(MediaType.VIDEO, detector.classifyUrl(redditDash))
+        assertEquals("reddit_abc123xyz_720.mp4", detector.extractFileName(redditDash))
+
+        val redgifsMp4 = "https://media.redgifs.com/DelightfulSample-mobile.mp4"
+        assertEquals(MediaType.VIDEO, detector.classifyUrl(redgifsMp4))
+        assertEquals("redgifs_DelightfulSample.mp4", detector.extractFileName(redgifsMp4))
+    }
 }

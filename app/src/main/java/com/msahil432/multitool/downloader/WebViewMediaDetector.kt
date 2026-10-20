@@ -2,7 +2,11 @@ package com.msahil432.multitool.downloader
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
+import android.graphics.Color
+import android.view.ViewGroup
 import android.webkit.JavascriptInterface
+import android.webkit.ServiceWorkerClient
+import android.webkit.ServiceWorkerController
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -52,7 +56,7 @@ class WebViewMediaDetector {
 
     internal companion object {
         val VIDEO_EXTENSIONS = setOf(
-            "mp4", "webm", "mkv", "m3u8", "ts", "gif", "webp"
+            "mp4", "webm", "mkv", "m3u8", "ts", "gif", "webp", "mpd", "m4s", "m4v", "mov", "avi", "flv"
         )
 
         val VIDEO_MIME_TYPES = setOf(
@@ -64,7 +68,9 @@ class WebViewMediaDetector {
             "video/mp2t",
             "application/dash+xml",
             "image/gif",
-            "image/webp"
+            "image/webp",
+            "video/quicktime",
+            "video/x-m4v"
         )
     }
 
@@ -90,10 +96,16 @@ class WebViewMediaDetector {
 
     /**
      * Configures the provided [WebView] with JavaScript bridge, DOM scan injection,
-     * and network interception.
+     * ServiceWorker network interception, and main client request interception.
      */
     @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
     fun configure(webView: WebView) {
+        webView.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        webView.setBackgroundColor(Color.TRANSPARENT)
+
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -103,6 +115,7 @@ class WebViewMediaDetector {
         }
 
         webView.addJavascriptInterface(JsBridge(), "MultiToolBridge")
+        configureServiceWorker()
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
@@ -115,17 +128,38 @@ class WebViewMediaDetector {
                 )
             }
 
+            override fun onPageCommitVisible(view: WebView?, url: String?) {
+                super.onPageCommitVisible(view, url)
+                // Inject early detection hooks as soon as page DOM is visible
+                view?.evaluateJavascript(MediaDetectionJs.HOOKS_AND_OBSERVER_SCRIPT, null)
+                view?.evaluateJavascript(MediaDetectionJs.DOM_SCAN_SCRIPT, null)
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 _pageLoadingState.value = PageLoadState.LOADED
 
-                // Strategy 1: Inject DOM scan script
+                // Strategy 1: Inject runtime hooks and comprehensive DOM scan scripts
+                view?.evaluateJavascript(MediaDetectionJs.HOOKS_AND_OBSERVER_SCRIPT, null)
                 view?.evaluateJavascript(MediaDetectionJs.DOM_SCAN_SCRIPT, null)
 
                 // Strategy 3: Inject canvas detection script with brief delay for lazy elements
                 view?.postDelayed({
                     view.evaluateJavascript(MediaDetectionJs.CANVAS_DETECT_SCRIPT, null)
                 }, 1500)
+
+                // Rescan at intervals to catch lazy SPA component hydration (Reddit shreddit-player, RedGIFs dynamic player)
+                view?.postDelayed({
+                    view.evaluateJavascript(MediaDetectionJs.DOM_SCAN_SCRIPT, null)
+                }, 1000)
+
+                view?.postDelayed({
+                    view.evaluateJavascript(MediaDetectionJs.DOM_SCAN_SCRIPT, null)
+                }, 2500)
+
+                view?.postDelayed({
+                    view.evaluateJavascript(MediaDetectionJs.DOM_SCAN_SCRIPT, null)
+                }, 5000)
 
                 Breadcrumbs.record(
                     category = Breadcrumbs.CAT_DOWNLOADER,
@@ -178,6 +212,37 @@ class WebViewMediaDetector {
     }
 
     /**
+     * Registers a [ServiceWorkerClient] to intercept network media streams requested by background
+     * service workers (commonly used by modern web apps like Reddit and RedGIFs).
+     */
+    private fun configureServiceWorker() {
+        try {
+            val swController = ServiceWorkerController.getInstance()
+            swController.setServiceWorkerClient(object : ServiceWorkerClient() {
+                override fun shouldInterceptRequest(request: WebResourceRequest?): WebResourceResponse? {
+                    request?.url?.toString()?.let { url ->
+                        if (isMediaUrl(url)) {
+                            val mediaType = classifyUrl(url)
+                            addDetectedMedia(
+                                DetectedMedia(
+                                    url = url,
+                                    mimeType = guessMimeType(url),
+                                    suggestedFileName = extractFileName(url),
+                                    mediaType = mediaType,
+                                    detectionStrategy = DetectionStrategy.NETWORK_INTERCEPT
+                                )
+                            )
+                        }
+                    }
+                    return null
+                }
+            })
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+        }
+    }
+
+    /**
      * Resets internal detection state, cleared URLs, and status for loading a new URL.
      */
     fun reset() {
@@ -209,13 +274,44 @@ class WebViewMediaDetector {
     }
 
     /**
-     * Checks if a URL points to video or GIF media by file extension or MIME hints.
+     * Checks if a URL points to video or GIF media by file extension, MIME hints, or platform signatures.
      */
     internal fun isMediaUrl(url: String): Boolean {
         val lowerUrl = url.lowercase()
+        // Skip analytics, telemetry, and tracking endpoints
+        if (lowerUrl.contains("/telemetry") || lowerUrl.contains("/analytics") || lowerUrl.contains("/event")) {
+            return false
+        }
+        // Skip audio-only DASH tracks to prioritize complete video and HLS streams
+        if (lowerUrl.contains("dash_audio")) {
+            return false
+        }
+
         val path = lowerUrl.substringBefore('?').substringBefore('#')
         val extension = path.substringAfterLast('.', "")
-        return extension in VIDEO_EXTENSIONS || VIDEO_MIME_TYPES.any { lowerUrl.contains(it) }
+        if (extension in VIDEO_EXTENSIONS) return true
+        if (VIDEO_MIME_TYPES.any { lowerUrl.contains(it) }) return true
+
+        // Reddit: v.redd.it stream manifests and video endpoints
+        if (lowerUrl.contains("v.redd.it")) {
+            if (lowerUrl.contains("dash") || lowerUrl.contains("hls") || lowerUrl.contains(".mp4") || lowerUrl.contains(".m3u8")) {
+                return true
+            }
+            if (path.substringAfterLast('/').startsWith("dash_")) {
+                return true
+            }
+        }
+
+        // RedGIFs: media.redgifs.com or thumbs2.redgifs.com video assets
+        if (lowerUrl.contains("redgifs.com")) {
+            if (lowerUrl.contains("media.redgifs.com") || lowerUrl.contains("thumbs2.redgifs.com")) {
+                if (lowerUrl.contains(".mp4") || lowerUrl.contains(".m3u8") || lowerUrl.contains(".m4s") || lowerUrl.contains("-mobile")) {
+                    return true
+                }
+            }
+        }
+
+        return false
     }
 
     /**
@@ -225,8 +321,8 @@ class WebViewMediaDetector {
         val lowerUrl = url.lowercase()
         val path = lowerUrl.substringBefore('?').substringBefore('#')
         return when {
-            path.endsWith(".m3u8") || lowerUrl.contains(".m3u8") || lowerUrl.contains("mpegurl") -> MediaType.HLS_STREAM
-            path.endsWith(".mpd") || lowerUrl.contains(".mpd") || lowerUrl.contains("dash") -> MediaType.DASH_STREAM
+            path.endsWith(".m3u8") || lowerUrl.contains(".m3u8") || lowerUrl.contains("mpegurl") || lowerUrl.contains("hlsplaylist") -> MediaType.HLS_STREAM
+            path.endsWith(".mpd") || lowerUrl.contains(".mpd") || lowerUrl.contains("dashplaylist") -> MediaType.DASH_STREAM
             path.endsWith(".gif") || lowerUrl.contains(".gif?") -> MediaType.GIF
             path.endsWith(".webp") || lowerUrl.contains(".webp?") -> MediaType.ANIMATED_WEBP
             else -> MediaType.VIDEO
@@ -234,31 +330,54 @@ class WebViewMediaDetector {
     }
 
     /**
-     * Guesses the MIME type from the resource URL path.
+     * Guesses the MIME type from the resource URL path or platform domain.
      */
     internal fun guessMimeType(url: String): String? {
-        val path = url.lowercase().substringBefore('?').substringBefore('#')
+        val lowerUrl = url.lowercase()
+        val path = lowerUrl.substringBefore('?').substringBefore('#')
         return when {
-            path.endsWith(".mp4") -> "video/mp4"
-            path.endsWith(".webm") -> "video/webm"
+            path.endsWith(".mp4") || lowerUrl.contains(".mp4") -> "video/mp4"
+            path.endsWith(".webm") || lowerUrl.contains(".webm") -> "video/webm"
             path.endsWith(".mkv") -> "video/x-matroska"
-            path.endsWith(".m3u8") -> "application/vnd.apple.mpegurl"
+            path.endsWith(".m3u8") || lowerUrl.contains(".m3u8") || lowerUrl.contains("hlsplaylist") -> "application/vnd.apple.mpegurl"
             path.endsWith(".ts") -> "video/mp2t"
-            path.endsWith(".mpd") -> "application/dash+xml"
-            path.endsWith(".gif") -> "image/gif"
-            path.endsWith(".webp") -> "image/webp"
+            path.endsWith(".mpd") || lowerUrl.contains(".mpd") || lowerUrl.contains("dashplaylist") -> "application/dash+xml"
+            path.endsWith(".gif") || lowerUrl.contains(".gif") -> "image/gif"
+            path.endsWith(".webp") || lowerUrl.contains(".webp") -> "image/webp"
+            lowerUrl.contains("v.redd.it") -> "video/mp4"
+            lowerUrl.contains("redgifs.com") -> "video/mp4"
             else -> null
         }
     }
 
     /**
-     * Derives a file name from the URL path or provides a fallback name.
+     * Derives a clean file name from the URL path or platform identifiers.
      */
     internal fun extractFileName(url: String): String {
+        val lowerUrl = url.lowercase()
         val path = url.substringBefore('?').substringBefore('#')
-        val name = path.substringAfterLast('/')
-        return if (name.isNotBlank() && name.contains('.')) {
-            name.take(100)
+        val rawName = path.substringAfterLast('/')
+
+        if (lowerUrl.contains("v.redd.it")) {
+            val segments = path.split('/').filter { it.isNotBlank() }
+            val videoId = if (segments.size >= 2) segments[segments.size - 2] else "reddit"
+            return if (lowerUrl.contains("hls")) {
+                "reddit_${videoId}_hls.mp4"
+            } else if (lowerUrl.contains("dash")) {
+                val quality = rawName.substringAfter("DASH_", "video").substringBefore('.')
+                "reddit_${videoId}_$quality.mp4"
+            } else {
+                "reddit_${videoId}.mp4"
+            }
+        }
+
+        if (lowerUrl.contains("redgifs.com")) {
+            val cleanId = rawName.substringBefore('-').substringBefore('.')
+            return "redgifs_${cleanId}.mp4"
+        }
+
+        return if (rawName.isNotBlank() && rawName.contains('.')) {
+            rawName.take(100)
         } else {
             "media_${System.currentTimeMillis()}.mp4"
         }
@@ -286,7 +405,15 @@ class WebViewMediaDetector {
                             mimeType = item.mimeType ?: guessMimeType(item.url),
                             suggestedFileName = extractFileName(item.url),
                             mediaType = mediaType,
-                            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+                            detectionStrategy = when (item.strategy) {
+                                "REDDIT_PLAYER" -> DetectionStrategy.DOM_ELEMENT
+                                "REDGIFS_API" -> DetectionStrategy.NETWORK_INTERCEPT
+                                "REDGIFS_EMBED" -> DetectionStrategy.DOM_ELEMENT
+                                "NETWORK_FETCH" -> DetectionStrategy.NETWORK_INTERCEPT
+                                "NETWORK_XHR" -> DetectionStrategy.NETWORK_INTERCEPT
+                                "PLAYBACK_EVENT" -> DetectionStrategy.DOM_ELEMENT
+                                else -> DetectionStrategy.DOM_ELEMENT
+                            },
                             width = item.width ?: -1,
                             height = item.height ?: -1,
                             durationSeconds = item.duration ?: -1.0,

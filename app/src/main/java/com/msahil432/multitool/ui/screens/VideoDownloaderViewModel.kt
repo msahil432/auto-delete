@@ -80,6 +80,22 @@ class VideoDownloaderViewModel(
         )
     }
 
+    /**
+     * Clears the entered URL string, resets media detection candidate state, and unloads any active page.
+     *
+     * @param webView Optional active [WebView] instance to reset to about:blank.
+     */
+    fun clearUrl(webView: WebView? = null) {
+        _currentUrl.value = ""
+        detector.reset()
+        webView?.loadUrl("about:blank")
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_DOWNLOADER,
+            message = "Cleared URL and reset WebView",
+            data = emptyMap()
+        )
+    }
+
     /** Opens the detected media selection sheet. */
     fun showMediaSelection() {
         _showSelectionDialog.value = true
