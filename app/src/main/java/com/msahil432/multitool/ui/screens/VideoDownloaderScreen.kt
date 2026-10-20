@@ -18,7 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -92,17 +92,23 @@ fun VideoDownloaderScreen(
         }
     }
 
-    val clipboardManager = LocalClipboardManager.current
-    val clipboardText = remember(pageLoadingState) {
+    val clipboard = LocalClipboard.current
+    var clipboardText by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(pageLoadingState, clipboard) {
         try {
-            val text = clipboardManager.getText()?.text?.trim()
-            if (!text.isNullOrBlank() && (text.startsWith("http://") || text.startsWith("https://") || text.contains("."))) {
-                text
+            val clipEntry = clipboard.getClipEntry()
+            val raw = if (clipEntry != null && clipEntry.clipData.itemCount > 0) {
+                clipEntry.clipData.getItemAt(0)?.text?.toString()?.trim()
+            } else {
+                null
+            }
+            clipboardText = if (!raw.isNullOrBlank() && (raw.startsWith("http://") || raw.startsWith("https://") || raw.contains("."))) {
+                raw
             } else {
                 null
             }
         } catch (_: Exception) {
-            null
+            clipboardText = null
         }
     }
 
