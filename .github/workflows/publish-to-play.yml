@@ -98,6 +98,10 @@ jobs:
           cache-read-only: false  # Allows writing cache on workflow runs
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
+      # ── 3c. Verify Dependency Lock Files ───────────────────────────────────
+      - name: Verify dependency lock files
+        run: ./gradlew :app:dependencies --no-build-cache
+
       # ── 4. Decode keystore ─────────────────────────────────────────────────
       - name: Decode keystore
         env:

@@ -20,3 +20,5 @@ debug.keystore
 
 # Sentry Config File
 sentry.properties
+
+# Dependency lock files are tracked in version control (do NOT ignore gradle.lockfile)
