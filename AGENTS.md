@@ -118,7 +118,19 @@ Package: `com.msahil432.multitool` | minSdk 35 | targetSdk 37 | Kotlin + Jetpack
 - CI runs lint + tests on PRs (`.github/workflows/ci.yml`).
 - Keep `lint.fatal` rules enabled — fix, don't suppress.
 
+## 12. Dependency Locking
+
+- **Strict Mode**: Gradle dependency locking is enabled in `LockMode.STRICT` on `:app`. Builds fail if resolved dependencies diverge from `app/gradle.lockfile` or if lock state is missing.
+- **Tracked in Git**: `app/gradle.lockfile` is tracked in version control — **never** add it to `.gitignore` or ignore lock changes.
+- **Updating Dependencies**: Whenever a dependency version is added, bumped, or removed in `gradle/libs.versions.toml` or `app/build.gradle.kts`:
+  1. Regenerate lockfile: `./gradlew testDebugUnitTest assembleDebug --write-locks`.
+  2. Verify: Run `./gradlew testDebugUnitTest` without `--write-locks` to ensure STRICT mode passes.
+  3. Commit the updated `app/gradle.lockfile` alongside `gradle/libs.versions.toml`.
+- **Dependabot**: Dependabot updates both `libs.versions.toml` and `app/gradle.lockfile` simultaneously. CI enforces this via early verification steps in `ci.yml` and `publish-to-play.yml`.
+- Refer to `docs/DEPENDENCY_LOCKING.md` for detailed runbook and troubleshooting.
+
 ---
+
 
 ## Agent Behavior Rules
 
