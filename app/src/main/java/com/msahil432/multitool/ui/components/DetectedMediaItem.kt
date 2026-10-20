@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.msahil432.multitool.data.MediaType
 import com.msahil432.multitool.downloader.DetectedMedia
 import com.msahil432.multitool.downloader.DetectionStrategy
+import com.msahil432.multitool.downloader.SizeFetchStatus
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
 /**
@@ -33,6 +34,7 @@ import com.msahil432.multitool.ui.theme.MultiToolTheme
  * @param onToggle Selection toggle callback.
  * @param modifier Optional [Modifier].
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DetectedMediaItem(
     media: DetectedMedia,
@@ -46,7 +48,7 @@ fun DetectedMediaItem(
             .clickable(onClick = onToggle)
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .semantics {
-                contentDescription = "Detected media item: ${media.suggestedFileName}"
+                contentDescription = "Detected media item: ${media.suggestedFileName}, size: ${media.formattedSize}"
             },
         shape = RoundedCornerShape(12.dp),
         color = if (isSelected) {
@@ -99,9 +101,10 @@ fun DetectedMediaItem(
 
                 Spacer(modifier = Modifier.height(2.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     SuggestionChip(
                         onClick = {},
@@ -114,17 +117,35 @@ fun DetectedMediaItem(
                         modifier = Modifier.height(24.dp)
                     )
 
-                    if (media.width > 0 && media.height > 0) {
+                    Text(
+                        text = media.formattedSize,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = when (media.sizeFetchStatus) {
+                            SizeFetchStatus.FAILED -> MaterialTheme.colorScheme.error
+                            SizeFetchStatus.FETCHING -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            SizeFetchStatus.SUCCESS -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.align(Alignment.CenterVertically)
+                    )
+
+                    val resolutionOrMime = if (media.width > 0 && media.height > 0) {
+                        "${media.width}x${media.height}"
+                    } else {
+                        media.mimeType
+                    }
+
+                    if (resolutionOrMime != null) {
                         Text(
-                            text = "${media.width}x${media.height}",
+                            text = "•",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.align(Alignment.CenterVertically)
                         )
-                    } else if (media.mimeType != null) {
                         Text(
-                            text = media.mimeType,
+                            text = resolutionOrMime,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.align(Alignment.CenterVertically)
                         )
                     }
                 }
@@ -141,9 +162,9 @@ private fun getMediaIcon(type: MediaType): ImageVector {
     }
 }
 
-@Preview(showBackground = true, name = "DetectedMediaItem Light")
+@Preview(showBackground = true, name = "DetectedMediaItem Light - Success")
 @Composable
-private fun DetectedMediaItemPreviewLight() {
+private fun DetectedMediaItemPreviewLightSuccess() {
     MultiToolTheme {
         DetectedMediaItem(
             media = DetectedMedia(
@@ -152,6 +173,8 @@ private fun DetectedMediaItemPreviewLight() {
                 suggestedFileName = "tutorial_presentation.mp4",
                 mediaType = MediaType.VIDEO,
                 detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+                estimatedSizeBytes = 15_400_000L,
+                sizeFetchStatus = SizeFetchStatus.SUCCESS,
                 width = 1920,
                 height = 1080
             ),
@@ -161,9 +184,28 @@ private fun DetectedMediaItemPreviewLight() {
     }
 }
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "DetectedMediaItem Dark")
+@Preview(showBackground = true, name = "DetectedMediaItem Light - Failed")
 @Composable
-private fun DetectedMediaItemPreviewDark() {
+private fun DetectedMediaItemPreviewLightFailed() {
+    MultiToolTheme {
+        DetectedMediaItem(
+            media = DetectedMedia(
+                url = "https://example.com/demo2.mp4",
+                mimeType = "video/mp4",
+                suggestedFileName = "broken_stream.mp4",
+                mediaType = MediaType.VIDEO,
+                detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+                sizeFetchStatus = SizeFetchStatus.FAILED
+            ),
+            isSelected = false,
+            onToggle = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "DetectedMediaItem Dark - Fetching")
+@Composable
+private fun DetectedMediaItemPreviewDarkFetching() {
     MultiToolTheme {
         DetectedMediaItem(
             media = DetectedMedia(
@@ -171,10 +213,31 @@ private fun DetectedMediaItemPreviewDark() {
                 mimeType = "image/gif",
                 suggestedFileName = "reaction.gif",
                 mediaType = MediaType.GIF,
-                detectionStrategy = DetectionStrategy.DOM_ELEMENT
+                detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+                sizeFetchStatus = SizeFetchStatus.FETCHING
             ),
             isSelected = false,
             onToggle = {}
         )
     }
 }
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "DetectedMediaItem Dark - Failed")
+@Composable
+private fun DetectedMediaItemPreviewDarkFailed() {
+    MultiToolTheme {
+        DetectedMediaItem(
+            media = DetectedMedia(
+                url = "https://example.com/broken.mp4",
+                mimeType = "video/mp4",
+                suggestedFileName = "failed_video.mp4",
+                mediaType = MediaType.VIDEO,
+                detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+                sizeFetchStatus = SizeFetchStatus.FAILED
+            ),
+            isSelected = false,
+            onToggle = {}
+        )
+    }
+}
+

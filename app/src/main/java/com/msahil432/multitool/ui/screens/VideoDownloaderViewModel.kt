@@ -51,6 +51,19 @@ class VideoDownloaderViewModel(
     /** Currently selected media items in the selection sheet. */
     val selectedMedia: StateFlow<Set<DetectedMedia>> = _selectedMedia.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            detector.detectedMedia.collect { list ->
+                if (_selectedMedia.value.isNotEmpty()) {
+                    val mediaByUrl = list.associateBy { it.url }
+                    _selectedMedia.value = _selectedMedia.value.map { selected ->
+                        mediaByUrl[selected.url] ?: selected
+                    }.toSet()
+                }
+            }
+        }
+    }
+
     /** Updates the URL string from the text input field. */
     fun onUrlChanged(url: String) {
         _currentUrl.value = url
@@ -111,8 +124,9 @@ class VideoDownloaderViewModel(
     /** Toggles the selection state of a detected media candidate. */
     fun toggleMediaSelection(media: DetectedMedia) {
         val current = _selectedMedia.value.toMutableSet()
-        if (current.contains(media)) {
-            current.remove(media)
+        val match = current.find { it.url == media.url }
+        if (match != null) {
+            current.remove(match)
         } else {
             current.add(media)
         }
@@ -256,6 +270,11 @@ class VideoDownloaderViewModel(
      */
     suspend fun getSourceUrl(downloadId: Long): String? {
         return downloadRepository.getById(downloadId)?.sourcePageUrl
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        detector.reset()
     }
 
     /**

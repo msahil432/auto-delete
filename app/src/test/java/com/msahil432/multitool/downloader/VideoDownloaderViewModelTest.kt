@@ -207,4 +207,26 @@ class VideoDownloaderViewModelTest {
         assertEquals(MediaType.VIDEO, detector.classifyUrl(redgifsMp4))
         assertEquals("redgifs_DelightfulSample.mp4", detector.extractFileName(redgifsMp4))
     }
+
+    @Test
+    fun `toggleMediaSelection matches by url and updates when detector emits new instance`() = runTest {
+        val media = DetectedMedia(
+            url = "https://example.com/test_video.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "test_video.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+            estimatedSizeBytes = -1L,
+            sizeFetchStatus = SizeFetchStatus.FETCHING
+        )
+
+        viewModel.detector.addDetectedMedia(media)
+        viewModel.toggleMediaSelection(media)
+        assertEquals(1, viewModel.selectedMedia.value.size)
+
+        // Select again toggles off
+        viewModel.toggleMediaSelection(media)
+        assertEquals(0, viewModel.selectedMedia.value.size)
+    }
 }
+

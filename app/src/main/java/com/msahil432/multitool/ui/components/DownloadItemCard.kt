@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.msahil432.multitool.data.DownloadItem
 import com.msahil432.multitool.data.DownloadStatus
 import com.msahil432.multitool.data.MediaType
+import com.msahil432.multitool.downloader.formatFileSize
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
 /**
@@ -193,23 +194,13 @@ fun DownloadItemCard(
 
 private fun formatSubtitle(item: DownloadItem): String {
     val sizeText = if (item.totalBytes > 0) {
-        formatBytes(item.totalBytes)
+        formatFileSize(item.totalBytes)
     } else if (item.downloadedBytes > 0) {
-        formatBytes(item.downloadedBytes)
+        formatFileSize(item.downloadedBytes)
     } else {
         item.mediaType.name.replace("_", " ")
     }
     return "$sizeText • ${item.mediaType.name}"
-}
-
-private fun formatBytes(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-    val kb = bytes / 1024.0
-    if (kb < 1024) return String.format(java.util.Locale.US, "%.1f KB", kb)
-    val mb = kb / 1024.0
-    if (mb < 1024) return String.format(java.util.Locale.US, "%.1f MB", mb)
-    val gb = mb / 1024.0
-    return String.format(java.util.Locale.US, "%.2f GB", gb)
 }
 
 @Preview(showBackground = true, name = "DownloadItemCard Light")
