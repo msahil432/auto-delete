@@ -59,11 +59,11 @@ class HlsMergeWorker(
 
             // Track time processed via FFmpegKit statistics callback
             FFmpegKitConfig.enableStatisticsCallback { statistics ->
-                val timeMs = statistics.time
+                val timeMs = statistics.time.toLong()
                 if (timeMs > 0 && timeMs % 2000 < 100) {
                     try {
                         runBlocking {
-                            repo.updateProgress(downloadId, timeMs, -1, -1)
+                            repo.updateProgress(downloadId, timeMs, -1L, -1)
                         }
                     } catch (_: Exception) {
                         // Avoid crashing background callback

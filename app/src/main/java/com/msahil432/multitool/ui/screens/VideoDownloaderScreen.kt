@@ -270,6 +270,7 @@ fun VideoDownloaderScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, name = "VideoDownloader Light")
 @Composable
 private fun VideoDownloaderScreenPreviewLight() {
@@ -298,6 +299,7 @@ private fun VideoDownloaderScreenPreviewLight() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "VideoDownloader Dark")
 @Composable
 private fun VideoDownloaderScreenPreviewDark() {

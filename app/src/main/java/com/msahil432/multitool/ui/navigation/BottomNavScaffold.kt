@@ -28,6 +28,7 @@ import com.msahil432.multitool.ui.screens.ActivityLogScreen
 import com.msahil432.multitool.ui.screens.OnboardingScreen
 import com.msahil432.multitool.ui.screens.PermissionCheckScreen
 import com.msahil432.multitool.ui.screens.UsageHomeScreen
+import com.msahil432.multitool.ui.screens.UsageTimelineScreen
 import com.msahil432.multitool.data.BlockingRepository
 import com.msahil432.multitool.data.BrowsingRepository
 import com.msahil432.multitool.data.GeofenceRepository
