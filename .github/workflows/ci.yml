@@ -60,7 +60,7 @@ jobs:
       # ── 6. Upload Lint Reports ─────────────────────────────────────────────
       - name: Upload Lint Reports
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: lint-reports
           path: |
@@ -73,7 +73,7 @@ jobs:
       # ── 7. Upload Unit Test Reports ────────────────────────────────────────
       - name: Upload Test Reports
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: unit-test-reports
           path: |
