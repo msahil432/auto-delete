@@ -43,4 +43,14 @@ class MediaDetectionJsTest {
         assertTrue(script.contains("canvas[data-id=\\'main\\']"))
         assertFalse(script.contains("canvas[data-id='main']"))
     }
+
+    @Test
+    fun `HOOKS_AND_OBSERVER_SCRIPT includes history and navigation hooks for URL sync`() {
+        val script = MediaDetectionJs.HOOKS_AND_OBSERVER_SCRIPT
+        assertTrue(script.contains("MultiToolBridge.onUrlChanged"))
+        assertTrue(script.contains("history.pushState"))
+        assertTrue(script.contains("history.replaceState"))
+        assertTrue(script.contains("popstate"))
+        assertTrue(script.contains("hashchange"))
+    }
 }

@@ -235,6 +235,36 @@ class WebViewMediaDetectorTest {
         assertEquals(0, asyncDetector.detectedMedia.value.size)
         assertEquals(PageLoadState.IDLE, asyncDetector.pageLoadingState.value)
         assertEquals(0, asyncDetector.canvasCaptures.value.size)
+        assertEquals("", asyncDetector.activeUrl.value)
+    }
+
+    @Test
+    fun `handlePageUrlChange updates activeUrl for valid web URLs`() {
+        assertEquals("", detector.activeUrl.value)
+
+        detector.handlePageUrlChange("https://example.com/videos")
+        assertEquals("https://example.com/videos", detector.activeUrl.value)
+
+        detector.handlePageUrlChange("http://example.com/another-page?ref=home")
+        assertEquals("http://example.com/another-page?ref=home", detector.activeUrl.value)
+    }
+
+    @Test
+    fun `handlePageUrlChange ignores about blank and non-http URLs`() {
+        detector.handlePageUrlChange("https://example.com/valid")
+        assertEquals("https://example.com/valid", detector.activeUrl.value)
+
+        detector.handlePageUrlChange("about:blank")
+        assertEquals("https://example.com/valid", detector.activeUrl.value)
+
+        detector.handlePageUrlChange("javascript:void(0)")
+        assertEquals("https://example.com/valid", detector.activeUrl.value)
+
+        detector.handlePageUrlChange("   ")
+        assertEquals("https://example.com/valid", detector.activeUrl.value)
+
+        detector.handlePageUrlChange(null)
+        assertEquals("https://example.com/valid", detector.activeUrl.value)
     }
 }
 

@@ -62,6 +62,13 @@ class VideoDownloaderViewModel(
                 }
             }
         }
+        viewModelScope.launch {
+            detector.activeUrl.collect { newUrl ->
+                if (newUrl.isNotBlank() && newUrl != "about:blank") {
+                    _currentUrl.value = newUrl
+                }
+            }
+        }
     }
 
     /** Updates the URL string from the text input field. */

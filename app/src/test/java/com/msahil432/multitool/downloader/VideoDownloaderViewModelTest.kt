@@ -228,5 +228,19 @@ class VideoDownloaderViewModelTest {
         viewModel.toggleMediaSelection(media)
         assertEquals(0, viewModel.selectedMedia.value.size)
     }
+
+    @Test
+    fun `page url changes update viewModel currentUrl to stay in sync`() = runTest {
+        assertEquals("", viewModel.currentUrl.value)
+
+        viewModel.detector.handlePageUrlChange("https://example.com/initial")
+        testScheduler.advanceUntilIdle()
+        assertEquals("https://example.com/initial", viewModel.currentUrl.value)
+
+        // Navigating to another page updates currentUrl automatically
+        viewModel.detector.handlePageUrlChange("https://example.com/videos/trending?page=2")
+        testScheduler.advanceUntilIdle()
+        assertEquals("https://example.com/videos/trending?page=2", viewModel.currentUrl.value)
+    }
 }
 

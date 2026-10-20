@@ -103,6 +103,10 @@ class WebViewMediaDetector(
     /** Canvas and non-standard candidate elements identified on the page. */
     val canvasCaptures: StateFlow<List<CanvasCapture>> = _canvasCaptures.asStateFlow()
 
+    private val _activeUrl = MutableStateFlow("")
+    /** Current web page URL loaded in the configured WebView. */
+    val activeUrl: StateFlow<String> = _activeUrl.asStateFlow()
+
     private val seenUrls = mutableSetOf<String>()
     private val activeFetchJobs = mutableListOf<Job>()
 
@@ -133,6 +137,7 @@ class WebViewMediaDetector(
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 _pageLoadingState.value = PageLoadState.LOADING
+                handlePageUrlChange(url)
                 Breadcrumbs.record(
                     category = Breadcrumbs.CAT_DOWNLOADER,
                     message = "Page load started",
@@ -140,8 +145,14 @@ class WebViewMediaDetector(
                 )
             }
 
+            override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
+                super.doUpdateVisitedHistory(view, url, isReload)
+                handlePageUrlChange(url)
+            }
+
             override fun onPageCommitVisible(view: WebView?, url: String?) {
                 super.onPageCommitVisible(view, url)
+                handlePageUrlChange(url ?: view?.url)
                 // Inject early detection hooks as soon as page DOM is visible
                 view?.evaluateJavascript(MediaDetectionJs.HOOKS_AND_OBSERVER_SCRIPT, null)
                 view?.evaluateJavascript(MediaDetectionJs.DOM_SCAN_SCRIPT, null)
@@ -150,6 +161,7 @@ class WebViewMediaDetector(
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 _pageLoadingState.value = PageLoadState.LOADED
+                handlePageUrlChange(url ?: view?.url)
 
                 // Strategy 1: Inject runtime hooks and comprehensive DOM scan scripts
                 view?.evaluateJavascript(MediaDetectionJs.HOOKS_AND_OBSERVER_SCRIPT, null)
@@ -265,9 +277,30 @@ class WebViewMediaDetector(
         }
         _detectedMedia.value = emptyList()
         _canvasCaptures.value = emptyList()
+        _activeUrl.value = ""
         _pageLoadingState.value = PageLoadState.IDLE
         synchronized(seenUrls) {
             seenUrls.clear()
+        }
+    }
+
+    /**
+     * Updates the tracked active web page URL when the WebView navigates, redirects, or updates history.
+     */
+    internal fun handlePageUrlChange(url: String?) {
+        val cleanUrl = url?.trim() ?: return
+        if (cleanUrl.isNotBlank() &&
+            cleanUrl != "about:blank" &&
+            (cleanUrl.startsWith("http://", ignoreCase = true) || cleanUrl.startsWith("https://", ignoreCase = true)) &&
+            cleanUrl != _activeUrl.value
+        ) {
+            _activeUrl.value = cleanUrl
+            val sanitized = cleanUrl.substringBefore('?').substringBefore('#')
+            Breadcrumbs.record(
+                category = Breadcrumbs.CAT_DOWNLOADER,
+                message = "Active page URL updated",
+                data = mapOf("url" to sanitized)
+            )
         }
     }
 
@@ -577,6 +610,11 @@ class WebViewMediaDetector(
                 message = "Canvas capture started",
                 data = mapOf("selector" to selector, "durationMs" to durationMs)
             )
+        }
+
+        @JavascriptInterface
+        fun onUrlChanged(url: String) {
+            handlePageUrlChange(url)
         }
 
         @JavascriptInterface

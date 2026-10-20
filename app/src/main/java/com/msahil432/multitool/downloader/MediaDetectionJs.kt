@@ -20,6 +20,38 @@ object MediaDetectionJs {
                 if (window.__multiToolHooksInstalled) return;
                 window.__multiToolHooksInstalled = true;
 
+                // Hook History and Navigation events to keep URL in sync for SPAs
+                function reportUrlChange() {
+                    try {
+                        if (window.MultiToolBridge && window.MultiToolBridge.onUrlChanged) {
+                            window.MultiToolBridge.onUrlChanged(window.location.href);
+                        }
+                    } catch (e) {}
+                }
+
+                try {
+                    var origPushState = history.pushState;
+                    if (origPushState) {
+                        history.pushState = function() {
+                            var ret = origPushState.apply(this, arguments);
+                            reportUrlChange();
+                            return ret;
+                        };
+                    }
+
+                    var origReplaceState = history.replaceState;
+                    if (origReplaceState) {
+                        history.replaceState = function() {
+                            var ret = origReplaceState.apply(this, arguments);
+                            reportUrlChange();
+                            return ret;
+                        };
+                    }
+
+                    window.addEventListener('popstate', reportUrlChange);
+                    window.addEventListener('hashchange', reportUrlChange);
+                } catch (e) {}
+
                 function reportOne(url, mime, strategy, poster) {
                     if (!url || typeof url !== 'string' || url.length < 5 || url.startsWith('blob:')) return;
                     var lower = url.toLowerCase();
