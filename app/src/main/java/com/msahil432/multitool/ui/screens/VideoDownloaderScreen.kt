@@ -389,8 +389,8 @@ fun VideoDownloaderContent(
                         .weight(1f, fill = false)
                         .padding(vertical = 8.dp)
                 ) {
-                    items(detectedMedia) { media ->
-                        val isSelected = selectedMedia.contains(media)
+                    items(detectedMedia, key = { it.url }) { media ->
+                        val isSelected = selectedMedia.any { it.url == media.url }
                         DetectedMediaItem(
                             media = media,
                             isSelected = isSelected,
