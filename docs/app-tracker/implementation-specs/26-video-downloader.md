@@ -75,7 +75,7 @@ The detection engine operates via [WebViewMediaDetector.kt](file:///d:/personal/
 - Enforces a maximum concurrency limit of 3 simultaneous downloads.
 
 ### 4.2 HLS/DASH Stream Merging ([HlsMergeWorker.kt](file:///d:/personal/auto%20delete/app/src/main/java/com/msahil432/multitool/downloader/HlsMergeWorker.kt))
-- Employs `ffmpeg-kit-full` (from Maven Central) to remux HLS playlists directly to MP4 without re-encoding:
+- Employs `dev.ffmpegkit-maintained:ffmpeg-kit-full:8.1.7` (hosted on Maven Central) to remux HLS playlists directly to MP4 without re-encoding:
   `-y -i <m3u8Url> -c copy -bsf:a aac_adtstoasc <outputPath>`.
 - Hooked to `FFmpegKitConfig.enableStatisticsCallback` for progress monitoring.
 
