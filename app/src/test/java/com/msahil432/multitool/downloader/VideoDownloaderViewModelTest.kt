@@ -8,8 +8,14 @@ import com.msahil432.multitool.data.DownloadRepository
 import com.msahil432.multitool.data.DownloadStatus
 import com.msahil432.multitool.data.MediaType
 import com.msahil432.multitool.ui.screens.VideoDownloaderViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -24,6 +30,7 @@ import org.robolectric.annotation.Config
  * Unit tests for [VideoDownloaderViewModel] covering UI state flows, selection handling,
  * and download delegation.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class VideoDownloaderViewModelTest {
@@ -32,9 +39,11 @@ class VideoDownloaderViewModelTest {
     private lateinit var repo: DownloadRepository
     private lateinit var viewModel: VideoDownloaderViewModel
     private lateinit var context: Context
+    private val testDispatcher = StandardTestDispatcher()
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(testDispatcher)
         context = ApplicationProvider.getApplicationContext()
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
@@ -46,6 +55,7 @@ class VideoDownloaderViewModelTest {
     @After
     fun tearDown() {
         db.close()
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -123,6 +133,8 @@ class VideoDownloaderViewModelTest {
         viewModel.onUrlChanged("https://example.com/page")
         viewModel.toggleMediaSelection(media)
         viewModel.downloadSelected()
+        // Drain the Dispatchers.IO coroutine launched inside downloadSelected before asserting.
+        advanceUntilIdle()
 
         val list = repo.allDownloads().first()
         assertEquals(1, list.size)
