@@ -1,9 +1,12 @@
 package com.msahil432.multitool.ui.screens
 
+import android.view.ViewGroup
 import android.webkit.WebView
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -14,6 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -25,8 +30,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.msahil432.multitool.data.DownloadRepository
+import com.msahil432.multitool.data.MediaType
+import com.msahil432.multitool.downloader.DetectionStrategy
+import com.msahil432.multitool.downloader.DetectedMedia
 import com.msahil432.multitool.downloader.PageLoadState
 import com.msahil432.multitool.ui.components.DetectedMediaItem
+import com.msahil432.multitool.ui.components.EmptyState
+import com.msahil432.multitool.ui.theme.MultiToolTheme
 
 /**
  * Main Video Downloader screen embedding a web browser view, URL navigation bar,
@@ -72,6 +82,101 @@ fun VideoDownloaderScreen(
         }
     }
 
+    BackHandler(enabled = true) {
+        if (webView.canGoBack()) {
+            webView.goBack()
+        } else if (pageLoadingState != PageLoadState.IDLE) {
+            viewModel.clearUrl(webView)
+        } else {
+            onBack()
+        }
+    }
+
+    val clipboardManager = LocalClipboardManager.current
+    val clipboardText = remember(pageLoadingState) {
+        try {
+            val text = clipboardManager.getText()?.text?.trim()
+            if (!text.isNullOrBlank() && (text.startsWith("http://") || text.startsWith("https://") || text.contains("."))) {
+                text
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    VideoDownloaderContent(
+        currentUrl = currentUrl,
+        pageLoadingState = pageLoadingState,
+        detectedMedia = detectedMedia,
+        showSelectionDialog = showSelectionDialog,
+        selectedMedia = selectedMedia,
+        innerPadding = innerPadding,
+        clipboardUrl = clipboardText,
+        onBack = {
+            if (webView.canGoBack()) {
+                webView.goBack()
+            } else if (pageLoadingState != PageLoadState.IDLE) {
+                viewModel.clearUrl(webView)
+            } else {
+                onBack()
+            }
+        },
+        onNavigateToDownloads = onNavigateToDownloads,
+        onUrlChanged = { viewModel.onUrlChanged(it) },
+        onLoadUrl = { viewModel.loadUrl(webView) },
+        onClearUrl = { viewModel.clearUrl(webView) },
+        onShowMediaSelection = { viewModel.showMediaSelection() },
+        onDismissMediaSelection = { viewModel.dismissMediaSelection() },
+        onToggleMediaSelection = { viewModel.toggleMediaSelection(it) },
+        onSelectAll = { viewModel.selectAll() },
+        onDeselectAll = { viewModel.deselectAll() },
+        onDownloadSelected = { viewModel.downloadSelected() },
+        webViewComposable = {
+            AndroidView(
+                factory = {
+                    webView.apply {
+                        layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clipToBounds()
+            )
+        }
+    )
+}
+
+/**
+ * Stateless content composable for [VideoDownloaderScreen] providing previewability and layout isolation.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun VideoDownloaderContent(
+    currentUrl: String,
+    pageLoadingState: PageLoadState,
+    detectedMedia: List<DetectedMedia>,
+    showSelectionDialog: Boolean,
+    selectedMedia: Set<DetectedMedia>,
+    innerPadding: PaddingValues = PaddingValues(),
+    clipboardUrl: String? = null,
+    onBack: () -> Unit = {},
+    onNavigateToDownloads: () -> Unit = {},
+    onUrlChanged: (String) -> Unit = {},
+    onLoadUrl: () -> Unit = {},
+    onClearUrl: () -> Unit = {},
+    onShowMediaSelection: () -> Unit = {},
+    onDismissMediaSelection: () -> Unit = {},
+    onToggleMediaSelection: (DetectedMedia) -> Unit = {},
+    onSelectAll: () -> Unit = {},
+    onDeselectAll: () -> Unit = {},
+    onDownloadSelected: () -> Unit = {},
+    webViewComposable: (@Composable () -> Unit)? = null
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -97,7 +202,7 @@ fun VideoDownloaderScreen(
         floatingActionButton = {
             if (detectedMedia.isNotEmpty()) {
                 ExtendedFloatingActionButton(
-                    onClick = { viewModel.showMediaSelection() },
+                    onClick = onShowMediaSelection,
                     icon = {
                         BadgedBox(
                             badge = {
@@ -138,14 +243,14 @@ fun VideoDownloaderScreen(
                 ) {
                     OutlinedTextField(
                         value = currentUrl,
-                        onValueChange = { viewModel.onUrlChanged(it) },
+                        onValueChange = onUrlChanged,
                         placeholder = { Text("Enter webpage URL...") },
                         leadingIcon = {
                             Icon(Icons.Default.Link, contentDescription = null)
                         },
                         trailingIcon = {
                             if (currentUrl.isNotEmpty()) {
-                                IconButton(onClick = { viewModel.onUrlChanged("") }) {
+                                IconButton(onClick = onClearUrl) {
                                     Icon(Icons.Default.Clear, contentDescription = "Clear URL")
                                 }
                             }
@@ -155,7 +260,7 @@ fun VideoDownloaderScreen(
                             imeAction = ImeAction.Go
                         ),
                         keyboardActions = KeyboardActions(
-                            onGo = { viewModel.loadUrl(webView) }
+                            onGo = { onLoadUrl() }
                         ),
                         singleLine = true,
                         modifier = Modifier.weight(1f)
@@ -164,7 +269,7 @@ fun VideoDownloaderScreen(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     IconButton(
-                        onClick = { viewModel.loadUrl(webView) },
+                        onClick = onLoadUrl,
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
@@ -180,16 +285,64 @@ fun VideoDownloaderScreen(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
-            // Embedded WebView
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                AndroidView(
-                    factory = { webView },
-                    modifier = Modifier.fillMaxSize()
+            // Content Area: Empty landing state when IDLE, or Embedded WebView when loading/loaded
+            if (pageLoadingState == PageLoadState.IDLE) {
+                EmptyState(
+                    icon = Icons.Default.Language,
+                    title = "Video & Media Downloader",
+                    message = "Enter a web URL above to browse websites and detect downloadable videos, audio streams, and animated GIFs.",
+                    actionLabel = if (!clipboardUrl.isNullOrBlank()) "Paste from Clipboard" else null,
+                    onAction = if (!clipboardUrl.isNullOrBlank()) {
+                        {
+                            onUrlChanged(clipboardUrl)
+                            onLoadUrl()
+                        }
+                    } else null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .clipToBounds()
+                ) {
+                    webViewComposable?.invoke()
+
+                    if (pageLoadingState == PageLoadState.ERROR) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.TopCenter)
+                                .padding(16.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ErrorOutline,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Failed to load webpage. Check URL and connection.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(onClick = onLoadUrl) {
+                                    Text("Retry")
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -197,7 +350,7 @@ fun VideoDownloaderScreen(
     // Media Selection Bottom Sheet
     if (showSelectionDialog) {
         ModalBottomSheet(
-            onDismissRequest = { viewModel.dismissMediaSelection() },
+            onDismissRequest = onDismissMediaSelection,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
             Column(
@@ -219,10 +372,10 @@ fun VideoDownloaderScreen(
                     )
 
                     Row {
-                        TextButton(onClick = { viewModel.selectAll() }) {
+                        TextButton(onClick = onSelectAll) {
                             Text("Select All")
                         }
-                        TextButton(onClick = { viewModel.deselectAll() }) {
+                        TextButton(onClick = onDeselectAll) {
                             Text("Deselect")
                         }
                     }
@@ -241,7 +394,7 @@ fun VideoDownloaderScreen(
                         DetectedMediaItem(
                             media = media,
                             isSelected = isSelected,
-                            onToggle = { viewModel.toggleMediaSelection(media) }
+                            onToggle = { onToggleMediaSelection(media) }
                         )
                     }
                 }
@@ -249,7 +402,7 @@ fun VideoDownloaderScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
-                    onClick = { viewModel.downloadSelected() },
+                    onClick = onDownloadSelected,
                     enabled = selectedMedia.isNotEmpty(),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -270,60 +423,74 @@ fun VideoDownloaderScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, name = "VideoDownloader Light")
+@Preview(showBackground = true, name = "VideoDownloader Light - Idle")
 @Composable
-private fun VideoDownloaderScreenPreviewLight() {
-    com.msahil432.multitool.ui.theme.MultiToolTheme {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Video Downloader") },
-                    actions = {
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Default.DownloadDone, contentDescription = null)
-                        }
-                    }
-                )
-            }
-        ) { padding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("WebView Placeholder", style = MaterialTheme.typography.bodyLarge)
-            }
-        }
+private fun VideoDownloaderScreenPreviewLightIdle() {
+    MultiToolTheme {
+        VideoDownloaderContent(
+            currentUrl = "",
+            pageLoadingState = PageLoadState.IDLE,
+            detectedMedia = emptyList(),
+            showSelectionDialog = false,
+            selectedMedia = emptySet()
+        )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "VideoDownloader Dark")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "VideoDownloader Dark - Idle")
 @Composable
-private fun VideoDownloaderScreenPreviewDark() {
-    com.msahil432.multitool.ui.theme.MultiToolTheme {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Video Downloader") },
-                    actions = {
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Default.DownloadDone, contentDescription = null)
-                        }
-                    }
+private fun VideoDownloaderScreenPreviewDarkIdle() {
+    MultiToolTheme {
+        VideoDownloaderContent(
+            currentUrl = "",
+            pageLoadingState = PageLoadState.IDLE,
+            detectedMedia = emptyList(),
+            showSelectionDialog = false,
+            selectedMedia = emptySet()
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "VideoDownloader Light - Loaded with Media")
+@Composable
+private fun VideoDownloaderScreenPreviewLightLoaded() {
+    MultiToolTheme {
+        VideoDownloaderContent(
+            currentUrl = "https://example.com/videos",
+            pageLoadingState = PageLoadState.LOADED,
+            detectedMedia = listOf(
+                DetectedMedia(
+                    url = "https://example.com/video1.mp4",
+                    mimeType = "video/mp4",
+                    suggestedFileName = "video1.mp4",
+                    mediaType = MediaType.VIDEO,
+                    detectionStrategy = DetectionStrategy.DOM_ELEMENT
                 )
-            }
-        ) { padding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("WebView Placeholder", style = MaterialTheme.typography.bodyLarge)
-            }
-        }
+            ),
+            showSelectionDialog = false,
+            selectedMedia = emptySet()
+        )
+    }
+}
+
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "VideoDownloader Dark - Loaded with Media")
+@Composable
+private fun VideoDownloaderScreenPreviewDarkLoaded() {
+    MultiToolTheme {
+        VideoDownloaderContent(
+            currentUrl = "https://example.com/videos",
+            pageLoadingState = PageLoadState.LOADED,
+            detectedMedia = listOf(
+                DetectedMedia(
+                    url = "https://example.com/video1.mp4",
+                    mimeType = "video/mp4",
+                    suggestedFileName = "video1.mp4",
+                    mediaType = MediaType.VIDEO,
+                    detectionStrategy = DetectionStrategy.DOM_ELEMENT
+                )
+            ),
+            showSelectionDialog = false,
+            selectedMedia = emptySet()
+        )
     }
 }
