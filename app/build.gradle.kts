@@ -87,6 +87,28 @@ android {
   }
 
   packaging {
+    jniLibs {
+      keepDebugSymbols +=
+        setOf(
+          "**/libandroidx.graphics.path.so",
+          "**/libavcodec.so",
+          "**/libavdevice.so",
+          "**/libavfilter.so",
+          "**/libavformat.so",
+          "**/libavutil.so",
+          "**/libbarhopper_v3.so",
+          "**/libc++_shared.so",
+          "**/libdatastore_shared_counter.so",
+          "**/libffmpegkit.so",
+          "**/libffmpegkit_abidetect.so",
+          "**/libimage_processing_util_jni.so",
+          "**/libsentry-android.so",
+          "**/libsentry.so",
+          "**/libsurface_util_jni.so",
+          "**/libswresample.so",
+          "**/libswscale.so",
+        )
+    }
     resources {
       excludes +=
         setOf(
