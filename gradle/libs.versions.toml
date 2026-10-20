@@ -37,7 +37,7 @@ roborazzi = "1.76.0"
 mlkitBarcode = "17.3.0"
 profileinstaller = "1.4.1"
 sentry = "8.54.0"
-sentryGradlePlugin = "6.19.0"
+sentryGradlePlugin = "6.24.0"
 ffmpegKit = "8.1.7"
 
 
