@@ -9,6 +9,12 @@ plugins {
   alias(libs.plugins.sentry.android.gradle)
 }
 
+dependencyLocking {
+  lockAllConfigurations()
+  lockMode.set(org.gradle.api.artifacts.dsl.LockMode.STRICT)
+}
+
+
 val sentryDsn = providers.environmentVariable("SENTRY_DSN")
   .orElse(providers.gradleProperty("sentry.dsn"))
   .orElse(providers.gradleProperty("SENTRY_DSN"))
