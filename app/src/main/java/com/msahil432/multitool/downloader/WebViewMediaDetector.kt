@@ -364,7 +364,7 @@ class WebViewMediaDetector {
             return if (lowerUrl.contains("hls")) {
                 "reddit_${videoId}_hls.mp4"
             } else if (lowerUrl.contains("dash")) {
-                val quality = rawName.substringAfter("DASH_", "video")
+                val quality = rawName.substringAfter("DASH_", "video").substringBefore('.')
                 "reddit_${videoId}_$quality.mp4"
             } else {
                 "reddit_${videoId}.mp4"

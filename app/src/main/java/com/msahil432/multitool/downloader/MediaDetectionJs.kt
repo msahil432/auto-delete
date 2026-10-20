@@ -208,6 +208,90 @@ object MediaDetectionJs {
                 window.__multiToolScanDom = function() {
                     try {
                         var results = [];
+
+                        // 1. Scan standard <video> and nested <source> elements
+                        var videos = document.querySelectorAll('video');
+                        for (var vi = 0; vi < videos.length; vi++) {
+                            var v = videos[vi];
+                            var vSrc = v.src || v.currentSrc || v.getAttribute('src');
+                            var vPoster = v.poster || null;
+                            var vw = v.videoWidth || v.offsetWidth || -1;
+                            var vh = v.videoHeight || v.offsetHeight || -1;
+                            var vdur = (v.duration && !isNaN(v.duration)) ? v.duration : -1;
+                            if (vSrc && isMediaUrl(vSrc)) {
+                                results.push({
+                                    url: vSrc,
+                                    mimeType: v.type || 'video/mp4',
+                                    strategy: 'DOM_ELEMENT',
+                                    mediaType: classify(vSrc),
+                                    width: vw,
+                                    height: vh,
+                                    duration: vdur,
+                                    thumbnail: vPoster
+                                });
+                            }
+                            var vSources = v.querySelectorAll('source');
+                            for (var vsi = 0; vsi < vSources.length; vsi++) {
+                                var vsSrc = vSources[vsi].src || vSources[vsi].getAttribute('src');
+                                if (vsSrc && isMediaUrl(vsSrc)) {
+                                    results.push({
+                                        url: vsSrc,
+                                        mimeType: vSources[vsi].type || 'video/mp4',
+                                        strategy: 'DOM_ELEMENT',
+                                        mediaType: classify(vsSrc),
+                                        width: vw,
+                                        height: vh,
+                                        duration: vdur,
+                                        thumbnail: vPoster
+                                    });
+                                }
+                            }
+                        }
+
+                        // Also query document-level <source> tags
+                        var docSources = document.querySelectorAll('source');
+                        for (var dsi = 0; dsi < docSources.length; dsi++) {
+                            var dSrc = docSources[dsi].src || docSources[dsi].getAttribute('src');
+                            if (dSrc && isMediaUrl(dSrc)) {
+                                results.push({
+                                    url: dSrc,
+                                    mimeType: docSources[dsi].type || 'video/mp4',
+                                    strategy: 'DOM_ELEMENT',
+                                    mediaType: classify(dSrc)
+                                });
+                            }
+                        }
+
+                        // 2. Scan standard <img> elements for GIF and WebP
+                        var imgs = document.querySelectorAll('img');
+                        for (var imi = 0; imi < imgs.length; imi++) {
+                            var im = imgs[imi];
+                            var iSrc = im.src || im.currentSrc || im.getAttribute('src');
+                            if (iSrc && isMediaUrl(iSrc)) {
+                                var liSrc = iSrc.toLowerCase();
+                                if (liSrc.indexOf('.gif') !== -1) {
+                                    results.push({
+                                        url: iSrc,
+                                        mimeType: 'image/gif',
+                                        strategy: 'DOM_ELEMENT',
+                                        mediaType: 'GIF',
+                                        width: im.naturalWidth || -1,
+                                        height: im.naturalHeight || -1
+                                    });
+                                } else if (liSrc.indexOf('.webp') !== -1) {
+                                    results.push({
+                                        url: iSrc,
+                                        mimeType: 'image/webp',
+                                        strategy: 'DOM_ELEMENT',
+                                        mediaType: 'ANIMATED_WEBP',
+                                        width: im.naturalWidth || -1,
+                                        height: im.naturalHeight || -1
+                                    });
+                                }
+                            }
+                        }
+
+                        // 3. Scan Shadow DOM and custom SPA components (e.g. Reddit <shreddit-player>)
                         var allElements = getAllNodes(document.body || document.documentElement);
 
                         for (var i = 0; i < allElements.length; i++) {
