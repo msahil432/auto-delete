@@ -38,6 +38,7 @@ mlkitBarcode = "17.3.0"
 profileinstaller = "1.4.1"
 sentry = "8.54.0"
 sentryGradlePlugin = "6.19.0"
+ffmpegKit = "8.1.7"
 
 
 [libraries]
@@ -87,6 +88,7 @@ roborazzi-compose = { group = "io.github.takahirom.roborazzi", name = "roborazzi
 roborazzi-junit-rule = { group = "io.github.takahirom.roborazzi", name = "roborazzi-junit-rule", version.ref = "roborazzi" }
 mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
 sentry-android = { module = "io.sentry:sentry-android", version.ref = "sentry" }
+ffmpeg-kit-full = { group = "dev.ffmpegkit-maintained", name = "ffmpeg-kit-full", version.ref = "ffmpegKit" }
 
 
 [plugins]

@@ -61,6 +61,11 @@ Strict Mode mitigates impulsive override and habit relapse through high-friction
 * **Push Notification Interception:** Silences and dismisses real-time push banners from restricted apps during active focus schedules.
 * **Notification Vault:** Buffers held notifications locally and delivers a consolidated digest once the restriction schedule lapses.
 
+### 2.6 In-App Media & Video Downloader
+* **DOM, Network & Canvas Detection:** Inspects embedded web pages via DOM element analysis, network request interception, and canvas stream capture to discover downloadable video and GIF media assets.
+* **Stream Remuxing & Background Execution:** Executes direct HTTP transfers with concurrency gating (max 3 concurrent) and leverages FFmpeg to download and remux HLS/DASH video streams into unified MP4 files.
+* **Persistent History & Management:** Persists download state in a local Room database, supporting download retries, cancellation, file opening via FileProvider, and source page reload.
+
 ---
 
 ## 3. Data Tracking & Telemetry Specifications
@@ -105,6 +110,7 @@ Strict Mode mitigates impulsive override and habit relapse through high-friction
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Power Management | Prevents Android Doze Mode and OEM task killers from terminating background services. |
 | `RECEIVE_BOOT_COMPLETED` | Broadcast Receiver | Automatically starts background monitoring services when the smartphone reboots. |
 | `FOREGROUND_SERVICE` | Service Architecture | Maintains a persistent foreground service with a persistent notification to prevent process death. |
+| `INTERNET` | Network Access | Loads user-specified web pages in WebView and downloads user-selected media directly to local storage. |
 
 ---
 

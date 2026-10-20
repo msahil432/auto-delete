@@ -32,6 +32,7 @@ class MultiToolApp : Application() {
                     AppDatabase::class.java,
                     "multi_tool_db" // DB file name kept as-is (see 01-rename-package.md decision)
                 )
+                    .addMigrations(AppDatabase.MIGRATION_1_2)
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build().also { _database = it }
             }

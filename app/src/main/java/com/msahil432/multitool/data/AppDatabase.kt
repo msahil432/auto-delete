@@ -87,9 +87,10 @@ interface AppDao {
         BlockCounter::class,
         BrowsingEvent::class,
         VaultedNotification::class,
-        GeofenceProfile::class
+        GeofenceProfile::class,
+        DownloadItem::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -111,6 +112,38 @@ abstract class AppDatabase : RoomDatabase() {
 
     /** Returns the DAO for geofence profiles. */
     abstract fun geofenceDao(): GeofenceDao
+
+    /** Returns the DAO for media downloads. */
+    abstract fun downloadDao(): DownloadDao
+
+    companion object {
+        /** Migration from database version 1 to 2, introducing the `downloads` table and indexes. */
+        val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `downloads` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `sourcePageUrl` TEXT NOT NULL,
+                        `mediaUrl` TEXT NOT NULL,
+                        `fileName` TEXT NOT NULL,
+                        `mimeType` TEXT,
+                        `mediaType` TEXT NOT NULL,
+                        `status` TEXT NOT NULL DEFAULT 'QUEUED',
+                        `progressPercent` INTEGER NOT NULL DEFAULT 0,
+                        `totalBytes` INTEGER NOT NULL DEFAULT -1,
+                        `downloadedBytes` INTEGER NOT NULL DEFAULT 0,
+                        `localFilePath` TEXT,
+                        `errorMessage` TEXT,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        `thumbnailUrl` TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_downloads_status` ON `downloads` (`status`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_downloads_createdAt` ON `downloads` (`createdAt`)")
+            }
+        }
+    }
 }
 
 

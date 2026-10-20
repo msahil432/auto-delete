@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
         val browsingRepository = com.msahil432.multitool.data.BrowsingRepository(appDatabase.browsingDao())
         val notificationRepository = com.msahil432.multitool.data.NotificationRepository(appDatabase.notificationDao())
         val geofenceRepository = com.msahil432.multitool.data.GeofenceRepository(appDatabase.geofenceDao())
+        val downloadRepository = com.msahil432.multitool.data.DownloadRepository(appDatabase.downloadDao())
         
         // Start foreground service only if the File Cleanup module is active
         val isFileCleanupActive = runBlocking {
@@ -73,7 +74,8 @@ class MainActivity : ComponentActivity() {
                         blockingRepository = blockingRepository,
                         browsingRepository = browsingRepository,
                         notificationRepository = notificationRepository,
-                        geofenceRepository = geofenceRepository
+                        geofenceRepository = geofenceRepository,
+                        downloadRepository = downloadRepository
                     )
                 }
             }

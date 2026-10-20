@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Layers
@@ -60,7 +61,8 @@ fun AppSettingsScreen(
   onNavigateToStrictMode: (() -> Unit)? = null,
   onActivateFileCleanup: (() -> Unit)? = null,
   onActivateUsageStats: (() -> Unit)? = null,
-  onActivateAppFocus: (() -> Unit)? = null
+  onActivateAppFocus: (() -> Unit)? = null,
+  onNavigateToVideoDownloader: (() -> Unit)? = null
 ) {
   val context = androidx.compose.ui.platform.LocalContext.current
   val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -115,6 +117,7 @@ fun AppSettingsScreen(
     onNavigateToNotificationVault = onNavigateToNotificationVault,
     onNavigateToGeofences = onNavigateToGeofences,
     onNavigateToStrictMode = onNavigateToStrictMode,
+    onNavigateToVideoDownloader = onNavigateToVideoDownloader,
     onActivateAppFocus = onActivateAppFocus,
     onGrantListener = { showPermissionDisclosure = true },
     onToggleNotificationVault = { checked ->
@@ -269,6 +272,7 @@ fun AppSettingsContent(
   onNavigateToNotificationVault: (() -> Unit)? = null,
   onNavigateToGeofences: (() -> Unit)? = null,
   onNavigateToStrictMode: (() -> Unit)? = null,
+  onNavigateToVideoDownloader: (() -> Unit)? = null,
   onActivateAppFocus: (() -> Unit)? = null,
   onGrantListener: () -> Unit = {},
   onToggleNotificationVault: (Boolean) -> Unit = {},
@@ -508,6 +512,18 @@ fun AppSettingsContent(
             onClick = onNavigateToBrowsingHistory
           )
         }
+        HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+      }
+
+      // ── Video Downloader ──────────────────────────────────────────────────
+      if (onNavigateToVideoDownloader != null) {
+        SectionHeader(title = "Video Downloader")
+        SettingRow(
+          title = "Video Downloader",
+          subtitle = "Download videos and GIFs from web pages",
+          leadingIcon = Icons.Default.Download,
+          onClick = onNavigateToVideoDownloader
+        )
         HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
       }
 
