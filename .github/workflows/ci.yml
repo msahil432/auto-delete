@@ -49,6 +49,10 @@ jobs:
         with:
           cache-read-only: false
 
+      # ── 3b. Verify Dependency Lock Files ───────────────────────────────────
+      - name: Verify dependency lock files
+        run: ./gradlew :app:dependencies --no-build-cache
+
       # ── 4. Lint and Unit Tests ─────────────────────────────────────────────
       - name: Run Lint and Unit Tests
         run: ./gradlew testDebugUnitTest lintDebug
