@@ -27,7 +27,7 @@ class MultiToolAccessibilityServiceTest {
 
     @Test
     fun `regular app window updates foreground package`() {
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED).apply {
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED).apply {
             packageName = "com.instagram.android"
             className = "com.instagram.mainactivity.MainActivity"
         }
@@ -42,7 +42,7 @@ class MultiToolAccessibilityServiceTest {
         // First establish active package
         ForegroundAppState.update("com.instagram.android")
 
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED).apply {
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED).apply {
             packageName = "com.android.systemui"
             className = "com.android.systemui.statusbar.phone.StatusBarWindowView"
         }
@@ -57,7 +57,7 @@ class MultiToolAccessibilityServiceTest {
         // Target app active
         ForegroundAppState.update("com.instagram.android")
 
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED).apply {
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED).apply {
             packageName = service.packageName
             className = "androidx.compose.ui.platform.ComposeView"
         }
@@ -72,7 +72,7 @@ class MultiToolAccessibilityServiceTest {
     fun `internal MainActivity from MultiTool updates foreground package`() {
         ForegroundAppState.update("com.instagram.android")
 
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED).apply {
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED).apply {
             packageName = service.packageName
             className = "com.msahil432.multitool.MainActivity"
         }
@@ -86,7 +86,7 @@ class MultiToolAccessibilityServiceTest {
     fun `internal BlockActivity from MultiTool updates foreground package`() {
         ForegroundAppState.update("com.instagram.android")
 
-        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED).apply {
+        val event = AccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED).apply {
             packageName = service.packageName
             className = "com.msahil432.multitool.blocking.BlockActivity"
         }
