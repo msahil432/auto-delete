@@ -61,6 +61,22 @@ class Converters {
     /** Converts String to [BrowsingKind] enum. */
     @TypeConverter
     fun toBrowsingKind(value: String): BrowsingKind = BrowsingKind.valueOf(value)
+
+    /** Converts [DownloadStatus] enum to String. */
+    @TypeConverter
+    fun fromDownloadStatus(value: DownloadStatus): String = value.name
+
+    /** Converts String to [DownloadStatus] enum. */
+    @TypeConverter
+    fun toDownloadStatus(value: String): DownloadStatus = DownloadStatus.valueOf(value)
+
+    /** Converts [MediaType] enum to String. */
+    @TypeConverter
+    fun fromMediaType(value: MediaType): String = value.name
+
+    /** Converts String to [MediaType] enum. */
+    @TypeConverter
+    fun toMediaType(value: String): MediaType = MediaType.valueOf(value)
 }
 
 

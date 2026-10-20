@@ -21,6 +21,7 @@ object Breadcrumbs {
     const val CAT_ADMIN = "admin"
     const val CAT_NAVIGATION = "navigation"
     const val CAT_SYSTEM = "system"
+    const val CAT_DOWNLOADER = "downloader"
 
     /**
      * Records a breadcrumb with standard category, message, level, and structured metadata.

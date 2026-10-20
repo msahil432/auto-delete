@@ -39,7 +39,9 @@ import com.msahil432.multitool.ui.screens.GeofenceEditScreen
 import com.msahil432.multitool.ui.screens.GeofenceProfilesScreen
 import com.msahil432.multitool.ui.screens.NotificationVaultScreen
 import com.msahil432.multitool.ui.screens.StrictModeScreen
-import com.msahil432.multitool.ui.screens.UsageTimelineScreen
+import com.msahil432.multitool.data.DownloadRepository
+import com.msahil432.multitool.ui.screens.DownloadListScreen
+import com.msahil432.multitool.ui.screens.VideoDownloaderScreen
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,7 +59,8 @@ fun BottomNavScaffold(
   blockingRepository: BlockingRepository,
   browsingRepository: BrowsingRepository,
   notificationRepository: NotificationRepository,
-  geofenceRepository: GeofenceRepository
+  geofenceRepository: GeofenceRepository,
+  downloadRepository: DownloadRepository
 ) {
   val navController = rememberNavController()
   val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -221,6 +224,7 @@ fun BottomNavScaffold(
           onNavigateToNotificationVault = { navController.navigate("notification_vault") },
           onNavigateToGeofences = { navController.navigate("geofence_profiles") },
           onNavigateToStrictMode = { navController.navigate("strict_mode") },
+          onNavigateToVideoDownloader = { navController.navigate("video_downloader") },
           onActivateAppFocus = {
             CoroutineScope(Dispatchers.Main).launch {
               settingsRepository.setModuleAppFocus(true)
@@ -251,6 +255,36 @@ fun BottomNavScaffold(
           notificationRepository = notificationRepository,
           innerPadding = innerPadding,
           onBack = { navController.popBackStack() }
+        )
+      }
+      composable("video_downloader") {
+        VideoDownloaderScreen(
+          downloadRepository = downloadRepository,
+          innerPadding = innerPadding,
+          onBack = { navController.popBackStack() },
+          onNavigateToDownloads = { navController.navigate("download_list") }
+        )
+      }
+      composable("video_downloader/{sourceUrl}") { backStackEntry ->
+        val rawUrl = backStackEntry.arguments?.getString("sourceUrl")
+        val decodedUrl = rawUrl?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+        VideoDownloaderScreen(
+          downloadRepository = downloadRepository,
+          innerPadding = innerPadding,
+          onBack = { navController.popBackStack() },
+          onNavigateToDownloads = { navController.navigate("download_list") },
+          initialUrl = decodedUrl
+        )
+      }
+      composable("download_list") {
+        DownloadListScreen(
+          downloadRepository = downloadRepository,
+          innerPadding = innerPadding,
+          onBack = { navController.popBackStack() },
+          onReloadSourcePage = { url ->
+            val encodedUrl = java.net.URLEncoder.encode(url, "UTF-8")
+            navController.navigate("video_downloader/$encodedUrl")
+          }
         )
       }
     }
