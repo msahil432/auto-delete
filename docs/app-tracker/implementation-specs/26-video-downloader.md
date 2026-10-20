@@ -75,9 +75,9 @@ The detection engine operates via [WebViewMediaDetector.kt](file:///d:/personal/
 - Enforces a maximum concurrency limit of 3 simultaneous downloads.
 
 ### 4.2 HLS/DASH Stream Merging ([HlsMergeWorker.kt](file:///d:/personal/auto%20delete/app/src/main/java/com/msahil432/multitool/downloader/HlsMergeWorker.kt))
-- Employs `mobile-ffmpeg-full` to remux HLS playlists directly to MP4 without re-encoding:
+- Employs `ffmpeg-kit-full` (from Maven Central) to remux HLS playlists directly to MP4 without re-encoding:
   `-y -i <m3u8Url> -c copy -bsf:a aac_adtstoasc <outputPath>`.
-- Hooked to `Config.enableStatisticsCallback` for progress monitoring.
+- Hooked to `FFmpegKitConfig.enableStatisticsCallback` for progress monitoring.
 
 ### 4.3 External Playback
 - Configured `androidx.core.content.FileProvider` in [AndroidManifest.xml](file:///d:/personal/auto%20delete/app/src/main/AndroidManifest.xml) with [file_paths.xml](file:///d:/personal/auto%20delete/app/src/main/res/xml/file_paths.xml) allowing users to open completed downloads in any installed media player.

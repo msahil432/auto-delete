@@ -8,8 +8,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.arthenica.mobileffmpeg.Config
-import com.arthenica.mobileffmpeg.FFmpeg
+import com.arthenica.ffmpegkit.FFmpegKit
+import com.arthenica.ffmpegkit.FFmpegKitConfig
+import com.arthenica.ffmpegkit.ReturnCode
 import com.msahil432.multitool.MultiToolApp
 import com.msahil432.multitool.data.DownloadRepository
 import com.msahil432.multitool.util.Breadcrumbs
@@ -56,22 +57,13 @@ class HlsMergeWorker(
             }
             val outputFile = File(downloadsDir, cleanName)
 
-            // FFmpeg command to remux HLS stream directly to MP4 container without re-encoding
-            val command = arrayOf(
-                "-y",
-                "-i", m3u8Url,
-                "-c", "copy",
-                "-bsf:a", "aac_adtstoasc",
-                outputFile.absolutePath
-            )
-
-            // Track time processed via FFmpeg statistics callback
-            Config.enableStatisticsCallback { statistics ->
+            // Track time processed via FFmpegKit statistics callback
+            FFmpegKitConfig.enableStatisticsCallback { statistics ->
                 val timeMs = statistics.time
                 if (timeMs > 0 && timeMs % 2000 < 100) {
                     try {
                         runBlocking {
-                            repo.updateProgress(downloadId, timeMs.toLong(), -1, -1)
+                            repo.updateProgress(downloadId, timeMs, -1, -1)
                         }
                     } catch (_: Exception) {
                         // Avoid crashing background callback
@@ -79,9 +71,12 @@ class HlsMergeWorker(
                 }
             }
 
-            val returnCode = FFmpeg.execute(command)
+            // Remux HLS stream directly to MP4 container without re-encoding
+            val command = "-y -i \"$m3u8Url\" -c copy -bsf:a aac_adtstoasc \"${outputFile.absolutePath}\""
+            val session = FFmpegKit.execute(command)
+            val returnCode = session.returnCode
 
-            if (returnCode == Config.RETURN_CODE_SUCCESS) {
+            if (ReturnCode.isSuccess(returnCode)) {
                 val fileSize = outputFile.length()
                 repo.markCompleted(downloadId, outputFile.absolutePath, fileSize)
                 Breadcrumbs.record(
@@ -92,9 +87,9 @@ class HlsMergeWorker(
                 MediaDownloadWorker.scheduleNextIfAvailable(appContext)
                 Result.success()
             } else {
-                val errorMsg = "FFmpeg returned code $returnCode"
+                val errorMsg = "FFmpeg returned code $returnCode, state ${session.state}"
                 repo.markFailed(downloadId, errorMsg)
-                Sentry.captureMessage("HLS merge failed: $errorMsg")
+                Sentry.captureMessage("HLS merge failed: $errorMsg: ${session.failStackTrace}")
                 MediaDownloadWorker.scheduleNextIfAvailable(appContext)
                 Result.failure()
             }
@@ -105,7 +100,7 @@ class HlsMergeWorker(
             MediaDownloadWorker.scheduleNextIfAvailable(appContext)
             Result.failure()
         } finally {
-            Config.resetStatistics()
+            FFmpegKitConfig.enableStatisticsCallback(null)
         }
     }
 

@@ -148,7 +148,7 @@ dependencies {
   implementation(libs.play.services.location)
   implementation(libs.androidx.profileinstaller)
   implementation(libs.sentry.android)
-  implementation(libs.mobile.ffmpeg.full)
+  implementation(libs.ffmpeg.kit.full)
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.robolectric)
