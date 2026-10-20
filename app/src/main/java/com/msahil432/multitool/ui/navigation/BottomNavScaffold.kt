@@ -66,38 +66,46 @@ fun BottomNavScaffold(
   val navController = rememberNavController()
   val navBackStackEntry by navController.currentBackStackEntryAsState()
   val currentDestination = navBackStackEntry?.destination
+  val currentRoute = navBackStackEntry?.destination?.route
 
   // ── Module activation states ──────────────────────────────────────────────
   val isFileCleanupActive by settingsRepository.moduleFileCleanup.collectAsState(initial = false)
   val isUsageStatsActive by settingsRepository.moduleUsageStats.collectAsState(initial = false)
   val isAppFocusActive by settingsRepository.moduleAppFocus.collectAsState(initial = false)
 
+  // Routes that require a full-screen experience — bottom nav is hidden on these.
+  val hideBottomBar = currentRoute == "video_downloader" ||
+    currentRoute?.startsWith("video_downloader/") == true ||
+    currentRoute == "download_list"
+
   Scaffold(
     modifier = Modifier.fillMaxSize(),
     bottomBar = {
-      NavigationBar {
-        TopLevelDest.entries.forEach { dest ->
-          val selected = currentDestination?.hierarchy?.any { it.route == dest.route } == true
-          NavigationBarItem(
-            icon = {
-              Icon(
-                imageVector = dest.icon,
-                contentDescription = dest.label
-              )
-            },
-            label = { Text(dest.label) },
-            selected = selected,
-            onClick = {
-              navController.navigate(dest.route) {
-                // Pop up to the start destination to avoid building up a large back stack
-                popUpTo(navController.graph.findStartDestination().id) {
-                  saveState = true
+      if (!hideBottomBar) {
+        NavigationBar {
+          TopLevelDest.entries.forEach { dest ->
+            val selected = currentDestination?.hierarchy?.any { it.route == dest.route } == true
+            NavigationBarItem(
+              icon = {
+                Icon(
+                  imageVector = dest.icon,
+                  contentDescription = dest.label
+                )
+              },
+              label = { Text(dest.label) },
+              selected = selected,
+              onClick = {
+                navController.navigate(dest.route) {
+                  // Pop up to the start destination to avoid building up a large back stack
+                  popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                  }
+                  launchSingleTop = true
+                  restoreState = true
                 }
-                launchSingleTop = true
-                restoreState = true
               }
-            }
-          )
+            )
+          }
         }
       }
     }
