@@ -51,6 +51,10 @@ The App utilizes specific sensitive Android permissions solely for executing cor
 * **Purpose:** Used optionally for Strict Mode friction challenges (e.g., photo-based unlock verification tasks).
 * **Data Handling:** Camera frames are used temporarily for verification tasks in real time and are not stored permanently or shared.
 
+### 2.8 Internet Access (`INTERNET`)
+* **Purpose:** Powers the user-driven Video Downloader feature to load user-requested web pages within the embedded browser and download user-selected media files directly to the device.
+* **Data Handling:** Network calls are strictly made to user-specified webpage URLs and media resources. The App performs no background telemetry, tracking, or remote analytics. Downloaded files are saved strictly to local app-specific storage (`Android/data/com.msahil432.multitool/files/downloads/`).
+
 ---
 
 ## 3. Google Play Data Safety Summary
@@ -62,7 +66,7 @@ The App utilizes specific sensitive Android permissions solely for executing cor
 | **App Activity & Usage Data** | No | No | Yes (On-device database) | Deleted on app uninstall or manual reset |
 | **Web Browsing & Search Queries** | No | No | Yes (On-device browser log if enabled) | User can clear log at any time |
 | **Files & Documents** | No | No | Yes (Local folders monitored) | User-managed |
-| **Photos & Videos** | No | No | No | N/A |
+| **Photos & Videos** | No | No | Yes (User-downloaded media only) | User-managed / deleted on uninstall |
 | **Messages & Communications** | No | No | No | N/A |
 | **Financial / Payment Info** | No | No | No | N/A |
 | **Device or Other IDs** | No | No | No | N/A |
