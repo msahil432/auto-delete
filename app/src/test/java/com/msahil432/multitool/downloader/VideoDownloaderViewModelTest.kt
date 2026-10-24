@@ -57,7 +57,7 @@ class VideoDownloaderViewModelTest {
             .allowMainThreadQueries()
             .build()
         repo = DownloadRepository(db.downloadDao())
-        viewModel = VideoDownloaderViewModel(repo, context)
+        viewModel = VideoDownloaderViewModel(repo, context, testDispatcher)
     }
 
     @After
@@ -435,9 +435,9 @@ class VideoDownloaderViewModelTest {
             detectionStrategy = DetectionStrategy.DOM_ELEMENT
         )
 
-        viewModel.detector.addDetectedMedia(item1)
-        viewModel.detector.addDetectedMedia(item2)
         viewModel.detector.addDetectedMedia(item3)
+        viewModel.detector.addDetectedMedia(item2)
+        viewModel.detector.addDetectedMedia(item1)
         testScheduler.advanceUntilIdle()
 
         val entries = viewModel.groupedFilteredMedia.value

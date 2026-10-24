@@ -17,6 +17,7 @@ import com.msahil432.multitool.downloader.MediaListEntry
 import com.msahil432.multitool.downloader.WebViewMediaDetector
 import com.msahil432.multitool.util.Breadcrumbs
 import io.sentry.Sentry
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,7 +53,8 @@ data class SizeFilter(
  */
 class VideoDownloaderViewModel(
     private val downloadRepository: DownloadRepository,
-    private val appContext: Context
+    private val appContext: Context,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ViewModel() {
 
     /** WebView media detector coordinating DOM inspection, network requests, and canvas capture. */
@@ -210,7 +212,7 @@ class VideoDownloaderViewModel(
     fun showMediaSelection() {
         _showSelectionDialog.value = true
         _selectedMedia.value = emptySet()
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 val urls = detector.detectedMedia.value.map { it.url }
                 _existingDownloads.value = downloadRepository.findExistingCompletedByUrls(urls)
@@ -289,7 +291,7 @@ class VideoDownloaderViewModel(
 
         val sourceUrl = _currentUrl.value
 
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 selected.forEach { media ->
                     val downloadId = downloadRepository.enqueue(
@@ -327,7 +329,7 @@ class VideoDownloaderViewModel(
      * Retries a failed or cancelled download.
      */
     fun retryDownload(downloadId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 downloadRepository.retry(downloadId)
                 MediaDownloadWorker.schedule(appContext, downloadId)
@@ -341,7 +343,7 @@ class VideoDownloaderViewModel(
      * Cancels an active or queued download.
      */
     fun cancelDownload(downloadId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 downloadRepository.cancel(downloadId)
                 WorkManager.getInstance(appContext).cancelUniqueWork("Download_$downloadId")
@@ -355,7 +357,7 @@ class VideoDownloaderViewModel(
      * Deletes a download record and removes its downloaded file from local storage.
      */
     fun deleteDownload(downloadId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 val item = downloadRepository.getById(downloadId)
                 item?.localFilePath?.let { path ->
@@ -373,7 +375,7 @@ class VideoDownloaderViewModel(
      * Clears all completed downloads from history without deleting files.
      */
     fun clearCompleted() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 downloadRepository.clearCompleted()
             } catch (e: Exception) {
@@ -386,7 +388,7 @@ class VideoDownloaderViewModel(
      * Clears all download records from history without deleting local files.
      */
     fun clearAll() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 downloadRepository.clearAll()
             } catch (e: Exception) {
@@ -399,7 +401,7 @@ class VideoDownloaderViewModel(
      * Deletes all download records AND removes all local files from disk.
      */
     fun deleteAll() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 val allItems = downloadRepository.allDownloads().first()
                 allItems.forEach { item ->
@@ -425,7 +427,7 @@ class VideoDownloaderViewModel(
      * the first one for H265 conversion if no transcode is currently running.
      */
     fun triggerTranscodeForExistingIfNeeded() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 com.msahil432.multitool.downloader.H265TranscodeWorker.scheduleNextTranscodeIfAvailable(appContext)
             } catch (e: Exception) {
