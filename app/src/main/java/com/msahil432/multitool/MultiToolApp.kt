@@ -57,12 +57,12 @@ class MultiToolApp : Application() {
         val settingsRepo = com.msahil432.multitool.data.SettingsRepository(dataStore)
         com.msahil432.multitool.blocking.StrictModeController.init(this, settingsRepo)
 
-        // Reset any orphaned TRANSCODING jobs from a crash or force-stop back to PENDING (skip in unit tests)
+        // Reset any failed or orphaned TRANSCODING jobs from a crash/failure back to PENDING (skip in unit tests)
         if (android.os.Build.FINGERPRINT != "robolectric") {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     val downloadRepo = com.msahil432.multitool.data.DownloadRepository(database.downloadDao())
-                    downloadRepo.resetOrphanedTranscodes()
+                    downloadRepo.resetFailedAndOrphanedTranscodes()
                     com.msahil432.multitool.downloader.H265TranscodeWorker.scheduleNextTranscodeIfAvailable(this@MultiToolApp)
                 } catch (e: Exception) {
                     Sentry.captureException(e)

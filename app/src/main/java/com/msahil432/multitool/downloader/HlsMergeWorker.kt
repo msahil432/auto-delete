@@ -109,7 +109,7 @@ class HlsMergeWorker(
                 }
             } else {
                 // 4. While the HLS merge worker is merging files, transcode the video to H265 as part of the same
-                val transcodeCommand = "-y -i \"$m3u8Url\" -c:v hevc_mediacodec -c:a copy -tag:v hvc1 -bsf:a aac_adtstoasc \"${outputFile.absolutePath}\""
+                val transcodeCommand = "-y -i \"$m3u8Url\" -c:v hevc_mediacodec -b:v 2500k -vf \"scale=trunc(iw/2)*2:trunc(ih/2)*2\" -pix_fmt yuv420p -c:a copy -tag:v hvc1 -bsf:a aac_adtstoasc \"${outputFile.absolutePath}\""
                 val session = FFmpegKit.execute(transcodeCommand)
                 val returnCode = session.returnCode
 

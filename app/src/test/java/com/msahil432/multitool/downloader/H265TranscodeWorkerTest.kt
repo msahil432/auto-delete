@@ -217,4 +217,52 @@ class H265TranscodeWorkerTest {
         assertEquals(8000L, item?.compressedSizeBytes)
         assertEquals("/storage/downloads/stream.mp4", item?.localFilePath)
     }
+
+    @Test
+    fun `resetFailedAndOrphanedTranscodes resets both FAILED and TRANSCODING back to PENDING`() = runTest {
+        val id1 = repo.enqueue("https://example.com", "https://example.com/1.mp4", "1.mp4", "video/mp4", MediaType.VIDEO)
+        repo.markCompleted(id1, "/tmp/1.mp4", 5000L)
+        repo.markTranscodeStarted(id1)
+        repo.markTranscodeFailed(id1, "Encoder error")
+
+        val id2 = repo.enqueue("https://example.com", "https://example.com/2.mp4", "2.mp4", "video/mp4", MediaType.VIDEO)
+        repo.markCompleted(id2, "/tmp/2.mp4", 6000L)
+        repo.markTranscodeStarted(id2)
+
+        val id3 = repo.enqueue("https://example.com", "https://example.com/3.mp4", "3.mp4", "video/mp4", MediaType.VIDEO)
+        repo.markCompleted(id3, "/tmp/3.mp4", 7000L)
+        repo.markTranscodeCompleted(id3, 7000L, 3500L, "/tmp/3_h265.mp4")
+
+        val resetCount = repo.resetFailedAndOrphanedTranscodes()
+        assertEquals(2, resetCount)
+
+        val item1 = repo.getById(id1)
+        assertEquals(TranscodeStatus.PENDING, item1?.transcodeStatus)
+        assertNull(item1?.errorMessage)
+
+        val item2 = repo.getById(id2)
+        assertEquals(TranscodeStatus.PENDING, item2?.transcodeStatus)
+
+        val item3 = repo.getById(id3)
+        assertEquals(TranscodeStatus.COMPLETED, item3?.transcodeStatus)
+    }
+
+    @Test
+    fun `retryTranscode resets specific video transcode back to PENDING and clears errorMessage`() = runTest {
+        val id = repo.enqueue("https://example.com", "https://example.com/test.mp4", "test.mp4", "video/mp4", MediaType.VIDEO)
+        repo.markCompleted(id, "/tmp/test.mp4", 5000L)
+        repo.markTranscodeFailed(id, "FFmpeg failed")
+
+        repo.retryTranscode(id)
+
+        val item = repo.getById(id)
+        assertEquals(TranscodeStatus.PENDING, item?.transcodeStatus)
+        assertNull(item?.errorMessage)
+    }
+
+    @Test
+    fun `calculateTargetBitrate returns fallback 2000k for dummy file`() {
+        val bitrate = H265TranscodeWorker.calculateTargetBitrate(java.io.File("/dummy/dummy.mp4"))
+        assertEquals("2000k", bitrate)
+    }
 }

@@ -63,6 +63,7 @@ enum class DownloadFilterStatus(val displayName: String) {
     QUEUED("Queued"),
     DOWNLOADING("Downloading"),
     TRANSCODING("Transcoding"),
+    TRANSCODED("Transcoded"),
     COMPLETED("Completed"),
     FAILED("Failed"),
     CANCELLED("Cancelled")
@@ -76,6 +77,8 @@ fun DownloadItem.matchesFilterStatus(filterStatus: DownloadFilterStatus): Boolea
         DownloadFilterStatus.QUEUED -> this.status == DownloadStatus.QUEUED
         DownloadFilterStatus.DOWNLOADING -> this.status == DownloadStatus.DOWNLOADING
         DownloadFilterStatus.TRANSCODING -> this.transcodeStatus == TranscodeStatus.TRANSCODING
+        DownloadFilterStatus.TRANSCODED -> this.status == DownloadStatus.COMPLETED &&
+            (this.transcodeStatus == TranscodeStatus.COMPLETED || this.transcodeStatus == TranscodeStatus.ALREADY_H265)
         DownloadFilterStatus.COMPLETED -> this.status == DownloadStatus.COMPLETED && this.transcodeStatus != TranscodeStatus.TRANSCODING
         DownloadFilterStatus.FAILED -> this.status == DownloadStatus.FAILED || this.transcodeStatus == TranscodeStatus.FAILED
         DownloadFilterStatus.CANCELLED -> this.status == DownloadStatus.CANCELLED
@@ -639,14 +642,28 @@ class VideoDownloaderViewModel(
     }
 
     /**
-     * Scans all COMPLETED downloads with transcodeStatus=PENDING and schedules
-     * the first one for H265 conversion if no transcode is currently running.
+     * Scans all COMPLETED downloads with transcodeStatus=PENDING (and resets stuck/failed ones)
+     * and schedules the first one for H265 conversion if no transcode is currently running.
      */
     fun triggerTranscodeForExistingIfNeeded() {
         viewModelScope.launch(ioDispatcher) {
             try {
-                downloadRepository.resetOrphanedTranscodes()
+                downloadRepository.resetFailedAndOrphanedTranscodes()
                 com.msahil432.multitool.downloader.H265TranscodeWorker.scheduleNextTranscodeIfAvailable(appContext)
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+            }
+        }
+    }
+
+    /**
+     * Retries transcoding for a completed download that previously failed or was interrupted.
+     */
+    fun retryTranscode(downloadId: Long) {
+        viewModelScope.launch(ioDispatcher) {
+            try {
+                downloadRepository.retryTranscode(downloadId)
+                com.msahil432.multitool.downloader.H265TranscodeWorker.schedule(appContext, downloadId)
             } catch (e: Exception) {
                 Sentry.captureException(e)
             }

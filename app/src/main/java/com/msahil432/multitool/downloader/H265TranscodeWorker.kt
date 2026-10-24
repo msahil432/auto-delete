@@ -10,6 +10,7 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
+import com.arthenica.ffmpegkit.FFprobeKit
 import com.msahil432.multitool.MultiToolApp
 import com.msahil432.multitool.data.DownloadRepository
 import com.msahil432.multitool.util.Breadcrumbs
@@ -39,8 +40,19 @@ class H265TranscodeWorker(
             return Result.success()
         }
 
-        val item = repo.getById(downloadId) ?: return Result.failure()
-        val inputPath = item.localFilePath ?: return Result.failure()
+        val item = repo.getById(downloadId)
+        if (item == null) {
+            scheduleNextTranscodeIfAvailable(appContext)
+            return Result.failure()
+        }
+
+        val inputPath = item.localFilePath
+        if (inputPath.isNullOrBlank()) {
+            repo.markTranscodeFailed(downloadId, "Source video path is empty")
+            scheduleNextTranscodeIfAvailable(appContext)
+            return Result.failure()
+        }
+
         val inputFile = File(inputPath)
         if (!inputFile.exists()) {
             repo.markTranscodeFailed(downloadId, "Source video file not found")
@@ -73,7 +85,8 @@ class H265TranscodeWorker(
             outputFile.delete() // Clean up any partial output from a previous interrupted run
         }
 
-        val command = "-y -i \"${inputFile.absolutePath}\" -c:v hevc_mediacodec -c:a copy -tag:v hvc1 \"${outputFile.absolutePath}\""
+        val targetBitrate = calculateTargetBitrate(inputFile)
+        val command = "-y -i \"${inputFile.absolutePath}\" -map 0:v:0 -map 0:a? -c:v hevc_mediacodec -b:v $targetBitrate -vf \"scale=trunc(iw/2)*2:trunc(ih/2)*2\" -pix_fmt yuv420p -c:a aac -b:a 128k -tag:v hvc1 \"${outputFile.absolutePath}\""
 
         return try {
             val session = FFmpegKit.execute(command)
@@ -119,8 +132,11 @@ class H265TranscodeWorker(
                 scheduleNextTranscodeIfAvailable(appContext)
                 Result.success()
             } else {
-                // 3. If the transcoding fails, record this error to show in downloads list
-                val errMsg = "FFmpeg H265 failed with return code ${session.returnCode}"
+                // 3. If the transcoding fails, record this error with detail to show in downloads list
+                val failLog = session.failStackTrace
+                    ?: session.allLogsAsString?.lines()?.takeLast(5)?.joinToString("\n")
+                    ?: "Return code ${session.returnCode}"
+                val errMsg = "FFmpeg H265 failed: $failLog"
                 repo.markTranscodeFailed(downloadId, errMsg)
                 Sentry.captureMessage(errMsg)
                 if (outputFile.exists()) {
@@ -144,6 +160,30 @@ class H265TranscodeWorker(
     companion object {
         const val KEY_DOWNLOAD_ID = "download_id"
 
+        /** Calculates target video bitrate for H.265 compression, defaulting to 2000k if probe fails. */
+        fun calculateTargetBitrate(inputFile: File): String {
+            return try {
+                val session = FFprobeKit.getMediaInformation(inputFile.absolutePath)
+                val info = session.mediaInformation
+                val originalBitrate = info?.bitrate?.toLongOrNull() ?: 0L
+                if (originalBitrate > 0L) {
+                    val target = (originalBitrate * 0.6).toLong().coerceIn(500_000L, 5_000_000L)
+                    "${target / 1000}k"
+                } else {
+                    val durationSec = info?.duration?.toDoubleOrNull() ?: 0.0
+                    if (durationSec > 0.0) {
+                        val calcBitrate = ((inputFile.length() * 8) / durationSec).toLong()
+                        val target = (calcBitrate * 0.6).toLong().coerceIn(500_000L, 5_000_000L)
+                        "${target / 1000}k"
+                    } else {
+                        "2000k"
+                    }
+                }
+            } catch (t: Throwable) {
+                "2000k"
+            }
+        }
+
         /** Schedules a WorkManager job for transcoding [downloadId] to H.265. */
         fun schedule(context: Context, downloadId: Long) {
             val request = OneTimeWorkRequestBuilder<H265TranscodeWorker>()
@@ -157,7 +197,7 @@ class H265TranscodeWorker(
                 .build()
             WorkManager.getInstance(context).enqueueUniqueWork(
                 "H265_$downloadId",
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.REPLACE,
                 request
             )
         }
