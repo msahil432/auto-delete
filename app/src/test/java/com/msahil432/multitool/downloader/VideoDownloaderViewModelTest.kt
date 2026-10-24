@@ -53,8 +53,11 @@ class VideoDownloaderViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         context = ApplicationProvider.getApplicationContext()
+        val directExecutor = java.util.concurrent.Executor { it.run() }
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
+            .setQueryExecutor(directExecutor)
+            .setTransactionExecutor(directExecutor)
             .build()
         repo = DownloadRepository(db.downloadDao())
         viewModel = VideoDownloaderViewModel(repo, context, testDispatcher)
