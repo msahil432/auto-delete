@@ -48,8 +48,11 @@ class ShortFormHandlerTest {
     @Before
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
+        val directExecutor = java.util.concurrent.Executor { it.run() }
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
+            .setQueryExecutor(directExecutor)
+            .setTransactionExecutor(directExecutor)
             .build()
         db.clearAllTables()
         
@@ -65,7 +68,9 @@ class ShortFormHandlerTest {
 
     @After
     fun teardown() {
-        db.close()
+        if (::db.isInitialized && db.isOpen) {
+            db.close()
+        }
     }
 
     @Test
