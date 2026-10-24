@@ -6,8 +6,10 @@ import com.msahil432.multitool.data.MediaType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -47,7 +49,7 @@ class DownloadToastControllerTest {
         )
 
         val emitted = mutableListOf<String>()
-        val job = launch {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             controller.toastMessage.collect { emitted.add(it) }
         }
 
@@ -55,7 +57,6 @@ class DownloadToastControllerTest {
         advanceUntilIdle()
 
         assertEquals(listOf("1 download remaining"), emitted)
-        job.cancel()
         controller.close()
     }
 
@@ -71,7 +72,7 @@ class DownloadToastControllerTest {
         )
 
         val emitted = mutableListOf<String>()
-        val job = launch {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             controller.toastMessage.collect { emitted.add(it) }
         }
 
@@ -87,19 +88,18 @@ class DownloadToastControllerTest {
             createItem(1, "video1.mp4", DownloadStatus.DOWNLOADING),
             createItem(2, "video2.mp4", DownloadStatus.QUEUED)
         )
-        advanceUntilIdle()
+        runCurrent()
         // No new toast emitted yet due to throttling
         assertEquals(1, emitted.size)
 
         // Advance time past 15s throttle duration (10s remaining in the window)
         currentTime += 10_000L
         advanceTimeBy(10_000L)
-        advanceUntilIdle()
+        runCurrent()
 
         // Pending message should now be flushed
         assertEquals(2, emitted.size)
         assertEquals("2 downloads remaining", emitted[1])
-        job.cancel()
         controller.close()
     }
 
@@ -115,7 +115,7 @@ class DownloadToastControllerTest {
         )
 
         val emitted = mutableListOf<String>()
-        val job = launch {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             controller.toastMessage.collect { emitted.add(it) }
         }
 
@@ -132,7 +132,6 @@ class DownloadToastControllerTest {
         // "All downloads completed" must be emitted immediately
         assertEquals(2, emitted.size)
         assertEquals("All downloads completed", emitted[1])
-        job.cancel()
         controller.close()
     }
 
@@ -148,7 +147,7 @@ class DownloadToastControllerTest {
         )
 
         val emitted = mutableListOf<String>()
-        val job = launch {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             controller.toastMessage.collect { emitted.add(it) }
         }
 
@@ -159,7 +158,7 @@ class DownloadToastControllerTest {
         advanceUntilIdle()
 
         assertEquals(listOf("failed_clip.mp4 failed, 1 download ongoing"), emitted)
-        job.cancel()
         controller.close()
     }
 }
+
