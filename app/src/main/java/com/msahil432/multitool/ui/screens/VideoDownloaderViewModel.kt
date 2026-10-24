@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -81,10 +82,10 @@ class VideoDownloaderViewModel(
     /** Active candidate size threshold filter. */
     val sizeFilter: StateFlow<SizeFilter> = _sizeFilter.asStateFlow()
 
-    /** Derived filtered media candidates combining type and minimum size filters. */
-    val filteredMedia: StateFlow<List<DetectedMedia>> = combine(
-        detector.detectedMedia, _typeFilter, _sizeFilter
-    ) { all, types, size ->
+    private fun currentFilteredMedia(): List<DetectedMedia> {
+        val all = detector.detectedMedia.value
+        val types = _typeFilter.value
+        val size = _sizeFilter.value
         val minBytes = size.value.toDoubleOrNull()?.let { v ->
             when (size.unit) {
                 SizeUnit.KB -> (v * 1024).toLong()
@@ -92,13 +93,20 @@ class VideoDownloaderViewModel(
                 SizeUnit.GB -> (v * 1024 * 1024 * 1024).toLong()
             }
         }
-        all.filter { media ->
+        return all.filter { media ->
             val passType = types.isEmpty() || media.mediaType in types
             val passSize = minBytes == null
                 || media.estimatedSizeBytes < 0L
                 || media.estimatedSizeBytes >= minBytes
             passType && passSize
         }
+    }
+
+    /** Derived filtered media candidates combining type and minimum size filters. */
+    val filteredMedia: StateFlow<List<DetectedMedia>> = combine(
+        detector.detectedMedia, _typeFilter, _sizeFilter
+    ) { _, _, _ ->
+        currentFilteredMedia()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /**
@@ -232,12 +240,12 @@ class VideoDownloaderViewModel(
 
     /** Selects all currently filtered media items. */
     fun selectAll() {
-        _selectedMedia.value = filteredMedia.value.toSet()
+        _selectedMedia.value = currentFilteredMedia().toSet()
     }
 
     /** Selects all filtered candidates that are NOT already downloaded. */
     fun selectAllExceptExisting() {
-        _selectedMedia.value = filteredMedia.value
+        _selectedMedia.value = currentFilteredMedia()
             .filter { it.url !in _existingDownloads.value }
             .toSet()
     }
@@ -393,7 +401,7 @@ class VideoDownloaderViewModel(
     fun deleteAll() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val allItems = downloads.value
+                val allItems = downloadRepository.allDownloads().first()
                 allItems.forEach { item ->
                     item.localFilePath?.let { path ->
                         val file = File(path)

@@ -15,8 +15,11 @@ import com.msahil432.multitool.ui.screens.SizeUnit
 import com.msahil432.multitool.ui.screens.VideoDownloaderViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -294,6 +297,10 @@ class VideoDownloaderViewModelTest {
 
     @Test
     fun `filteredMedia returns all items when filters are empty`() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.filteredMedia.collect()
+        }
+
         val media1 = DetectedMedia(
             url = "https://example.com/1.mp4",
             mimeType = "video/mp4",
@@ -320,6 +327,10 @@ class VideoDownloaderViewModelTest {
 
     @Test
     fun `filteredMedia filters by MediaType`() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.filteredMedia.collect()
+        }
+
         val media1 = DetectedMedia(
             url = "https://example.com/1.mp4",
             mimeType = "video/mp4",
@@ -352,6 +363,10 @@ class VideoDownloaderViewModelTest {
 
     @Test
     fun `filteredMedia filters by minimum size`() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.filteredMedia.collect()
+        }
+
         val smallMedia = DetectedMedia(
             url = "https://example.com/small.mp4",
             mimeType = "video/mp4",
@@ -394,6 +409,10 @@ class VideoDownloaderViewModelTest {
 
     @Test
     fun `groupedFilteredMedia groups duplicates by filename`() = runTest {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.groupedFilteredMedia.collect()
+        }
+
         val item1 = DetectedMedia(
             url = "https://example.com/v1.mp4",
             mimeType = "video/mp4",
