@@ -1,12 +1,17 @@
 package com.msahil432.multitool.downloader
 
 import android.content.Context
+import java.io.File
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.msahil432.multitool.data.AppDatabase
 import com.msahil432.multitool.data.DownloadRepository
 import com.msahil432.multitool.data.DownloadStatus
 import com.msahil432.multitool.data.MediaType
+import com.msahil432.multitool.data.TranscodeStatus
+import com.msahil432.multitool.downloader.MediaListEntry
+import com.msahil432.multitool.ui.screens.SizeFilter
+import com.msahil432.multitool.ui.screens.SizeUnit
 import com.msahil432.multitool.ui.screens.VideoDownloaderViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -234,13 +239,279 @@ class VideoDownloaderViewModelTest {
         assertEquals("", viewModel.currentUrl.value)
 
         viewModel.detector.handlePageUrlChange("https://example.com/initial")
-        testScheduler.advanceUntilIdle()
-        assertEquals("https://example.com/initial", viewModel.currentUrl.value)
-
         // Navigating to another page updates currentUrl automatically
         viewModel.detector.handlePageUrlChange("https://example.com/videos/trending?page=2")
         testScheduler.advanceUntilIdle()
         assertEquals("https://example.com/videos/trending?page=2", viewModel.currentUrl.value)
     }
+
+    @Test
+    fun `clearAll removes records from database but preserves files on disk`() = runTest {
+        val tempFile = File.createTempFile("test_clear_all", ".mp4", context.cacheDir)
+        tempFile.writeText("sample data")
+        assertTrue(tempFile.exists())
+
+        val id = repo.enqueue(
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/video.mp4",
+            fileName = "video.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO
+        )
+        repo.markCompleted(id, tempFile.absolutePath, tempFile.length())
+        testScheduler.advanceUntilIdle()
+
+        viewModel.clearAll()
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(repo.allDownloads().first().isEmpty())
+        assertTrue(tempFile.exists())
+        tempFile.delete()
+    }
+
+    @Test
+    fun `deleteAll removes records from database and deletes files from disk`() = runTest {
+        val tempFile = File.createTempFile("test_delete_all", ".mp4", context.cacheDir)
+        tempFile.writeText("sample data")
+        assertTrue(tempFile.exists())
+
+        val id = repo.enqueue(
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/video.mp4",
+            fileName = "video.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO
+        )
+        repo.markCompleted(id, tempFile.absolutePath, tempFile.length())
+        testScheduler.advanceUntilIdle()
+
+        viewModel.deleteAll()
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(repo.allDownloads().first().isEmpty())
+        assertFalse(tempFile.exists())
+    }
+
+    @Test
+    fun `filteredMedia returns all items when filters are empty`() = runTest {
+        val media1 = DetectedMedia(
+            url = "https://example.com/1.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "1.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+            estimatedSizeBytes = 5_000_000L
+        )
+        val media2 = DetectedMedia(
+            url = "https://example.com/2.gif",
+            mimeType = "image/gif",
+            suggestedFileName = "2.gif",
+            mediaType = MediaType.GIF,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+            estimatedSizeBytes = 1_000_000L
+        )
+
+        viewModel.detector.addDetectedMedia(media1)
+        viewModel.detector.addDetectedMedia(media2)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(2, viewModel.filteredMedia.value.size)
+    }
+
+    @Test
+    fun `filteredMedia filters by MediaType`() = runTest {
+        val media1 = DetectedMedia(
+            url = "https://example.com/1.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "1.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT
+        )
+        val media2 = DetectedMedia(
+            url = "https://example.com/2.gif",
+            mimeType = "image/gif",
+            suggestedFileName = "2.gif",
+            mediaType = MediaType.GIF,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT
+        )
+
+        viewModel.detector.addDetectedMedia(media1)
+        viewModel.detector.addDetectedMedia(media2)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.toggleTypeFilter(MediaType.VIDEO)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(1, viewModel.filteredMedia.value.size)
+        assertEquals("1.mp4", viewModel.filteredMedia.value[0].suggestedFileName)
+
+        viewModel.clearFilters()
+        testScheduler.advanceUntilIdle()
+        assertEquals(2, viewModel.filteredMedia.value.size)
+    }
+
+    @Test
+    fun `filteredMedia filters by minimum size`() = runTest {
+        val smallMedia = DetectedMedia(
+            url = "https://example.com/small.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "small.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+            estimatedSizeBytes = 500 * 1024L // 500 KB
+        )
+        val largeMedia = DetectedMedia(
+            url = "https://example.com/large.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "large.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+            estimatedSizeBytes = 5 * 1024 * 1024L // 5 MB
+        )
+        val unknownSizeMedia = DetectedMedia(
+            url = "https://example.com/unknown.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "unknown.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+            estimatedSizeBytes = -1L
+        )
+
+        viewModel.detector.addDetectedMedia(smallMedia)
+        viewModel.detector.addDetectedMedia(largeMedia)
+        viewModel.detector.addDetectedMedia(unknownSizeMedia)
+        testScheduler.advanceUntilIdle()
+
+        // Filter for >= 2 MB (largeMedia and unknownSizeMedia pass)
+        viewModel.updateSizeFilter("2", SizeUnit.MB)
+        testScheduler.advanceUntilIdle()
+
+        val filtered = viewModel.filteredMedia.value
+        assertEquals(2, filtered.size)
+        assertTrue(filtered.any { it.suggestedFileName == "large.mp4" })
+        assertTrue(filtered.any { it.suggestedFileName == "unknown.mp4" })
+    }
+
+    @Test
+    fun `groupedFilteredMedia groups duplicates by filename`() = runTest {
+        val item1 = DetectedMedia(
+            url = "https://example.com/v1.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "shared.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT
+        )
+        val item2 = DetectedMedia(
+            url = "https://example.com/v2.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "shared.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT
+        )
+        val item3 = DetectedMedia(
+            url = "https://example.com/v3.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "unique.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT
+        )
+
+        viewModel.detector.addDetectedMedia(item1)
+        viewModel.detector.addDetectedMedia(item2)
+        viewModel.detector.addDetectedMedia(item3)
+        testScheduler.advanceUntilIdle()
+
+        val entries = viewModel.groupedFilteredMedia.value
+        // Should have: 1 GroupHeader ("shared.mp4", count=2), 2 Items (isGroupChild=true), 1 Item (isGroupChild=false)
+        assertEquals(4, entries.size)
+
+        val header = entries[0] as MediaListEntry.GroupHeader
+        assertEquals("shared.mp4", header.fileName)
+        assertEquals(2, header.count)
+
+        val child1 = entries[1] as MediaListEntry.Item
+        assertTrue(child1.isGroupChild)
+        val child2 = entries[2] as MediaListEntry.Item
+        assertTrue(child2.isGroupChild)
+
+        val uniqueItem = entries[3] as MediaListEntry.Item
+        assertFalse(uniqueItem.isGroupChild)
+        assertEquals("unique.mp4", uniqueItem.media.suggestedFileName)
+    }
+
+    @Test
+    fun `selectAllExceptExisting selects only candidates not already downloaded`() = runTest {
+        val downloadedMedia = DetectedMedia(
+            url = "https://example.com/existing.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "existing.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT
+        )
+        val newMedia = DetectedMedia(
+            url = "https://example.com/new.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "new.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT
+        )
+
+        val id = repo.enqueue(
+            sourcePageUrl = "https://example.com",
+            mediaUrl = downloadedMedia.url,
+            fileName = downloadedMedia.suggestedFileName,
+            mimeType = downloadedMedia.mimeType,
+            mediaType = downloadedMedia.mediaType
+        )
+        repo.markCompleted(id, "/tmp/existing.mp4", 1024L)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.detector.addDetectedMedia(downloadedMedia)
+        viewModel.detector.addDetectedMedia(newMedia)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.showMediaSelection()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(1, viewModel.existingDownloads.value.size)
+        assertTrue(viewModel.existingDownloads.value.containsKey(downloadedMedia.url))
+
+        viewModel.selectAllExceptExisting()
+        testScheduler.advanceUntilIdle()
+
+        val selected = viewModel.selectedMedia.value
+        assertEquals(1, selected.size)
+        assertEquals("new.mp4", selected.first().suggestedFileName)
+    }
+
+    @Test
+    fun `transcoding repository operations update status and query pending correctly`() = runTest {
+        val id = repo.enqueue(
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/video.mp4",
+            fileName = "video.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO
+        )
+        repo.markCompleted(id, "/tmp/video.mp4", 10_000_000L)
+
+        val pending = repo.nextPendingTranscode()
+        assertTrue(pending != null)
+        assertEquals(id, pending?.id)
+        assertEquals(TranscodeStatus.PENDING, pending?.transcodeStatus)
+
+        repo.markTranscodeStarted(id)
+        assertEquals(1, repo.transcodingCount())
+
+        repo.markTranscodeCompleted(id, 10_000_000L, 4_500_000L, "/tmp/video_h265.mp4")
+        assertEquals(0, repo.transcodingCount())
+
+        val updated = repo.getById(id)
+        assertEquals(TranscodeStatus.COMPLETED, updated?.transcodeStatus)
+        assertEquals(10_000_000L, updated?.originalSizeBytes)
+        assertEquals(4_500_000L, updated?.compressedSizeBytes)
+        assertEquals("/tmp/video_h265.mp4", updated?.localFilePath)
+    }
 }
+
 

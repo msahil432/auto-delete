@@ -54,6 +54,10 @@ class DownloadRepository(
     ): Long {
         return try {
             val now = clock()
+            val initialTranscodeStatus = when (mediaType) {
+                MediaType.GIF, MediaType.ANIMATED_WEBP -> TranscodeStatus.NOT_APPLICABLE
+                MediaType.VIDEO, MediaType.HLS_STREAM, MediaType.DASH_STREAM -> TranscodeStatus.PENDING
+            }
             val id = dao.insert(
                 DownloadItem(
                     sourcePageUrl = sourcePageUrl,
@@ -63,7 +67,8 @@ class DownloadRepository(
                     mediaType = mediaType,
                     createdAt = now,
                     updatedAt = now,
-                    thumbnailUrl = thumbnailUrl
+                    thumbnailUrl = thumbnailUrl,
+                    transcodeStatus = initialTranscodeStatus
                 )
             )
             Breadcrumbs.record(
@@ -126,6 +131,7 @@ class DownloadRepository(
                         progressPercent = 100,
                         downloadedBytes = totalBytes,
                         totalBytes = totalBytes,
+                        originalSizeBytes = if (item.originalSizeBytes <= 0L) totalBytes else item.originalSizeBytes,
                         updatedAt = clock()
                     )
                 )
@@ -254,5 +260,37 @@ class DownloadRepository(
         } catch (e: Exception) {
             Sentry.captureException(e)
         }
+    }
+
+    /** Returns a map from mediaUrl -> completed DownloadItem for the given URLs. */
+    suspend fun findExistingCompletedByUrls(urls: List<String>): Map<String, DownloadItem> {
+        if (urls.isEmpty()) return emptyMap()
+        return try {
+            dao.getCompletedByUrls(urls).associateBy { it.mediaUrl }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            emptyMap()
+        }
+    }
+
+    /** Returns the next pending transcode eligible video download item. */
+    suspend fun nextPendingTranscode(): DownloadItem? = dao.getNextPendingTranscode()
+
+    /** Returns the count of actively transcoding downloads. */
+    suspend fun transcodingCount(): Int = dao.getTranscodingCount()
+
+    /** Marks a download as actively transcoding to H.265. */
+    suspend fun markTranscodeStarted(id: Long) {
+        dao.updateTranscodeStatus(id, TranscodeStatus.TRANSCODING, clock())
+    }
+
+    /** Marks a download as successfully transcoded with compressed size and new file path. */
+    suspend fun markTranscodeCompleted(id: Long, originalBytes: Long, compressedBytes: Long, newPath: String) {
+        dao.updateTranscodeResult(id, TranscodeStatus.COMPLETED, originalBytes, compressedBytes, newPath, clock())
+    }
+
+    /** Marks a download's transcode as failed, preserving the original file. */
+    suspend fun markTranscodeFailed(id: Long) {
+        dao.updateTranscodeStatus(id, TranscodeStatus.FAILED, clock())
     }
 }

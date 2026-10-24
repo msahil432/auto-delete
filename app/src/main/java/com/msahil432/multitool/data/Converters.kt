@@ -77,6 +77,14 @@ class Converters {
     /** Converts String to [MediaType] enum. */
     @TypeConverter
     fun toMediaType(value: String): MediaType = MediaType.valueOf(value)
+
+    /** Converts [TranscodeStatus] enum to String. */
+    @TypeConverter
+    fun fromTranscodeStatus(value: TranscodeStatus): String = value.name
+
+    /** Converts String to [TranscodeStatus] enum. */
+    @TypeConverter
+    fun toTranscodeStatus(value: String): TranscodeStatus = TranscodeStatus.valueOf(value)
 }
 
 

@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -46,12 +47,23 @@ fun DownloadListScreen(
 
     val downloads by viewModel.downloads.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.triggerTranscodeForExistingIfNeeded()
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.toastMessage.collect { msg ->
+            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
     DownloadListContent(
         downloads = downloads,
         innerPadding = innerPadding,
         onBack = onBack,
         onClearCompleted = { viewModel.clearCompleted() },
         onClearAll = { viewModel.clearAll() },
+        onDeleteAll = { viewModel.deleteAll() },
         onRetry = { viewModel.retryDownload(it) },
         onCancel = { viewModel.cancelDownload(it) },
         onDelete = { viewModel.deleteDownload(it) },
@@ -71,6 +83,7 @@ fun DownloadListContent(
     onBack: () -> Unit = {},
     onClearCompleted: () -> Unit = {},
     onClearAll: () -> Unit = {},
+    onDeleteAll: () -> Unit = {},
     onRetry: (Long) -> Unit = {},
     onCancel: (Long) -> Unit = {},
     onDelete: (Long) -> Unit = {},
@@ -78,6 +91,7 @@ fun DownloadListContent(
     onReloadSourcePage: (String) -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var showDeleteAllConfirm by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -114,12 +128,46 @@ fun DownloadListContent(
                                     onClearAll()
                                 }
                             )
+                            DropdownMenuItem(
+                                text = { Text("Delete All", color = MaterialTheme.colorScheme.error) },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.DeleteForever,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    showDeleteAllConfirm = true
+                                }
+                            )
                         }
                     }
                 }
             )
         }
     ) { paddingValues ->
+        if (showDeleteAllConfirm) {
+            AlertDialog(
+                onDismissRequest = { showDeleteAllConfirm = false },
+                title = { Text("Delete All Downloads?") },
+                text = { Text("This will permanently delete all downloaded files from your device. This cannot be undone.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showDeleteAllConfirm = false
+                        onDeleteAll()
+                    }) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteAllConfirm = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
         val bottomNavPadding = maxOf(paddingValues.calculateBottomPadding(), innerPadding.calculateBottomPadding())
 
         Box(

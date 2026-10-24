@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Animation
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Stream
 import androidx.compose.material3.*
@@ -16,13 +17,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.msahil432.multitool.data.DownloadItem
 import com.msahil432.multitool.data.MediaType
 import com.msahil432.multitool.downloader.DetectedMedia
 import com.msahil432.multitool.downloader.DetectionStrategy
 import com.msahil432.multitool.downloader.SizeFetchStatus
+import com.msahil432.multitool.downloader.formatFileSize
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
 /**
@@ -33,6 +37,8 @@ import com.msahil432.multitool.ui.theme.MultiToolTheme
  * @param isSelected Whether the item is checked for download.
  * @param onToggle Selection toggle callback.
  * @param modifier Optional [Modifier].
+ * @param isIndented Whether this item is visually indented under a filename group header.
+ * @param existingDownload Existing completed [DownloadItem] if this file was already downloaded.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -40,11 +46,14 @@ fun DetectedMediaItem(
     media: DetectedMedia,
     isSelected: Boolean,
     onToggle: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isIndented: Boolean = false,
+    existingDownload: DownloadItem? = null
 ) {
     Surface(
         modifier = modifier
             .fillMaxWidth()
+            .then(if (isIndented) Modifier.padding(start = 24.dp) else Modifier)
             .clickable(onClick = onToggle)
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .semantics {
@@ -91,13 +100,41 @@ fun DetectedMediaItem(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = media.suggestedFileName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = media.suggestedFileName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    if (existingDownload != null) {
+                        AssistChip(
+                            onClick = {},
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            },
+                            label = {
+                                Text(
+                                    text = "Downloaded",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            modifier = Modifier.height(24.dp)
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(2.dp))
 
@@ -117,16 +154,35 @@ fun DetectedMediaItem(
                         modifier = Modifier.height(24.dp)
                     )
 
-                    Text(
-                        text = media.formattedSize,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = when (media.sizeFetchStatus) {
-                            SizeFetchStatus.FAILED -> MaterialTheme.colorScheme.error
-                            SizeFetchStatus.FETCHING -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                            SizeFetchStatus.SUCCESS -> MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        modifier = Modifier.align(Alignment.CenterVertically)
-                    )
+                    if (existingDownload != null) {
+                        val downloadedBytes = existingDownload.originalSizeBytes.takeIf { it > 0 } ?: existingDownload.totalBytes
+                        Text(
+                            text = media.formattedSize,
+                            style = MaterialTheme.typography.bodySmall.copy(textDecoration = TextDecoration.LineThrough),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        )
+                        if (downloadedBytes > 0) {
+                            Text(
+                                text = formatFileSize(downloadedBytes),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.align(Alignment.CenterVertically)
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = media.formattedSize,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = when (media.sizeFetchStatus) {
+                                SizeFetchStatus.FAILED -> MaterialTheme.colorScheme.error
+                                SizeFetchStatus.FETCHING -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                SizeFetchStatus.SUCCESS -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        )
+                    }
 
                     val resolutionOrMime = if (media.width > 0 && media.height > 0) {
                         "${media.width}x${media.height}"

@@ -90,7 +90,7 @@ interface AppDao {
         GeofenceProfile::class,
         DownloadItem::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -141,6 +141,16 @@ abstract class AppDatabase : RoomDatabase() {
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_downloads_status` ON `downloads` (`status`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_downloads_createdAt` ON `downloads` (`createdAt`)")
+            }
+        }
+
+        /** Migration from database version 2 to 3, adding transcoding status and sizes to `downloads`. */
+        val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `downloads` ADD COLUMN `transcodeStatus` TEXT NOT NULL DEFAULT 'PENDING'")
+                db.execSQL("ALTER TABLE `downloads` ADD COLUMN `originalSizeBytes` INTEGER NOT NULL DEFAULT -1")
+                db.execSQL("ALTER TABLE `downloads` ADD COLUMN `compressedSizeBytes` INTEGER NOT NULL DEFAULT -1")
+                db.execSQL("UPDATE `downloads` SET `transcodeStatus` = 'NOT_APPLICABLE' WHERE `mediaType` IN ('GIF', 'ANIMATED_WEBP')")
             }
         }
     }

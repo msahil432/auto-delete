@@ -3,10 +3,14 @@ package com.msahil432.multitool.ui.screens
 import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -18,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -25,14 +30,17 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.msahil432.multitool.data.DownloadItem
 import com.msahil432.multitool.data.DownloadRepository
 import com.msahil432.multitool.data.MediaType
 import com.msahil432.multitool.downloader.DetectionStrategy
 import com.msahil432.multitool.downloader.DetectedMedia
+import com.msahil432.multitool.downloader.MediaListEntry
 import com.msahil432.multitool.downloader.PageLoadState
 import com.msahil432.multitool.ui.components.DetectedMediaItem
 import com.msahil432.multitool.ui.components.EmptyState
@@ -61,6 +69,17 @@ fun VideoDownloaderScreen(
     val pageLoadingState by viewModel.detector.pageLoadingState.collectAsState()
     val showSelectionDialog by viewModel.showSelectionDialog.collectAsState()
     val selectedMedia by viewModel.selectedMedia.collectAsState()
+    val filteredMedia by viewModel.filteredMedia.collectAsState()
+    val groupedFilteredMedia by viewModel.groupedFilteredMedia.collectAsState()
+    val existingDownloads by viewModel.existingDownloads.collectAsState()
+    val typeFilter by viewModel.typeFilter.collectAsState()
+    val sizeFilter by viewModel.sizeFilter.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.toastMessage.collect { msg ->
+            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
 
     val webView = remember {
         WebView(context).apply {
@@ -118,6 +137,11 @@ fun VideoDownloaderScreen(
         detectedMedia = detectedMedia,
         showSelectionDialog = showSelectionDialog,
         selectedMedia = selectedMedia,
+        groupedFilteredMedia = groupedFilteredMedia,
+        existingDownloads = existingDownloads,
+        allDetectedTypes = remember(detectedMedia) { detectedMedia.map { it.mediaType }.toSet() },
+        typeFilter = typeFilter,
+        sizeFilter = sizeFilter,
         innerPadding = innerPadding,
         clipboardUrl = clipboardText,
         onBack = {
@@ -137,7 +161,11 @@ fun VideoDownloaderScreen(
         onDismissMediaSelection = { viewModel.dismissMediaSelection() },
         onToggleMediaSelection = { viewModel.toggleMediaSelection(it) },
         onSelectAll = { viewModel.selectAll() },
+        onSelectAllExceptExisting = { viewModel.selectAllExceptExisting() },
         onDeselectAll = { viewModel.deselectAll() },
+        onToggleTypeFilter = { viewModel.toggleTypeFilter(it) },
+        onSizeFilterChanged = { value, unit -> viewModel.updateSizeFilter(value, unit) },
+        onClearFilters = { viewModel.clearFilters() },
         onDownloadSelected = { viewModel.downloadSelected() },
         webViewComposable = {
             AndroidView(
@@ -168,6 +196,23 @@ fun VideoDownloaderContent(
     detectedMedia: List<DetectedMedia>,
     showSelectionDialog: Boolean,
     selectedMedia: Set<DetectedMedia>,
+    groupedFilteredMedia: List<MediaListEntry> = remember(detectedMedia) {
+        val grouped = detectedMedia.groupBy { it.suggestedFileName }
+        buildList {
+            grouped.forEach { (name, items) ->
+                if (items.size > 1) {
+                    add(MediaListEntry.GroupHeader(name, items.size))
+                    items.forEach { add(MediaListEntry.Item(it, isGroupChild = true)) }
+                } else {
+                    add(MediaListEntry.Item(items.first(), isGroupChild = false))
+                }
+            }
+        }
+    },
+    existingDownloads: Map<String, DownloadItem> = emptyMap(),
+    allDetectedTypes: Set<MediaType> = remember(detectedMedia) { detectedMedia.map { it.mediaType }.toSet() },
+    typeFilter: Set<MediaType> = emptySet(),
+    sizeFilter: SizeFilter = SizeFilter(),
     innerPadding: PaddingValues = PaddingValues(),
     clipboardUrl: String? = null,
     onBack: () -> Unit = {},
@@ -179,14 +224,18 @@ fun VideoDownloaderContent(
     onDismissMediaSelection: () -> Unit = {},
     onToggleMediaSelection: (DetectedMedia) -> Unit = {},
     onSelectAll: () -> Unit = {},
+    onSelectAllExceptExisting: () -> Unit = {},
     onDeselectAll: () -> Unit = {},
+    onToggleTypeFilter: (MediaType) -> Unit = {},
+    onSizeFilterChanged: (String, SizeUnit) -> Unit = { _, _ -> },
+    onClearFilters: () -> Unit = {},
     onDownloadSelected: () -> Unit = {},
     webViewComposable: (@Composable () -> Unit)? = null
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Video Downloader", style = MaterialTheme.typography.titleLarge) },
+            CenterAlignedTopAppBar(
+                title = { Text("Video Downloader", style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -202,7 +251,9 @@ fun VideoDownloaderContent(
                             contentDescription = "Open Downloads List"
                         )
                     }
-                }
+                },
+                windowInsets = WindowInsets(0),
+                modifier = Modifier.height(48.dp)
             )
         },
         floatingActionButton = {
@@ -236,31 +287,27 @@ fun VideoDownloaderContent(
                     bottom = bottomNavPadding
                 )
         ) {
-            // URL Input Bar
-            Surface(
-                tonalElevation = 2.dp,
-                modifier = Modifier.fillMaxWidth()
+            // Compact URL Input Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    tonalElevation = 1.dp,
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    OutlinedTextField(
+                    BasicTextField(
                         value = currentUrl,
                         onValueChange = onUrlChanged,
-                        placeholder = { Text("Enter webpage URL...") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Link, contentDescription = null)
-                        },
-                        trailingIcon = {
-                            if (currentUrl.isNotEmpty()) {
-                                IconButton(onClick = onClearUrl) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear URL")
-                                }
-                            }
-                        },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Uri,
                             imeAction = ImeAction.Go
@@ -268,21 +315,58 @@ fun VideoDownloaderContent(
                         keyboardActions = KeyboardActions(
                             onGo = { onLoadUrl() }
                         ),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.fillMaxWidth(),
+                        decorationBox = { innerTextField ->
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Link,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box(modifier = Modifier.weight(1f)) {
+                                    if (currentUrl.isEmpty()) {
+                                        Text(
+                                            text = "Enter webpage URL...",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                                if (currentUrl.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = onClearUrl,
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Clear,
+                                            contentDescription = "Clear URL",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     )
+                }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
 
-                    IconButton(
-                        onClick = onLoadUrl,
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "Load webpage"
-                        )
-                    }
+                IconButton(
+                    onClick = onLoadUrl,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Load webpage"
+                    )
                 }
             }
 
@@ -367,12 +451,12 @@ fun VideoDownloaderContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                        .padding(horizontal = 20.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Detected Media (${detectedMedia.size})",
+                        text = "Detected Media (${groupedFilteredMedia.count { it is MediaListEntry.Item }})",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -381,11 +465,24 @@ fun VideoDownloaderContent(
                         TextButton(onClick = onSelectAll) {
                             Text("Select All")
                         }
+                        if (existingDownloads.isNotEmpty()) {
+                            TextButton(onClick = onSelectAllExceptExisting) {
+                                Text("Select all except for existing")
+                            }
+                        }
                         TextButton(onClick = onDeselectAll) {
                             Text("Deselect")
                         }
                     }
                 }
+
+                MediaFilterBar(
+                    allTypes = allDetectedTypes,
+                    selectedTypes = typeFilter,
+                    sizeFilter = sizeFilter,
+                    onToggleType = onToggleTypeFilter,
+                    onSizeChanged = onSizeFilterChanged
+                )
 
                 HorizontalDivider()
 
@@ -395,13 +492,30 @@ fun VideoDownloaderContent(
                         .weight(1f, fill = false)
                         .padding(vertical = 8.dp)
                 ) {
-                    items(detectedMedia, key = { it.url }) { media ->
-                        val isSelected = selectedMedia.any { it.url == media.url }
-                        DetectedMediaItem(
-                            media = media,
-                            isSelected = isSelected,
-                            onToggle = { onToggleMediaSelection(media) }
-                        )
+                    items(
+                        items = groupedFilteredMedia,
+                        key = { entry ->
+                            when (entry) {
+                                is MediaListEntry.GroupHeader -> "header_${entry.fileName}"
+                                is MediaListEntry.Item -> entry.media.url
+                            }
+                        }
+                    ) { entry ->
+                        when (entry) {
+                            is MediaListEntry.GroupHeader -> {
+                                GroupHeaderRow(fileName = entry.fileName, count = entry.count)
+                            }
+                            is MediaListEntry.Item -> {
+                                val isSelected = selectedMedia.any { it.url == entry.media.url }
+                                DetectedMediaItem(
+                                    media = entry.media,
+                                    isSelected = isSelected,
+                                    onToggle = { onToggleMediaSelection(entry.media) },
+                                    isIndented = entry.isGroupChild,
+                                    existingDownload = existingDownloads[entry.media.url]
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -429,7 +543,146 @@ fun VideoDownloaderContent(
     }
 }
 
-@Preview(showBackground = true, name = "VideoDownloader Light - Idle")
+/**
+ * Visual header row for grouping candidates sharing the same filename.
+ */
+@Composable
+private fun GroupHeaderRow(
+    fileName: String,
+    count: Int,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Folder,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = fileName,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Badge {
+                Text("$count")
+            }
+        }
+    }
+}
+
+/**
+ * Filter bar presenting media type chips and size threshold inputs above candidate results.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MediaFilterBar(
+    allTypes: Set<MediaType>,
+    selectedTypes: Set<MediaType>,
+    sizeFilter: SizeFilter,
+    onToggleType: (MediaType) -> Unit,
+    onSizeChanged: (String, SizeUnit) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expandedDropdown by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        allTypes.forEach { type ->
+            val isChecked = selectedTypes.contains(type)
+            FilterChip(
+                selected = isChecked,
+                onClick = { onToggleType(type) },
+                label = { Text(type.name.replace("_", " ")) },
+                leadingIcon = if (isChecked) {
+                    {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                } else null
+            )
+        }
+
+        if (allTypes.isNotEmpty()) {
+            VerticalDivider(
+                modifier = Modifier
+                    .height(28.dp)
+                    .padding(horizontal = 2.dp)
+            )
+        }
+
+        OutlinedTextField(
+            value = sizeFilter.value,
+            onValueChange = { newValue ->
+                if (newValue.isEmpty() || newValue.matches(Regex("""^\d*\.?\d*$"""))) {
+                    onSizeChanged(newValue, sizeFilter.unit)
+                }
+            },
+            placeholder = { Text("Min size") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Decimal
+            ),
+            modifier = Modifier.width(100.dp)
+        )
+
+        ExposedDropdownMenuBox(
+            expanded = expandedDropdown,
+            onExpandedChange = { expandedDropdown = !expandedDropdown },
+            modifier = Modifier.width(90.dp)
+        ) {
+            OutlinedTextField(
+                value = sizeFilter.unit.name,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDropdown) },
+                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+            )
+            ExposedDropdownMenu(
+                expanded = expandedDropdown,
+                onDismissRequest = { expandedDropdown = false }
+            ) {
+                SizeUnit.entries.forEach { unit ->
+                    DropdownMenuItem(
+                        text = { Text(unit.name) },
+                        onClick = {
+                            expandedDropdown = false
+                            onSizeChanged(sizeFilter.value, unit)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "VideoDownloader Light - Idle Compact")
 @Composable
 private fun VideoDownloaderScreenPreviewLightIdle() {
     MultiToolTheme {
@@ -443,7 +696,7 @@ private fun VideoDownloaderScreenPreviewLightIdle() {
     }
 }
 
-@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "VideoDownloader Dark - Idle")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "VideoDownloader Dark - Idle Compact")
 @Composable
 private fun VideoDownloaderScreenPreviewDarkIdle() {
     MultiToolTheme {
@@ -457,7 +710,7 @@ private fun VideoDownloaderScreenPreviewDarkIdle() {
     }
 }
 
-@Preview(showBackground = true, name = "VideoDownloader Light - Loaded with Media")
+@Preview(showBackground = true, name = "VideoDownloader Light - Loaded with Media Compact")
 @Composable
 private fun VideoDownloaderScreenPreviewLightLoaded() {
     MultiToolTheme {
@@ -479,7 +732,7 @@ private fun VideoDownloaderScreenPreviewLightLoaded() {
     }
 }
 
-@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "VideoDownloader Dark - Loaded with Media")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "VideoDownloader Dark - Loaded with Media Compact")
 @Composable
 private fun VideoDownloaderScreenPreviewDarkLoaded() {
     MultiToolTheme {
