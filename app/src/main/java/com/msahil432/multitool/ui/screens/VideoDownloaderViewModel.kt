@@ -126,8 +126,9 @@ class VideoDownloaderViewModel(
     /** Shared flow of download lifecycle toast messages. */
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
+    private val toastController = DownloadToastController(viewModelScope, downloadRepository.allDownloads())
+
     init {
-        val toastController = DownloadToastController(viewModelScope, downloadRepository.allDownloads())
         viewModelScope.launch {
             toastController.toastMessage.collect { msg ->
                 _toastMessage.tryEmit(msg)
@@ -434,6 +435,7 @@ class VideoDownloaderViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        toastController.close()
         detector.reset()
     }
 

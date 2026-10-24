@@ -3,6 +3,8 @@ package com.msahil432.multitool.downloader
 import com.msahil432.multitool.data.DownloadItem
 import com.msahil432.multitool.data.DownloadStatus
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -10,7 +12,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -23,34 +24,24 @@ import kotlinx.coroutines.launch
  * - If state changes while throttled, the latest message is dispatched once the throttle window elapses.
  */
 class DownloadToastController(
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
     private val downloads: Flow<List<DownloadItem>>,
     private val throttleMs: Long = 15_000L,
     private val clock: () -> Long = System::currentTimeMillis
-) {
+) : AutoCloseable {
     private val _toastMessage = MutableSharedFlow<String>(extraBufferCapacity = 5)
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
+    private val job = SupervisorJob(scope.coroutineContext[Job])
+    private val controllerScope = CoroutineScope(scope.coroutineContext + job)
+
     init {
-        scope.launch {
+        controllerScope.launch {
             var lastToastTime = 0L
             var pendingMessage: String? = null
             var lastActiveCount = 0
             var allCompletedEmitted = false
-
-            // Periodic flush job to emit pending throttled messages once throttleMs passes
-            scope.launch {
-                while (isActive) {
-                    delay(500L)
-                    val now = clock()
-                    val pending = pendingMessage
-                    if (pending != null && (now - lastToastTime) >= throttleMs) {
-                        _toastMessage.tryEmit(pending)
-                        lastToastTime = now
-                        pendingMessage = null
-                    }
-                }
-            }
+            var flushJob: Job? = null
 
             downloads
                 .map { list ->
@@ -67,16 +58,22 @@ class DownloadToastController(
 
                     // Rule: "All completed" fires immediately, once per active cycle
                     if (allDone && !allCompletedEmitted && lastActiveCount > 0) {
+                        flushJob?.cancel()
+                        flushJob = null
+                        pendingMessage = null
                         _toastMessage.tryEmit("All downloads completed")
                         allCompletedEmitted = true
                         lastToastTime = now
-                        pendingMessage = null
                         lastActiveCount = 0
                         return@collect
                     }
 
                     if (active > 0) {
                         allCompletedEmitted = false
+                    } else {
+                        flushJob?.cancel()
+                        flushJob = null
+                        pendingMessage = null
                     }
 
                     val message: String? = when {
@@ -90,15 +87,33 @@ class DownloadToastController(
                     if (message != null) {
                         val elapsed = now - lastToastTime
                         if (elapsed >= throttleMs || lastToastTime == 0L) {
+                            flushJob?.cancel()
+                            flushJob = null
+                            pendingMessage = null
                             _toastMessage.tryEmit(message)
                             lastToastTime = now
-                            pendingMessage = null
                         } else {
                             pendingMessage = message
+                            if (flushJob == null || !flushJob!!.isActive) {
+                                val remainingMs = (throttleMs - elapsed).coerceAtLeast(1L)
+                                flushJob = controllerScope.launch {
+                                    delay(remainingMs)
+                                    val emitTime = clock()
+                                    pendingMessage?.let {
+                                        _toastMessage.tryEmit(it)
+                                        lastToastTime = emitTime
+                                        pendingMessage = null
+                                    }
+                                }
+                            }
                         }
                     }
                     lastActiveCount = active
                 }
         }
+    }
+
+    override fun close() {
+        job.cancel()
     }
 }

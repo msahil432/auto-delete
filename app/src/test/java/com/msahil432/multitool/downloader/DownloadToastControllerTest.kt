@@ -5,15 +5,11 @@ import com.msahil432.multitool.data.DownloadStatus
 import com.msahil432.multitool.data.MediaType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -60,6 +56,7 @@ class DownloadToastControllerTest {
 
         assertEquals(listOf("1 download remaining"), emitted)
         job.cancel()
+        controller.close()
     }
 
     @Test
@@ -94,15 +91,16 @@ class DownloadToastControllerTest {
         // No new toast emitted yet due to throttling
         assertEquals(1, emitted.size)
 
-        // Advance time past 15s throttle duration
-        currentTime += 11_000L
-        advanceTimeBy(1000L)
+        // Advance time past 15s throttle duration (10s remaining in the window)
+        currentTime += 10_000L
+        advanceTimeBy(10_000L)
         advanceUntilIdle()
 
         // Pending message should now be flushed
         assertEquals(2, emitted.size)
         assertEquals("2 downloads remaining", emitted[1])
         job.cancel()
+        controller.close()
     }
 
     @Test
@@ -135,6 +133,7 @@ class DownloadToastControllerTest {
         assertEquals(2, emitted.size)
         assertEquals("All downloads completed", emitted[1])
         job.cancel()
+        controller.close()
     }
 
     @Test
@@ -161,5 +160,6 @@ class DownloadToastControllerTest {
 
         assertEquals(listOf("failed_clip.mp4 failed, 1 download ongoing"), emitted)
         job.cancel()
+        controller.close()
     }
 }
