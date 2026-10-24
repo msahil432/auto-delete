@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.msahil432.multitool.data.DownloadItem
 import com.msahil432.multitool.data.DownloadStatus
 import com.msahil432.multitool.data.MediaType
+import com.msahil432.multitool.data.TranscodeStatus
 import com.msahil432.multitool.downloader.formatFileSize
 import com.msahil432.multitool.ui.theme.MultiToolTheme
 
@@ -99,8 +100,8 @@ fun DownloadItemCard(
             }
 
             // Progress or Error state
-            when (item.status) {
-                DownloadStatus.DOWNLOADING -> {
+            when {
+                item.status == DownloadStatus.DOWNLOADING -> {
                     Spacer(modifier = Modifier.height(12.dp))
                     if (item.progressPercent >= 0) {
                         LinearProgressIndicator(
@@ -117,7 +118,17 @@ fun DownloadItemCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                DownloadStatus.FAILED -> {
+                item.transcodeStatus == TranscodeStatus.TRANSCODING -> {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Converting to H.265...",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                }
+                item.status == DownloadStatus.FAILED -> {
                     if (!item.errorMessage.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -193,12 +204,14 @@ fun DownloadItemCard(
 }
 
 private fun formatSubtitle(item: DownloadItem): String {
-    val sizeText = if (item.totalBytes > 0) {
-        formatFileSize(item.totalBytes)
-    } else if (item.downloadedBytes > 0) {
-        formatFileSize(item.downloadedBytes)
-    } else {
-        item.mediaType.name.replace("_", " ")
+    val sizeText = when {
+        item.transcodeStatus == TranscodeStatus.COMPLETED && item.originalSizeBytes > 0 && item.compressedSizeBytes > 0 ->
+            "${formatFileSize(item.originalSizeBytes)} → ${formatFileSize(item.compressedSizeBytes)} (h265)"
+        item.transcodeStatus == TranscodeStatus.TRANSCODING ->
+            "${formatFileSize(item.totalBytes)} (transcoding…)"
+        item.totalBytes > 0 -> formatFileSize(item.totalBytes)
+        item.downloadedBytes > 0 -> formatFileSize(item.downloadedBytes)
+        else -> item.mediaType.name.replace("_", " ")
     }
     return "$sizeText • ${item.mediaType.name}"
 }

@@ -69,4 +69,40 @@ interface DownloadDao {
         WHERE id = :id
     """)
     suspend fun retryDownload(id: Long, now: Long)
+
+    /** Returns completed download items whose mediaUrl matches any of the given URLs. */
+    @Query("SELECT * FROM downloads WHERE mediaUrl IN (:urls) AND status = 'COMPLETED'")
+    suspend fun getCompletedByUrls(urls: List<String>): List<DownloadItem>
+
+    /** Returns the next COMPLETED download with transcodeStatus=PENDING, ordered by creation. */
+    @Query("""
+        SELECT * FROM downloads 
+        WHERE status = 'COMPLETED' AND transcodeStatus = 'PENDING' 
+          AND mediaType IN ('VIDEO', 'HLS_STREAM', 'DASH_STREAM')
+        ORDER BY createdAt ASC LIMIT 1
+    """)
+    suspend fun getNextPendingTranscode(): DownloadItem?
+
+    /** Returns count of actively transcoding items (should be max 1). */
+    @Query("SELECT COUNT(*) FROM downloads WHERE transcodeStatus = 'TRANSCODING'")
+    suspend fun getTranscodingCount(): Int
+
+    /** Updates transcode state fields for a given download. */
+    @Query("""
+        UPDATE downloads SET transcodeStatus = :status, originalSizeBytes = :originalBytes,
+        compressedSizeBytes = :compressedBytes, localFilePath = :filePath, updatedAt = :now
+        WHERE id = :id
+    """)
+    suspend fun updateTranscodeResult(
+        id: Long,
+        status: TranscodeStatus,
+        originalBytes: Long,
+        compressedBytes: Long,
+        filePath: String,
+        now: Long
+    )
+
+    /** Updates only the transcode status and timestamp for a download. */
+    @Query("UPDATE downloads SET transcodeStatus = :status, updatedAt = :now WHERE id = :id")
+    suspend fun updateTranscodeStatus(id: Long, status: TranscodeStatus, now: Long)
 }

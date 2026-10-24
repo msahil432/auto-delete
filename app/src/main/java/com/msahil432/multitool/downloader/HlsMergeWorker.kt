@@ -79,6 +79,7 @@ class HlsMergeWorker(
             if (ReturnCode.isSuccess(returnCode)) {
                 val fileSize = outputFile.length()
                 repo.markCompleted(downloadId, outputFile.absolutePath, fileSize)
+                H265TranscodeWorker.scheduleNextTranscodeIfAvailable(appContext)
                 Breadcrumbs.record(
                     category = Breadcrumbs.CAT_DOWNLOADER,
                     message = "HLS merge completed",

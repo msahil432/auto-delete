@@ -96,6 +96,10 @@ class MediaDownloadWorker(
 
             repo.markCompleted(downloadId, finalFile.absolutePath, downloadedBytes)
 
+            if (item.mediaType == MediaType.VIDEO || item.mediaType == MediaType.HLS_STREAM || item.mediaType == MediaType.DASH_STREAM) {
+                H265TranscodeWorker.scheduleNextTranscodeIfAvailable(appContext)
+            }
+
             Breadcrumbs.record(
                 category = Breadcrumbs.CAT_DOWNLOADER,
                 message = "Media download finished successfully",

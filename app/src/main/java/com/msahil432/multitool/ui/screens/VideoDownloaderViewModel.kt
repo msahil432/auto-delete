@@ -8,20 +8,44 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
 import com.msahil432.multitool.data.DownloadItem
 import com.msahil432.multitool.data.DownloadRepository
+import com.msahil432.multitool.data.MediaType
 import com.msahil432.multitool.downloader.CanvasCapture
 import com.msahil432.multitool.downloader.DetectedMedia
 import com.msahil432.multitool.downloader.MediaDownloadWorker
+import com.msahil432.multitool.downloader.DownloadToastController
+import com.msahil432.multitool.downloader.MediaListEntry
 import com.msahil432.multitool.downloader.WebViewMediaDetector
 import com.msahil432.multitool.util.Breadcrumbs
 import io.sentry.Sentry
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
+
+/** Units of measurement for file size filtering. */
+enum class SizeUnit { KB, MB, GB }
+
+/**
+ * Filter criteria for detected candidate file sizes.
+ *
+ * @param value Raw text input representing the numeric threshold.
+ * @param unit Unit multiplier for [value].
+ */
+data class SizeFilter(
+    val value: String = "",
+    val unit: SizeUnit = SizeUnit.MB
+)
 
 /**
  * ViewModel managing the video downloader state: URL input, media detection observation,
@@ -29,7 +53,8 @@ import java.io.File
  */
 class VideoDownloaderViewModel(
     private val downloadRepository: DownloadRepository,
-    private val appContext: Context
+    private val appContext: Context,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ViewModel() {
 
     /** WebView media detector coordinating DOM inspection, network requests, and canvas capture. */
@@ -51,7 +76,74 @@ class VideoDownloaderViewModel(
     /** Currently selected media items in the selection sheet. */
     val selectedMedia: StateFlow<Set<DetectedMedia>> = _selectedMedia.asStateFlow()
 
+    private val _typeFilter = MutableStateFlow<Set<MediaType>>(emptySet())
+    /** Set of MediaType values currently included by the type filter. Empty = show all. */
+    val typeFilter: StateFlow<Set<MediaType>> = _typeFilter.asStateFlow()
+
+    private val _sizeFilter = MutableStateFlow(SizeFilter())
+    /** Active candidate size threshold filter. */
+    val sizeFilter: StateFlow<SizeFilter> = _sizeFilter.asStateFlow()
+
+    private fun currentFilteredMedia(): List<DetectedMedia> {
+        val all = detector.detectedMedia.value
+        val types = _typeFilter.value
+        val size = _sizeFilter.value
+        val minBytes = size.value.toDoubleOrNull()?.let { v ->
+            when (size.unit) {
+                SizeUnit.KB -> (v * 1024).toLong()
+                SizeUnit.MB -> (v * 1024 * 1024).toLong()
+                SizeUnit.GB -> (v * 1024 * 1024 * 1024).toLong()
+            }
+        }
+        return all.filter { media ->
+            val passType = types.isEmpty() || media.mediaType in types
+            val passSize = minBytes == null
+                || media.estimatedSizeBytes < 0L
+                || media.estimatedSizeBytes >= minBytes
+            passType && passSize
+        }
+    }
+
+    /** Derived filtered media candidates combining type and minimum size filters. */
+    val filteredMedia: StateFlow<List<DetectedMedia>> = combine(
+        detector.detectedMedia, _typeFilter, _sizeFilter
+    ) { _, _, _ ->
+        currentFilteredMedia()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /**
+     * Grouped and flattened candidate list for UI rendering, grouping duplicates by file name.
+     */
+    val groupedFilteredMedia: StateFlow<List<MediaListEntry>> = filteredMedia.map { list ->
+        val grouped = list.groupBy { it.suggestedFileName }
+        buildList {
+            grouped.forEach { (name, items) ->
+                if (items.size > 1) {
+                    add(MediaListEntry.GroupHeader(name, items.size))
+                    items.forEach { add(MediaListEntry.Item(it, isGroupChild = true)) }
+                } else {
+                    add(MediaListEntry.Item(items.first(), isGroupChild = false))
+                }
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _existingDownloads = MutableStateFlow<Map<String, DownloadItem>>(emptyMap())
+    /** Map from mediaUrl -> completed DownloadItem for candidates in the current page. */
+    val existingDownloads: StateFlow<Map<String, DownloadItem>> = _existingDownloads.asStateFlow()
+
+    private val _toastMessage = MutableSharedFlow<String>(extraBufferCapacity = 5)
+    /** Shared flow of download lifecycle toast messages. */
+    val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
+
+    private val toastController = DownloadToastController(viewModelScope, downloadRepository.allDownloads())
+
     init {
+        viewModelScope.launch {
+            toastController.toastMessage.collect { msg ->
+                _toastMessage.tryEmit(msg)
+            }
+        }
         viewModelScope.launch {
             detector.detectedMedia.collect { list ->
                 if (_selectedMedia.value.isNotEmpty()) {
@@ -120,6 +212,14 @@ class VideoDownloaderViewModel(
     fun showMediaSelection() {
         _showSelectionDialog.value = true
         _selectedMedia.value = emptySet()
+        viewModelScope.launch(ioDispatcher) {
+            try {
+                val urls = detector.detectedMedia.value.map { it.url }
+                _existingDownloads.value = downloadRepository.findExistingCompletedByUrls(urls)
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+            }
+        }
     }
 
     /** Dismisses the detected media selection sheet. */
@@ -140,14 +240,43 @@ class VideoDownloaderViewModel(
         _selectedMedia.value = current
     }
 
-    /** Selects all currently detected media items. */
+    /** Selects all currently filtered media items. */
     fun selectAll() {
-        _selectedMedia.value = detector.detectedMedia.value.toSet()
+        _selectedMedia.value = currentFilteredMedia().toSet()
+    }
+
+    /** Selects all filtered candidates that are NOT already downloaded. */
+    fun selectAllExceptExisting() {
+        _selectedMedia.value = currentFilteredMedia()
+            .filter { it.url !in _existingDownloads.value }
+            .toSet()
     }
 
     /** Deselects all items in the selection sheet. */
     fun deselectAll() {
         _selectedMedia.value = emptySet()
+    }
+
+    /** Toggles inclusion of a [MediaType] in the candidate filter. */
+    fun toggleTypeFilter(type: MediaType) {
+        val current = _typeFilter.value.toMutableSet()
+        if (current.contains(type)) {
+            current.remove(type)
+        } else {
+            current.add(type)
+        }
+        _typeFilter.value = current
+    }
+
+    /** Updates the minimum size filter value and measurement unit. */
+    fun updateSizeFilter(value: String, unit: SizeUnit) {
+        _sizeFilter.value = SizeFilter(value, unit)
+    }
+
+    /** Clears all candidate filters. */
+    fun clearFilters() {
+        _typeFilter.value = emptySet()
+        _sizeFilter.value = SizeFilter()
     }
 
     /**
@@ -157,9 +286,12 @@ class VideoDownloaderViewModel(
         val selected = _selectedMedia.value.toList()
         if (selected.isEmpty()) return
 
+        val count = selected.size
+        _toastMessage.tryEmit("$count download${if (count != 1) "s" else ""} queued")
+
         val sourceUrl = _currentUrl.value
 
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 selected.forEach { media ->
                     val downloadId = downloadRepository.enqueue(
@@ -197,7 +329,7 @@ class VideoDownloaderViewModel(
      * Retries a failed or cancelled download.
      */
     fun retryDownload(downloadId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 downloadRepository.retry(downloadId)
                 MediaDownloadWorker.schedule(appContext, downloadId)
@@ -211,7 +343,7 @@ class VideoDownloaderViewModel(
      * Cancels an active or queued download.
      */
     fun cancelDownload(downloadId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 downloadRepository.cancel(downloadId)
                 WorkManager.getInstance(appContext).cancelUniqueWork("Download_$downloadId")
@@ -225,7 +357,7 @@ class VideoDownloaderViewModel(
      * Deletes a download record and removes its downloaded file from local storage.
      */
     fun deleteDownload(downloadId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 val item = downloadRepository.getById(downloadId)
                 item?.localFilePath?.let { path ->
@@ -243,7 +375,7 @@ class VideoDownloaderViewModel(
      * Clears all completed downloads from history without deleting files.
      */
     fun clearCompleted() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 downloadRepository.clearCompleted()
             } catch (e: Exception) {
@@ -253,12 +385,25 @@ class VideoDownloaderViewModel(
     }
 
     /**
-     * Clears all download records and removes their local files.
+     * Clears all download records from history without deleting local files.
      */
     fun clearAll() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             try {
-                val allItems = downloads.value
+                downloadRepository.clearAll()
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+            }
+        }
+    }
+
+    /**
+     * Deletes all download records AND removes all local files from disk.
+     */
+    fun deleteAll() {
+        viewModelScope.launch(ioDispatcher) {
+            try {
+                val allItems = downloadRepository.allDownloads().first()
                 allItems.forEach { item ->
                     item.localFilePath?.let { path ->
                         val file = File(path)
@@ -266,6 +411,25 @@ class VideoDownloaderViewModel(
                     }
                 }
                 downloadRepository.clearAll()
+                Breadcrumbs.record(
+                    category = Breadcrumbs.CAT_DOWNLOADER,
+                    message = "Delete All executed",
+                    data = mapOf("count" to allItems.size)
+                )
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+            }
+        }
+    }
+
+    /**
+     * Scans all COMPLETED downloads with transcodeStatus=PENDING and schedules
+     * the first one for H265 conversion if no transcode is currently running.
+     */
+    fun triggerTranscodeForExistingIfNeeded() {
+        viewModelScope.launch(ioDispatcher) {
+            try {
+                com.msahil432.multitool.downloader.H265TranscodeWorker.scheduleNextTranscodeIfAvailable(appContext)
             } catch (e: Exception) {
                 Sentry.captureException(e)
             }
@@ -281,6 +445,7 @@ class VideoDownloaderViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        toastController.close()
         detector.reset()
     }
 

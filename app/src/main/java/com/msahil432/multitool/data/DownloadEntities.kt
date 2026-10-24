@@ -37,6 +37,22 @@ enum class MediaType {
 }
 
 /**
+ * Represents the transcoding lifecycle state of a video download item.
+ */
+enum class TranscodeStatus {
+    /** Not applicable to this file type (GIF, WEBP). */
+    NOT_APPLICABLE,
+    /** Eligible video, waiting to be transcoded. */
+    PENDING,
+    /** Transcode job is actively running. */
+    TRANSCODING,
+    /** Transcode completed, compressed file is in place. */
+    COMPLETED,
+    /** Transcode failed; original file preserved. */
+    FAILED
+}
+
+/**
  * Entity representing a single download item persisted in Room.
  *
  * Tracks source URL, direct media URL, local file path, progress, status, and metadata
@@ -75,5 +91,11 @@ data class DownloadItem(
     /** Epoch timestamp in milliseconds when this download was last updated. */
     val updatedAt: Long,
     /** Optional thumbnail URL extracted from the page/poster for preview display. */
-    val thumbnailUrl: String? = null
+    val thumbnailUrl: String? = null,
+    /** Transcode lifecycle state for this download. */
+    val transcodeStatus: TranscodeStatus = TranscodeStatus.PENDING,
+    /** File size in bytes BEFORE h265 transcode, or -1 if not yet known / not a video. */
+    val originalSizeBytes: Long = -1L,
+    /** File size in bytes AFTER h265 transcode, or -1 if not yet transcoded. */
+    val compressedSizeBytes: Long = -1L
 )
