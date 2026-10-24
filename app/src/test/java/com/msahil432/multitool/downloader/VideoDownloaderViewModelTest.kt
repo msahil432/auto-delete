@@ -534,6 +534,145 @@ class VideoDownloaderViewModelTest {
         assertEquals(4_500_000L, updated?.compressedSizeBytes)
         assertEquals("/tmp/video_h265.mp4", updated?.localFilePath)
     }
+
+    @Test
+    fun `selectAll selects candidate with largest file size within duplicate media groups`() {
+        val videoASmall = DetectedMedia(
+            url = "https://example.com/videoA_360.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "videoA.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+            estimatedSizeBytes = 10_000_000L
+        )
+        val videoALarge = DetectedMedia(
+            url = "https://example.com/videoA_1080.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "videoA.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+            estimatedSizeBytes = 50_000_000L
+        )
+        val videoAMed = DetectedMedia(
+            url = "https://example.com/videoA_720.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "videoA.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+            estimatedSizeBytes = 25_000_000L
+        )
+        val videoB = DetectedMedia(
+            url = "https://example.com/videoB.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "videoB.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+            estimatedSizeBytes = 5_000_000L
+        )
+
+        viewModel.detector.addDetectedMedia(videoASmall)
+        viewModel.detector.addDetectedMedia(videoALarge)
+        viewModel.detector.addDetectedMedia(videoAMed)
+        viewModel.detector.addDetectedMedia(videoB)
+
+        viewModel.selectAll()
+
+        val selected = viewModel.selectedMedia.value
+        assertEquals(2, selected.size)
+        assertTrue(selected.contains(videoALarge))
+        assertTrue(selected.contains(videoB))
+        assertFalse(selected.contains(videoASmall))
+        assertFalse(selected.contains(videoAMed))
+    }
+
+    @Test
+    fun `selectAllExceptExisting selects largest candidate among non-existing candidates`() = runTest {
+        val videoAExisting = DetectedMedia(
+            url = "https://example.com/videoA_1080.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "videoA.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+            estimatedSizeBytes = 50_000_000L
+        )
+        val videoANewMed = DetectedMedia(
+            url = "https://example.com/videoA_720.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "videoA.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+            estimatedSizeBytes = 25_000_000L
+        )
+        val videoANewSmall = DetectedMedia(
+            url = "https://example.com/videoA_360.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "videoA.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+            estimatedSizeBytes = 10_000_000L
+        )
+        val videoB = DetectedMedia(
+            url = "https://example.com/videoB.mp4",
+            mimeType = "video/mp4",
+            suggestedFileName = "videoB.mp4",
+            mediaType = MediaType.VIDEO,
+            detectionStrategy = DetectionStrategy.DOM_ELEMENT,
+            estimatedSizeBytes = 5_000_000L
+        )
+
+        val id = repo.enqueue(
+            sourcePageUrl = "https://example.com",
+            mediaUrl = videoAExisting.url,
+            fileName = videoAExisting.suggestedFileName,
+            mimeType = videoAExisting.mimeType,
+            mediaType = videoAExisting.mediaType
+        )
+        repo.markCompleted(id, "/tmp/videoA_1080.mp4", 50_000_000L)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.detector.addDetectedMedia(videoAExisting)
+        viewModel.detector.addDetectedMedia(videoANewMed)
+        viewModel.detector.addDetectedMedia(videoANewSmall)
+        viewModel.detector.addDetectedMedia(videoB)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.showMediaSelection()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.selectAllExceptExisting()
+        testScheduler.advanceUntilIdle()
+
+        val selected = viewModel.selectedMedia.value
+        assertEquals(2, selected.size)
+        assertTrue(selected.contains(videoANewMed))
+        assertTrue(selected.contains(videoB))
+        assertFalse(selected.contains(videoAExisting))
+        assertFalse(selected.contains(videoANewSmall))
+    }
+
+    @Test
+    fun `toggleTypeFilter with available types toggles selection and clearTypeFilter resets`() {
+        val availableTypes = setOf(MediaType.VIDEO, MediaType.GIF, MediaType.ANIMATED_WEBP)
+
+        // Initially empty = all types allowed
+        assertTrue(viewModel.typeFilter.value.isEmpty())
+
+        // Toggling GIF when all were active unchecks GIF, leaving VIDEO and ANIMATED_WEBP active
+        viewModel.toggleTypeFilter(MediaType.GIF, availableTypes)
+        assertEquals(setOf(MediaType.VIDEO, MediaType.ANIMATED_WEBP), viewModel.typeFilter.value)
+
+        // Toggling GIF back checks it, completing the available set, which resets to empty (all active)
+        viewModel.toggleTypeFilter(MediaType.GIF, availableTypes)
+        assertTrue(viewModel.typeFilter.value.isEmpty())
+
+        // Toggling ANIMATED_WEBP unchecks ANIMATED_WEBP
+        viewModel.toggleTypeFilter(MediaType.ANIMATED_WEBP, availableTypes)
+        assertEquals(setOf(MediaType.VIDEO, MediaType.GIF), viewModel.typeFilter.value)
+
+        // clearTypeFilter resets back to empty (all active)
+        viewModel.clearTypeFilter()
+        assertTrue(viewModel.typeFilter.value.isEmpty())
+    }
 }
 
 

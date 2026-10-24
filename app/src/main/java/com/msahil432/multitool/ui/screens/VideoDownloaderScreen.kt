@@ -163,7 +163,8 @@ fun VideoDownloaderScreen(
         onSelectAll = { viewModel.selectAll() },
         onSelectAllExceptExisting = { viewModel.selectAllExceptExisting() },
         onDeselectAll = { viewModel.deselectAll() },
-        onToggleTypeFilter = { viewModel.toggleTypeFilter(it) },
+        onToggleTypeFilter = { viewModel.toggleTypeFilter(it, detectedMedia.map { m -> m.mediaType }.toSet()) },
+        onClearTypeFilter = { viewModel.clearTypeFilter() },
         onSizeFilterChanged = { value, unit -> viewModel.updateSizeFilter(value, unit) },
         onClearFilters = { viewModel.clearFilters() },
         onDownloadSelected = { viewModel.downloadSelected() },
@@ -227,6 +228,7 @@ fun VideoDownloaderContent(
     onSelectAllExceptExisting: () -> Unit = {},
     onDeselectAll: () -> Unit = {},
     onToggleTypeFilter: (MediaType) -> Unit = {},
+    onClearTypeFilter: () -> Unit = {},
     onSizeFilterChanged: (String, SizeUnit) -> Unit = { _, _ -> },
     onClearFilters: () -> Unit = {},
     onDownloadSelected: () -> Unit = {},
@@ -251,9 +253,7 @@ fun VideoDownloaderContent(
                             contentDescription = "Open Downloads List"
                         )
                     }
-                },
-                windowInsets = WindowInsets(0),
-                modifier = Modifier.height(48.dp)
+                }
             )
         },
         floatingActionButton = {
@@ -448,11 +448,11 @@ fun VideoDownloaderContent(
                     .fillMaxWidth()
                     .padding(bottom = 32.dp)
             ) {
+                // Sheet Header Title
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                        .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -460,19 +460,27 @@ fun VideoDownloaderContent(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
+                }
 
-                    Row {
-                        TextButton(onClick = onSelectAll) {
-                            Text("Select All")
+                // Selection Actions Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onSelectAll) {
+                        Text("Select All", maxLines = 1, softWrap = false)
+                    }
+                    if (existingDownloads.isNotEmpty()) {
+                        TextButton(onClick = onSelectAllExceptExisting) {
+                            Text("Select all except for existing", maxLines = 1, softWrap = false)
                         }
-                        if (existingDownloads.isNotEmpty()) {
-                            TextButton(onClick = onSelectAllExceptExisting) {
-                                Text("Select all except for existing")
-                            }
-                        }
-                        TextButton(onClick = onDeselectAll) {
-                            Text("Deselect")
-                        }
+                    }
+                    TextButton(onClick = onDeselectAll) {
+                        Text("Deselect", maxLines = 1, softWrap = false)
                     }
                 }
 
@@ -481,6 +489,7 @@ fun VideoDownloaderContent(
                     selectedTypes = typeFilter,
                     sizeFilter = sizeFilter,
                     onToggleType = onToggleTypeFilter,
+                    onClearTypeFilter = onClearTypeFilter,
                     onSizeChanged = onSizeFilterChanged
                 )
 
@@ -598,10 +607,12 @@ private fun MediaFilterBar(
     selectedTypes: Set<MediaType>,
     sizeFilter: SizeFilter,
     onToggleType: (MediaType) -> Unit,
+    onClearTypeFilter: () -> Unit = {},
     onSizeChanged: (String, SizeUnit) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expandedDropdown by remember { mutableStateOf(false) }
+    var typeDropdownExpanded by remember { mutableStateOf(false) }
 
     Row(
         modifier = modifier
@@ -611,25 +622,60 @@ private fun MediaFilterBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        allTypes.forEach { type ->
-            val isChecked = selectedTypes.contains(type)
-            FilterChip(
-                selected = isChecked,
-                onClick = { onToggleType(type) },
-                label = { Text(type.name.replace("_", " ")) },
-                leadingIcon = if (isChecked) {
-                    {
+        if (allTypes.isNotEmpty()) {
+            Box {
+                val activeCount = if (selectedTypes.isEmpty()) allTypes.size else selectedTypes.size
+                val label = if (selectedTypes.isEmpty() || selectedTypes.size == allTypes.size) {
+                    "Types (All)"
+                } else {
+                    "Types ($activeCount/${allTypes.size})"
+                }
+
+                FilterChip(
+                    selected = selectedTypes.isNotEmpty() && selectedTypes.size < allTypes.size,
+                    onClick = { typeDropdownExpanded = true },
+                    label = { Text(label) },
+                    trailingIcon = {
                         Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            imageVector = if (typeDropdownExpanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                            contentDescription = "Select media types"
                         )
                     }
-                } else null
-            )
-        }
+                )
 
-        if (allTypes.isNotEmpty()) {
+                DropdownMenu(
+                    expanded = typeDropdownExpanded,
+                    onDismissRequest = { typeDropdownExpanded = false }
+                ) {
+                    allTypes.forEach { type ->
+                        val isChecked = selectedTypes.isEmpty() || selectedTypes.contains(type)
+                        DropdownMenuItem(
+                            text = { Text(type.name.replace("_", " ")) },
+                            leadingIcon = {
+                                Checkbox(
+                                    checked = isChecked,
+                                    onCheckedChange = null
+                                )
+                            },
+                            onClick = { onToggleType(type) }
+                        )
+                    }
+                    if (selectedTypes.isNotEmpty()) {
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("Reset to All") },
+                            leadingIcon = {
+                                Icon(Icons.Default.SelectAll, contentDescription = null)
+                            },
+                            onClick = {
+                                typeDropdownExpanded = false
+                                onClearTypeFilter()
+                            }
+                        )
+                    }
+                }
+            }
+
             VerticalDivider(
                 modifier = Modifier
                     .height(28.dp)
