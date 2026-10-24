@@ -240,15 +240,29 @@ class VideoDownloaderViewModel(
         _selectedMedia.value = current
     }
 
-    /** Selects all currently filtered media items. */
+    /**
+     * Selects media items from the current filtered list, selecting only the candidate
+     * with the largest file size for each media group (grouped by suggested file name).
+     */
     fun selectAll() {
-        _selectedMedia.value = currentFilteredMedia().toSet()
+        val candidates = currentFilteredMedia()
+        _selectedMedia.value = candidates
+            .groupBy { it.suggestedFileName }
+            .values
+            .mapNotNull { items -> items.maxByOrNull { it.estimatedSizeBytes } }
+            .toSet()
     }
 
-    /** Selects all filtered candidates that are NOT already downloaded. */
+    /**
+     * Selects non-existing media items from the current filtered list, selecting only the
+     * candidate with the largest file size for each media group.
+     */
     fun selectAllExceptExisting() {
-        _selectedMedia.value = currentFilteredMedia()
-            .filter { it.url !in _existingDownloads.value }
+        val candidates = currentFilteredMedia().filter { it.url !in _existingDownloads.value }
+        _selectedMedia.value = candidates
+            .groupBy { it.suggestedFileName }
+            .values
+            .mapNotNull { items -> items.maxByOrNull { it.estimatedSizeBytes } }
             .toSet()
     }
 
@@ -257,15 +271,36 @@ class VideoDownloaderViewModel(
         _selectedMedia.value = emptySet()
     }
 
-    /** Toggles inclusion of a [MediaType] in the candidate filter. */
-    fun toggleTypeFilter(type: MediaType) {
-        val current = _typeFilter.value.toMutableSet()
-        if (current.contains(type)) {
-            current.remove(type)
+    /**
+     * Toggles inclusion of a [MediaType] in the candidate filter.
+     * When [allAvailableTypes] is provided and all types were active (empty filter),
+     * toggling unchecks [type] from [allAvailableTypes].
+     */
+    fun toggleTypeFilter(type: MediaType, allAvailableTypes: Set<MediaType> = emptySet()) {
+        val current = _typeFilter.value
+
+        if (current.isEmpty() && allAvailableTypes.isNotEmpty() && allAvailableTypes.contains(type)) {
+            _typeFilter.value = allAvailableTypes - type
         } else {
-            current.add(type)
+            val updated = current.toMutableSet()
+            if (updated.contains(type)) {
+                if (allAvailableTypes.isEmpty() || updated.size > 1) {
+                    updated.remove(type)
+                }
+            } else {
+                updated.add(type)
+            }
+            if (allAvailableTypes.isNotEmpty() && updated.containsAll(allAvailableTypes)) {
+                _typeFilter.value = emptySet()
+            } else {
+                _typeFilter.value = updated
+            }
         }
-        _typeFilter.value = current
+    }
+
+    /** Resets the media type filter to show all types. */
+    fun clearTypeFilter() {
+        _typeFilter.value = emptySet()
     }
 
     /** Updates the minimum size filter value and measurement unit. */
