@@ -14,6 +14,9 @@ import io.sentry.SentryReplayOptions.SentryReplayQuality
 import io.sentry.android.core.SentryAndroid
 import io.sentry.android.core.SentryAndroidOptions
 import io.sentry.protocol.User
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -53,6 +56,17 @@ class MultiToolApp : Application() {
 
         val settingsRepo = com.msahil432.multitool.data.SettingsRepository(dataStore)
         com.msahil432.multitool.blocking.StrictModeController.init(this, settingsRepo)
+
+        // Reset any orphaned TRANSCODING jobs from a crash or force-stop back to PENDING
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val downloadRepo = com.msahil432.multitool.data.DownloadRepository(database.downloadDao())
+                downloadRepo.resetOrphanedTranscodes()
+                com.msahil432.multitool.downloader.H265TranscodeWorker.scheduleNextTranscodeIfAvailable(this@MultiToolApp)
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+            }
+        }
     }
 
     override fun onTerminate() {

@@ -32,8 +32,9 @@ class H265TranscodeWorker(
         val db = (appContext.applicationContext as MultiToolApp).database
         val repo = DownloadRepository(db.downloadDao())
 
-        // Guard: allow only 1 concurrent transcode
-        if (repo.transcodingCount() > 0) {
+        // Guard: allow only 1 concurrent transcode across different downloads
+        val activeId = repo.getActivelyTranscodingId()
+        if (activeId != null && activeId != downloadId) {
             // Another job is running; return success so WorkManager doesn't retry immediately
             return Result.success()
         }
@@ -42,9 +43,22 @@ class H265TranscodeWorker(
         val inputPath = item.localFilePath ?: return Result.failure()
         val inputFile = File(inputPath)
         if (!inputFile.exists()) {
-            repo.markTranscodeFailed(downloadId)
+            repo.markTranscodeFailed(downloadId, "Source video file not found")
             scheduleNextTranscodeIfAvailable(appContext)
             return Result.failure()
+        }
+
+        // 1. If the video file is already in H265, skip the transcoding
+        if (VideoCodecDetector.isH265File(inputFile)) {
+            val originalBytes = inputFile.length()
+            repo.markTranscodeSkippedAlreadyH265(downloadId, originalBytes)
+            Breadcrumbs.record(
+                category = Breadcrumbs.CAT_DOWNLOADER,
+                message = "H265 transcode skipped - file is already H.265/HEVC",
+                data = mapOf("downloadId" to downloadId, "fileName" to item.fileName, "bytes" to originalBytes)
+            )
+            scheduleNextTranscodeIfAvailable(appContext)
+            return Result.success()
         }
 
         repo.markTranscodeStarted(downloadId)
@@ -55,6 +69,10 @@ class H265TranscodeWorker(
         )
 
         val outputFile = File(inputFile.parent, "${inputFile.nameWithoutExtension}_h265.mp4")
+        if (outputFile.exists()) {
+            outputFile.delete() // Clean up any partial output from a previous interrupted run
+        }
+
         val command = "-y -i \"${inputFile.absolutePath}\" -c:v hevc_mediacodec -c:a copy -tag:v hvc1 \"${outputFile.absolutePath}\""
 
         return try {
@@ -62,23 +80,41 @@ class H265TranscodeWorker(
             if (ReturnCode.isSuccess(session.returnCode) && outputFile.exists() && outputFile.length() > 0) {
                 val originalBytes = inputFile.length()
                 val compressedBytes = outputFile.length()
-                inputFile.delete() // Delete original after successful transcode
-                repo.markTranscodeCompleted(downloadId, originalBytes, compressedBytes, outputFile.absolutePath)
-                Breadcrumbs.record(
-                    category = Breadcrumbs.CAT_DOWNLOADER,
-                    message = "H265 transcode completed",
-                    data = mapOf(
-                        "downloadId" to downloadId,
-                        "originalBytes" to originalBytes,
-                        "compressedBytes" to compressedBytes,
-                        "ratio" to "%.0f%%".format(compressedBytes * 100.0 / originalBytes.coerceAtLeast(1))
+
+                // 2. If the size of the transcoded file is larger than the original, discard the transcoded file
+                if (compressedBytes >= originalBytes) {
+                    outputFile.delete()
+                    repo.markTranscodeSkippedLarger(downloadId, originalBytes, compressedBytes)
+                    Breadcrumbs.record(
+                        category = Breadcrumbs.CAT_DOWNLOADER,
+                        message = "H265 transcode discarded - transcoded file was larger",
+                        data = mapOf(
+                            "downloadId" to downloadId,
+                            "originalBytes" to originalBytes,
+                            "compressedBytes" to compressedBytes
+                        )
                     )
-                )
+                } else {
+                    // Commit transcode completion to database first so DB points to valid outputFile
+                    repo.markTranscodeCompleted(downloadId, originalBytes, compressedBytes, outputFile.absolutePath)
+                    inputFile.delete() // Safely delete original after DB is updated
+                    Breadcrumbs.record(
+                        category = Breadcrumbs.CAT_DOWNLOADER,
+                        message = "H265 transcode completed",
+                        data = mapOf(
+                            "downloadId" to downloadId,
+                            "originalBytes" to originalBytes,
+                            "compressedBytes" to compressedBytes,
+                            "ratio" to "%.0f%%".format(compressedBytes * 100.0 / originalBytes.coerceAtLeast(1))
+                        )
+                    )
+                }
                 scheduleNextTranscodeIfAvailable(appContext)
                 Result.success()
             } else {
-                val errMsg = "FFmpeg H265 returned code ${session.returnCode}"
-                repo.markTranscodeFailed(downloadId)
+                // 3. If the transcoding fails, record this error to show in downloads list
+                val errMsg = "FFmpeg H265 failed with return code ${session.returnCode}"
+                repo.markTranscodeFailed(downloadId, errMsg)
                 Sentry.captureMessage(errMsg)
                 if (outputFile.exists()) {
                     outputFile.delete()
@@ -88,7 +124,8 @@ class H265TranscodeWorker(
             }
         } catch (e: Exception) {
             Sentry.captureException(e)
-            repo.markTranscodeFailed(downloadId)
+            val errMsg = e.message ?: "Transcoding execution error"
+            repo.markTranscodeFailed(downloadId, errMsg)
             if (outputFile.exists()) {
                 outputFile.delete()
             }

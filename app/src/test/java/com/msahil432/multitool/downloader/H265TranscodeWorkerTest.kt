@@ -108,4 +108,113 @@ class H265TranscodeWorkerTest {
         assertEquals(TranscodeStatus.FAILED, item?.transcodeStatus)
         assertEquals("/tmp/original.mp4", item?.localFilePath)
     }
+
+    @Test
+    fun `markTranscodeSkippedAlreadyH265 updates status to ALREADY_H265`() = runTest {
+        val videoId = repo.enqueue(
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/test.mp4",
+            fileName = "test.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO
+        )
+        repo.markCompleted(videoId, "/tmp/test.mp4", 4000L)
+
+        repo.markTranscodeSkippedAlreadyH265(videoId, 4000L)
+
+        val item = repo.getById(videoId)
+        assertEquals(TranscodeStatus.ALREADY_H265, item?.transcodeStatus)
+        assertEquals(4000L, item?.originalSizeBytes)
+        assertEquals(4000L, item?.compressedSizeBytes)
+        assertEquals("/tmp/test.mp4", item?.localFilePath)
+    }
+
+    @Test
+    fun `markTranscodeSkippedLarger sets SKIPPED_LARGER and preserves original path and updates sizes`() = runTest {
+        val videoId = repo.enqueue(
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/test.mp4",
+            fileName = "test.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO
+        )
+        repo.markCompleted(videoId, "/tmp/original.mp4", 5000L)
+
+        repo.markTranscodeSkippedLarger(videoId, originalBytes = 5000L, compressedBytes = 6500L)
+
+        val item = repo.getById(videoId)
+        assertEquals(TranscodeStatus.SKIPPED_LARGER, item?.transcodeStatus)
+        assertEquals(5000L, item?.originalSizeBytes)
+        assertEquals(6500L, item?.compressedSizeBytes)
+        assertEquals("/tmp/original.mp4", item?.localFilePath)
+    }
+
+    @Test
+    fun `markTranscodeFailed stores error message and sets status FAILED`() = runTest {
+        val videoId = repo.enqueue(
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/test.mp4",
+            fileName = "test.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO
+        )
+        repo.markCompleted(videoId, "/tmp/original.mp4", 5000L)
+
+        repo.markTranscodeFailed(videoId, "FFmpeg H265 failed with return code 1")
+
+        val item = repo.getById(videoId)
+        assertEquals(TranscodeStatus.FAILED, item?.transcodeStatus)
+        assertEquals("FFmpeg H265 failed with return code 1", item?.errorMessage)
+        assertEquals("/tmp/original.mp4", item?.localFilePath)
+    }
+
+    @Test
+    fun `resetOrphanedTranscodes resets stuck TRANSCODING back to PENDING`() = runTest {
+        val videoId = repo.enqueue(
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/test.mp4",
+            fileName = "test.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO
+        )
+        repo.markCompleted(videoId, "/tmp/test.mp4", 5000L)
+        repo.markTranscodeStarted(videoId)
+
+        assertEquals(1, repo.transcodingCount())
+
+        val resetCount = repo.resetOrphanedTranscodes()
+        assertEquals(1, resetCount)
+        assertEquals(0, repo.transcodingCount())
+
+        val item = repo.getById(videoId)
+        assertEquals(TranscodeStatus.PENDING, item?.transcodeStatus)
+
+        // Now nextPendingTranscode picks it up again
+        val next = repo.nextPendingTranscode()
+        assertEquals(videoId, next?.id)
+    }
+
+    @Test
+    fun `markHlsCompleted sets transcodeStatus and compressedSizeBytes`() = runTest {
+        val hlsId = repo.enqueue(
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/stream.m3u8",
+            fileName = "stream.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.HLS_STREAM
+        )
+
+        repo.markHlsCompleted(
+            id = hlsId,
+            localFilePath = "/storage/downloads/stream.mp4",
+            totalBytes = 8000L,
+            transcodeStatus = TranscodeStatus.COMPLETED
+        )
+
+        val item = repo.getById(hlsId)
+        assertEquals(TranscodeStatus.COMPLETED, item?.transcodeStatus)
+        assertEquals(8000L, item?.totalBytes)
+        assertEquals(8000L, item?.compressedSizeBytes)
+        assertEquals("/storage/downloads/stream.mp4", item?.localFilePath)
+    }
 }

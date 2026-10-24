@@ -84,7 +84,11 @@ class Converters {
 
     /** Converts String to [TranscodeStatus] enum. */
     @TypeConverter
-    fun toTranscodeStatus(value: String): TranscodeStatus = TranscodeStatus.valueOf(value)
+    fun toTranscodeStatus(value: String): TranscodeStatus = try {
+        TranscodeStatus.valueOf(value)
+    } catch (_: IllegalArgumentException) {
+        TranscodeStatus.PENDING
+    }
 }
 
 

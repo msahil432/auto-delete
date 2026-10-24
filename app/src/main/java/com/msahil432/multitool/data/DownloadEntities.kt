@@ -49,7 +49,11 @@ enum class TranscodeStatus {
     /** Transcode completed, compressed file is in place. */
     COMPLETED,
     /** Transcode failed; original file preserved. */
-    FAILED
+    FAILED,
+    /** Video file is already in H.265 (HEVC); transcoding was skipped. */
+    ALREADY_H265,
+    /** Transcoded file was larger than the original; transcoded file was discarded and original preserved. */
+    SKIPPED_LARGER
 }
 
 /**
