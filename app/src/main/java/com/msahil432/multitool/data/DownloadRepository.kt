@@ -362,4 +362,31 @@ class DownloadRepository(
         }
         return count
     }
+
+    /** Resets all failed and orphaned video transcodes back to PENDING so they can be re-attempted. */
+    suspend fun resetFailedAndOrphanedTranscodes(): Int {
+        val count = dao.resetAllFailedAndOrphanedTranscodes(clock())
+        if (count > 0) {
+            Breadcrumbs.record(
+                category = Breadcrumbs.CAT_DOWNLOADER,
+                message = "Reset failed and orphaned transcode jobs to PENDING",
+                data = mapOf("count" to count)
+            )
+        }
+        return count
+    }
+
+    /** Retries transcoding for a specific completed download. */
+    suspend fun retryTranscode(id: Long) {
+        try {
+            dao.retryTranscode(id, clock())
+            Breadcrumbs.record(
+                category = Breadcrumbs.CAT_DOWNLOADER,
+                message = "Retry transcode requested",
+                data = mapOf("id" to id)
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+        }
+    }
 }

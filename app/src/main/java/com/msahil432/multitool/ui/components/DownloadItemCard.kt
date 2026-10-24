@@ -33,7 +33,8 @@ fun DownloadItemCard(
     onDelete: () -> Unit,
     onOpen: () -> Unit,
     onReloadSourcePage: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onRetryTranscode: () -> Unit = {}
 ) {
     ElevatedCard(
         modifier = modifier
@@ -88,14 +89,31 @@ fun DownloadItemCard(
                     )
                 }
 
+                val isTranscoded = item.status == DownloadStatus.COMPLETED &&
+                    (item.transcodeStatus == TranscodeStatus.COMPLETED || item.transcodeStatus == TranscodeStatus.ALREADY_H265)
+
+                val chipLabel = when {
+                    isTranscoded -> "TRANSCODED"
+                    item.status == DownloadStatus.COMPLETED && item.transcodeStatus == TranscodeStatus.TRANSCODING -> "TRANSCODING"
+                    else -> item.status.name
+                }
+
                 AssistChip(
                     onClick = {},
                     label = {
                         Text(
-                            text = item.status.name,
+                            text = chipLabel,
                             style = MaterialTheme.typography.labelSmall
                         )
-                    }
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        labelColor = when {
+                            chipLabel == "TRANSCODED" || item.status == DownloadStatus.COMPLETED -> MaterialTheme.colorScheme.primary
+                            item.status == DownloadStatus.FAILED || item.transcodeStatus == TranscodeStatus.FAILED -> MaterialTheme.colorScheme.error
+                            item.status == DownloadStatus.DOWNLOADING || item.transcodeStatus == TranscodeStatus.TRANSCODING -> MaterialTheme.colorScheme.tertiary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
                 )
             }
 
@@ -176,6 +194,16 @@ fun DownloadItemCard(
                         }
                         IconButton(onClick = onDelete) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete File")
+                        }
+                        if (item.transcodeStatus == TranscodeStatus.FAILED) {
+                            OutlinedButton(
+                                onClick = onRetryTranscode,
+                                modifier = Modifier.padding(end = 8.dp)
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Retry H.265")
+                            }
                         }
                         Button(onClick = onOpen) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))

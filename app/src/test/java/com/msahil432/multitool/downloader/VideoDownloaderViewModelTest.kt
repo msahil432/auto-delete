@@ -34,6 +34,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -743,6 +744,7 @@ class VideoDownloaderViewModelTest {
             transcodeStatus = TranscodeStatus.COMPLETED
         )
         assertTrue(completedItem.matchesFilterStatus(DownloadFilterStatus.COMPLETED))
+        assertTrue(completedItem.matchesFilterStatus(DownloadFilterStatus.TRANSCODED))
         assertFalse(completedItem.matchesFilterStatus(DownloadFilterStatus.TRANSCODING))
 
         val failedDownloadItem = baseItem.copy(status = DownloadStatus.FAILED)
@@ -962,6 +964,29 @@ class VideoDownloaderViewModelTest {
         assertTrue(viewModel.groupedDownloads.value[0].isExpanded)
 
         job.cancel()
+    }
+
+    @Test
+    fun `retryTranscode resets transcodeStatus back to PENDING and clears errorMessage`() = runTest(testDispatcher) {
+        val id = repo.enqueue(
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/test.mp4",
+            fileName = "test.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO
+        )
+        repo.markCompleted(id, "/tmp/test.mp4", 10_000_000L)
+        repo.markTranscodeFailed(id, "Error encoding")
+
+        val before = repo.getById(id)
+        assertEquals(TranscodeStatus.FAILED, before?.transcodeStatus)
+
+        viewModel.retryTranscode(id)
+        testScheduler.advanceUntilIdle()
+
+        val after = repo.getById(id)
+        assertEquals(TranscodeStatus.PENDING, after?.transcodeStatus)
+        assertNull(after?.errorMessage)
     }
 }
 

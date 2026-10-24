@@ -86,7 +86,8 @@ fun DownloadListScreen(
         onCancel = { viewModel.cancelDownload(it) },
         onDelete = { viewModel.deleteDownload(it) },
         onOpen = { path, mime -> openDownloadedFile(context, path, mime) },
-        onReloadSourcePage = onReloadSourcePage
+        onReloadSourcePage = onReloadSourcePage,
+        onRetryTranscode = { viewModel.retryTranscode(it) }
     )
 }
 
@@ -168,7 +169,8 @@ fun DownloadListContent(
     onCancel: (Long) -> Unit = {},
     onDelete: (Long) -> Unit = {},
     onOpen: (String?, String?) -> Unit = { _, _ -> },
-    onReloadSourcePage: (String) -> Unit = {}
+    onReloadSourcePage: (String) -> Unit = {},
+    onRetryTranscode: (Long) -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showFilterMenu by remember { mutableStateOf(false) }
@@ -351,7 +353,8 @@ fun DownloadListContent(
                                     onCancel = { onCancel(item.id) },
                                     onDelete = { onDelete(item.id) },
                                     onOpen = { onOpen(item.localFilePath, item.mimeType) },
-                                    onReloadSourcePage = { onReloadSourcePage(item.sourcePageUrl) }
+                                    onReloadSourcePage = { onReloadSourcePage(item.sourcePageUrl) },
+                                    onRetryTranscode = { onRetryTranscode(item.id) }
                                 )
                             }
                         }
@@ -377,7 +380,8 @@ fun DownloadListContent(
     onCancel: (Long) -> Unit = {},
     onDelete: (Long) -> Unit = {},
     onOpen: (String?, String?) -> Unit = { _, _ -> },
-    onReloadSourcePage: (String) -> Unit = {}
+    onReloadSourcePage: (String) -> Unit = {},
+    onRetryTranscode: (Long) -> Unit = {}
 ) {
     val groups = remember(downloads) {
         buildHourGroups(
@@ -404,7 +408,8 @@ fun DownloadListContent(
         onCancel = onCancel,
         onDelete = onDelete,
         onOpen = onOpen,
-        onReloadSourcePage = onReloadSourcePage
+        onReloadSourcePage = onReloadSourcePage,
+        onRetryTranscode = onRetryTranscode
     )
 }
 

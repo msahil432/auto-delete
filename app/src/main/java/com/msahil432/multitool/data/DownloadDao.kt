@@ -127,4 +127,22 @@ interface DownloadDao {
     /** Resets any orphaned TRANSCODING downloads back to PENDING. */
     @Query("UPDATE downloads SET transcodeStatus = 'PENDING', updatedAt = :now WHERE transcodeStatus = 'TRANSCODING'")
     suspend fun resetOrphanedTranscodes(now: Long): Int
+
+    /** Resets all failed and orphaned video transcodes back to PENDING for auto-recovery. */
+    @Query("""
+        UPDATE downloads 
+        SET transcodeStatus = 'PENDING', errorMessage = NULL, updatedAt = :now 
+        WHERE status = 'COMPLETED' 
+          AND transcodeStatus IN ('TRANSCODING', 'FAILED') 
+          AND mediaType IN ('VIDEO', 'HLS_STREAM', 'DASH_STREAM')
+    """)
+    suspend fun resetAllFailedAndOrphanedTranscodes(now: Long): Int
+
+    /** Resets a specific completed download's transcode status back to PENDING for retry. */
+    @Query("""
+        UPDATE downloads 
+        SET transcodeStatus = 'PENDING', errorMessage = NULL, updatedAt = :now 
+        WHERE id = :id AND status = 'COMPLETED'
+    """)
+    suspend fun retryTranscode(id: Long, now: Long)
 }
