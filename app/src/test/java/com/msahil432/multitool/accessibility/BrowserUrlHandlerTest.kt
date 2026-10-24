@@ -34,7 +34,7 @@ import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
+@Config(sdk = [35])
 class BrowserUrlHandlerTest {
 
     @get:Rule
@@ -50,10 +50,11 @@ class BrowserUrlHandlerTest {
     @Before
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
-        // Use a unique database name per test to avoid any chance of leakage
-
+        val directExecutor = java.util.concurrent.Executor { it.run() }
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
+            .setQueryExecutor(directExecutor)
+            .setTransactionExecutor(directExecutor)
             .build()
         
         Dispatcher.handlers.clear()
@@ -69,7 +70,9 @@ class BrowserUrlHandlerTest {
 
     @After
     fun teardown() {
-        db.close()
+        if (::db.isInitialized && db.isOpen) {
+            db.close()
+        }
     }
 
     @Test
@@ -174,7 +177,7 @@ class BrowserUrlHandlerTest {
             val events = browsingRepo.allRecent().first()
             assertTrue(events.isEmpty())
         } catch (e: AssertionError) {
-            println("::warning file=app/src/test/java/com/msahil432/multitool/accessibility/BrowserUrlHandlerTest.kt,line=153::BrowserUrlHandlerTest.testHandlerIgnoresEventsWhenToggleDisabled failed intermittently (suppressed as non-fatal warning): ${e.message}")
+            System.err.println("::warning file=app/src/test/java/com/msahil432/multitool/accessibility/BrowserUrlHandlerTest.kt,line=153::BrowserUrlHandlerTest.testHandlerIgnoresEventsWhenToggleDisabled failed intermittently (suppressed as non-fatal warning): ${e.message}")
             Assume.assumeNoException("Flaky test suppressed as non-fatal warning", e)
         }
     }
@@ -215,7 +218,7 @@ class BrowserUrlHandlerTest {
             val events = browsingRepo.allRecent().first()
             assertTrue("Expected empty events but found: ${events.map { it.packageName }}", events.isEmpty())
         } catch (e: AssertionError) {
-            println("::warning file=app/src/test/java/com/msahil432/multitool/accessibility/BrowserUrlHandlerTest.kt,line=183::BrowserUrlHandlerTest.testHandlerIgnoresUnsupportedBrowser failed intermittently (suppressed as non-fatal warning): ${e.message}")
+            System.err.println("::warning file=app/src/test/java/com/msahil432/multitool/accessibility/BrowserUrlHandlerTest.kt,line=183::BrowserUrlHandlerTest.testHandlerIgnoresUnsupportedBrowser failed intermittently (suppressed as non-fatal warning): ${e.message}")
             Assume.assumeNoException("Flaky test suppressed as non-fatal warning", e)
         }
     }

@@ -131,7 +131,7 @@ android {
       all {
         it.testLogging {
           showStandardStreams = true
-          events("passed", "skipped", "failed", "standardOut", "standardError")
+          events("skipped", "failed", "standardOut", "standardError")
         }
       }
     }
@@ -147,7 +147,7 @@ android {
 tasks.withType<Test>().configureEach {
   testLogging {
     showStandardStreams = true
-    events("passed", "skipped", "failed", "standardOut", "standardError")
+    events("skipped", "failed", "standardOut", "standardError")
   }
 }
 

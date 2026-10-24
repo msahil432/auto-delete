@@ -27,11 +27,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import com.msahil432.multitool.data.DownloadStatus
+import com.msahil432.multitool.data.TranscodeStatus
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 /** Units of measurement for file size filtering. */
 enum class SizeUnit { KB, MB, GB }
@@ -48,21 +55,146 @@ data class SizeFilter(
 )
 
 /**
+ * User-facing status filter options for the download list.
+ *
+ * @param displayName Human-readable label displayed in the filter dropdown.
+ */
+enum class DownloadFilterStatus(val displayName: String) {
+    QUEUED("Queued"),
+    DOWNLOADING("Downloading"),
+    TRANSCODING("Transcoding"),
+    COMPLETED("Completed"),
+    FAILED("Failed"),
+    CANCELLED("Cancelled")
+}
+
+/**
+ * Checks whether this [DownloadItem] matches the given [DownloadFilterStatus].
+ */
+fun DownloadItem.matchesFilterStatus(filterStatus: DownloadFilterStatus): Boolean {
+    return when (filterStatus) {
+        DownloadFilterStatus.QUEUED -> this.status == DownloadStatus.QUEUED
+        DownloadFilterStatus.DOWNLOADING -> this.status == DownloadStatus.DOWNLOADING
+        DownloadFilterStatus.TRANSCODING -> this.transcodeStatus == TranscodeStatus.TRANSCODING
+        DownloadFilterStatus.COMPLETED -> this.status == DownloadStatus.COMPLETED && this.transcodeStatus != TranscodeStatus.TRANSCODING
+        DownloadFilterStatus.FAILED -> this.status == DownloadStatus.FAILED || this.transcodeStatus == TranscodeStatus.FAILED
+        DownloadFilterStatus.CANCELLED -> this.status == DownloadStatus.CANCELLED
+    }
+}
+
+/**
+ * Represents a discrete 1-hour time bucket containing download items.
+ *
+ * @param hourStartEpochMillis Epoch timestamp representing the start of the 1-hour window.
+ * @param title Human-readable date and hour window (e.g., "Today, 7:00 PM - 8:00 PM").
+ * @param items List of downloads belonging to this hour bucket, sorted newest first.
+ * @param isExpanded Whether the group's items are currently visible in the UI.
+ */
+data class DownloadHourGroup(
+    val hourStartEpochMillis: Long,
+    val title: String,
+    val items: List<DownloadItem>,
+    val isExpanded: Boolean
+)
+
+/**
+ * Groups and filters downloads into discrete 1-hour time buckets.
+ *
+ * @param downloads List of downloads to group, expected newest first.
+ * @param statusFilters Set of active status filters. Empty = show all.
+ * @param userToggledGroups Map of user expansion overrides per hour bucket.
+ * @param zoneId Time zone used to evaluate local dates and hours.
+ * @param clock Supplier for the current epoch timestamp in milliseconds.
+ */
+fun buildHourGroups(
+    downloads: List<DownloadItem>,
+    statusFilters: Set<DownloadFilterStatus>,
+    userToggledGroups: Map<Long, Boolean>,
+    zoneId: ZoneId,
+    clock: () -> Long
+): List<DownloadHourGroup> {
+    val filtered = if (statusFilters.isEmpty()) {
+        downloads
+    } else {
+        downloads.filter { item ->
+            statusFilters.any { item.matchesFilterStatus(it) }
+        }
+    }
+
+    if (filtered.isEmpty()) return emptyList()
+
+    val groupedMap = LinkedHashMap<Long, MutableList<DownloadItem>>()
+    for (item in filtered) {
+        val zdt = Instant.ofEpochMilli(item.createdAt).atZone(zoneId)
+        val hourStartMillis = zdt.truncatedTo(ChronoUnit.HOURS).toInstant().toEpochMilli()
+        groupedMap.getOrPut(hourStartMillis) { mutableListOf() }.add(item)
+    }
+
+    val nowLocalDate = Instant.ofEpochMilli(clock()).atZone(zoneId).toLocalDate()
+    val timeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
+
+    var index = 0
+    return groupedMap.map { (hourStartMillis, items) ->
+        val hourStartZdt = Instant.ofEpochMilli(hourStartMillis).atZone(zoneId)
+        val hourEndZdt = hourStartZdt.plusHours(1)
+        val itemLocalDate = hourStartZdt.toLocalDate()
+        val startTime = hourStartZdt.format(timeFormatter)
+        val endTime = hourEndZdt.format(timeFormatter)
+        val timeRange = "$startTime - $endTime"
+
+        val datePrefix = when {
+            itemLocalDate == nowLocalDate -> "Today"
+            itemLocalDate == nowLocalDate.minusDays(1) -> "Yesterday"
+            itemLocalDate.year == nowLocalDate.year -> itemLocalDate.format(DateTimeFormatter.ofPattern("MMM d", Locale.US))
+            else -> itemLocalDate.format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US))
+        }
+
+        val title = "$datePrefix, $timeRange"
+        val isExpanded = userToggledGroups[hourStartMillis] ?: (index == 0)
+        index++
+
+        DownloadHourGroup(
+            hourStartEpochMillis = hourStartMillis,
+            title = title,
+            items = items,
+            isExpanded = isExpanded
+        )
+    }
+}
+
+/**
  * ViewModel managing the video downloader state: URL input, media detection observation,
  * user selection, background download scheduling, and download history management.
  */
 class VideoDownloaderViewModel(
     private val downloadRepository: DownloadRepository,
     private val appContext: Context,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val zoneId: ZoneId = ZoneId.systemDefault(),
+    private val clock: () -> Long = { System.currentTimeMillis() },
+    val detector: WebViewMediaDetector = WebViewMediaDetector()
 ) : ViewModel() {
-
-    /** WebView media detector coordinating DOM inspection, network requests, and canvas capture. */
-    val detector = WebViewMediaDetector()
 
     /** Reactive stream of all download records. */
     val downloads: StateFlow<List<DownloadItem>> = downloadRepository.allDownloads()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _selectedStatusFilters = MutableStateFlow<Set<DownloadFilterStatus>>(emptySet())
+    /** Set of active status filters for the download list screen. Empty = show all. */
+    val selectedStatusFilters: StateFlow<Set<DownloadFilterStatus>> = _selectedStatusFilters.asStateFlow()
+
+    private val _userToggledGroups = MutableStateFlow<Map<Long, Boolean>>(emptyMap())
+    /** User manual expand/collapse overrides for hour groups. */
+    val userToggledGroups: StateFlow<Map<Long, Boolean>> = _userToggledGroups.asStateFlow()
+
+    /**
+     * Download records grouped into 1-hour time buckets, filtered by [selectedStatusFilters].
+     */
+    val groupedDownloads: StateFlow<List<DownloadHourGroup>> = combine(
+        downloads, _selectedStatusFilters, _userToggledGroups
+    ) { allDownloads, statusFilters, toggledGroups ->
+        buildHourGroups(allDownloads, statusFilters, toggledGroups, zoneId, clock)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _currentUrl = MutableStateFlow("")
     /** Currently entered web page URL. */
@@ -312,6 +444,55 @@ class VideoDownloaderViewModel(
     fun clearFilters() {
         _typeFilter.value = emptySet()
         _sizeFilter.value = SizeFilter()
+    }
+
+    /**
+     * Toggles inclusion of a [DownloadFilterStatus] in the status filter set.
+     */
+    fun toggleStatusFilter(status: DownloadFilterStatus) {
+        val current = _selectedStatusFilters.value.toMutableSet()
+        if (current.contains(status)) {
+            current.remove(status)
+        } else {
+            current.add(status)
+        }
+        _selectedStatusFilters.value = current
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_DOWNLOADER,
+            message = "Status filter toggled",
+            data = mapOf("status" to status.name, "activeCount" to current.size)
+        )
+    }
+
+    /**
+     * Clears all active status filters, showing all download items.
+     */
+    fun clearStatusFilters() {
+        _selectedStatusFilters.value = emptySet()
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_DOWNLOADER,
+            message = "Status filters cleared",
+            data = emptyMap()
+        )
+    }
+
+    /**
+     * Toggles the collapsed/expanded state of a specific hour group.
+     *
+     * @param hourStartMillis The start epoch timestamp of the hour group to toggle.
+     */
+    fun toggleHourGroupExpansion(hourStartMillis: Long) {
+        val groups = groupedDownloads.value
+        val targetGroup = groups.find { it.hourStartEpochMillis == hourStartMillis }
+        val currentExpanded = targetGroup?.isExpanded ?: false
+        val updated = _userToggledGroups.value.toMutableMap()
+        updated[hourStartMillis] = !currentExpanded
+        _userToggledGroups.value = updated
+        Breadcrumbs.record(
+            category = Breadcrumbs.CAT_DOWNLOADER,
+            message = "Hour group expansion toggled",
+            data = mapOf("hourStartMillis" to hourStartMillis, "expanded" to !currentExpanded)
+        )
     }
 
     /**

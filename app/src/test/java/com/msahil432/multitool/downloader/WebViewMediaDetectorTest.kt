@@ -24,7 +24,7 @@ class WebViewMediaDetectorTest {
 
     @Before
     fun setUp() {
-        detector = WebViewMediaDetector()
+        detector = WebViewMediaDetector(sizeFetcher = { -1L })
     }
 
     @Test

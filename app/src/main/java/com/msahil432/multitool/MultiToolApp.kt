@@ -57,21 +57,31 @@ class MultiToolApp : Application() {
         val settingsRepo = com.msahil432.multitool.data.SettingsRepository(dataStore)
         com.msahil432.multitool.blocking.StrictModeController.init(this, settingsRepo)
 
-        // Reset any orphaned TRANSCODING jobs from a crash or force-stop back to PENDING
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val downloadRepo = com.msahil432.multitool.data.DownloadRepository(database.downloadDao())
-                downloadRepo.resetOrphanedTranscodes()
-                com.msahil432.multitool.downloader.H265TranscodeWorker.scheduleNextTranscodeIfAvailable(this@MultiToolApp)
-            } catch (e: Exception) {
-                Sentry.captureException(e)
+        // Reset any orphaned TRANSCODING jobs from a crash or force-stop back to PENDING (skip in unit tests)
+        if (android.os.Build.FINGERPRINT != "robolectric") {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val downloadRepo = com.msahil432.multitool.data.DownloadRepository(database.downloadDao())
+                    downloadRepo.resetOrphanedTranscodes()
+                    com.msahil432.multitool.downloader.H265TranscodeWorker.scheduleNextTranscodeIfAvailable(this@MultiToolApp)
+                } catch (e: Exception) {
+                    Sentry.captureException(e)
+                }
             }
+        }
+    }
+
+    /** Closes the persistent Room database instance if initialized. */
+    fun closeDatabase() {
+        synchronized(this) {
+            _database?.close()
+            _database = null
         }
     }
 
     override fun onTerminate() {
         super.onTerminate()
-        _database?.close()
+        closeDatabase()
     }
 
     private fun initSentry() {

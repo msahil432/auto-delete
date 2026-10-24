@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit
  * Unit tests for [BrowsingRepository] covering logging, querying, and retention pruning.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
+@Config(sdk = [35])
 class BrowsingRepositoryTest {
 
   private lateinit var db: AppDatabase
@@ -29,15 +29,20 @@ class BrowsingRepositoryTest {
   @Before
   fun setUp() {
     val context = ApplicationProvider.getApplicationContext<Context>()
+    val directExecutor = java.util.concurrent.Executor { it.run() }
     db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
       .allowMainThreadQueries()
+      .setQueryExecutor(directExecutor)
+      .setTransactionExecutor(directExecutor)
       .build()
     repo = BrowsingRepository(db.browsingDao(), clock = { fakeClock })
   }
 
   @After
   fun tearDown() {
-    db.close()
+    if (::db.isInitialized && db.isOpen) {
+      db.close()
+    }
   }
 
   @Test

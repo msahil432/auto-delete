@@ -48,8 +48,11 @@ class ShortFormHandlerTest {
     @Before
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
+        val directExecutor = java.util.concurrent.Executor { it.run() }
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
+            .setQueryExecutor(directExecutor)
+            .setTransactionExecutor(directExecutor)
             .build()
         db.clearAllTables()
         
@@ -65,7 +68,9 @@ class ShortFormHandlerTest {
 
     @After
     fun teardown() {
-        db.close()
+        if (::db.isInitialized && db.isOpen) {
+            db.close()
+        }
     }
 
     @Test
@@ -193,7 +198,7 @@ class ShortFormHandlerTest {
             assertEquals(ShortFormSignatures.PKG_YOUTUBE, timelineEvents[0].packageName)
             assertEquals(TimelineEventType.BLOCK_INTERCEPT, timelineEvents[0].eventType)
         } catch (e: AssertionError) {
-            println("::warning file=app/src/test/java/com/msahil432/multitool/accessibility/ShortFormHandlerTest.kt,line=195::ShortFormHandlerTest.testHandlerDetectsAndLogsWhenToggleEnabled failed intermittently (suppressed as non-fatal warning): ${e.message}")
+            System.err.println("::warning file=app/src/test/java/com/msahil432/multitool/accessibility/ShortFormHandlerTest.kt,line=195::ShortFormHandlerTest.testHandlerDetectsAndLogsWhenToggleEnabled failed intermittently (suppressed as non-fatal warning): ${e.message}")
             Assume.assumeNoException("Flaky test suppressed as non-fatal warning", e)
         }
     }
