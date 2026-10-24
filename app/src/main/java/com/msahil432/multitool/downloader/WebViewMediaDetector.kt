@@ -343,7 +343,8 @@ class WebViewMediaDetector(
                 } else {
                     updateMediaSize(media.url, -1L, SizeFetchStatus.FAILED)
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 val sanitizedUrl = media.url.substringBefore('?').substringBefore('#')
                 Breadcrumbs.record(
                     category = Breadcrumbs.CAT_DOWNLOADER,

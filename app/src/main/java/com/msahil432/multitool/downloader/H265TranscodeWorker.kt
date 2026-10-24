@@ -81,6 +81,13 @@ class H265TranscodeWorker(
                 val originalBytes = inputFile.length()
                 val compressedBytes = outputFile.length()
 
+                if (compressedBytes <= 0) {
+                    outputFile.delete()
+                    repo.markTranscodeFailed(downloadId, "Output file size is zero or negative")
+                    scheduleNextTranscodeIfAvailable(appContext)
+                    return Result.failure()
+                }
+
                 // 2. If the size of the transcoded file is larger than the original, discard the transcoded file
                 if (compressedBytes >= originalBytes) {
                     outputFile.delete()

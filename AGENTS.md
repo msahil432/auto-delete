@@ -143,3 +143,4 @@ Package: `com.msahil432.multitool` | minSdk 35 | targetSdk 37 | Kotlin + Jetpack
 7. **Flag risks.** If a change could break existing behavior (e.g., DB migration, permission change), call it out explicitly.
 8. **Match existing patterns.** Copy the style of adjacent code — naming conventions, file organization, test structure.
 9. **Keep PRs reviewable.** If a task is large, propose splitting it into smaller steps.
+10. **Coding task completion guideline.** When a coding task is complete, propose a brief git commit message summary and description for the changes done.

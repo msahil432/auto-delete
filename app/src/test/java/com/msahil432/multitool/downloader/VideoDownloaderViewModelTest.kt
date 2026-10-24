@@ -7,12 +7,19 @@ import androidx.test.core.app.ApplicationProvider
 import com.msahil432.multitool.data.AppDatabase
 import com.msahil432.multitool.data.DownloadRepository
 import com.msahil432.multitool.data.DownloadStatus
+import com.msahil432.multitool.data.DownloadItem
 import com.msahil432.multitool.data.MediaType
 import com.msahil432.multitool.data.TranscodeStatus
 import com.msahil432.multitool.downloader.MediaListEntry
+import com.msahil432.multitool.ui.screens.DownloadFilterStatus
+import com.msahil432.multitool.ui.screens.DownloadHourGroup
 import com.msahil432.multitool.ui.screens.SizeFilter
 import com.msahil432.multitool.ui.screens.SizeUnit
 import com.msahil432.multitool.ui.screens.VideoDownloaderViewModel
+import com.msahil432.multitool.ui.screens.buildHourGroups
+import com.msahil432.multitool.ui.screens.matchesFilterStatus
+import java.time.Instant
+import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
@@ -60,7 +67,16 @@ class VideoDownloaderViewModelTest {
             .setTransactionExecutor(directExecutor)
             .build()
         repo = DownloadRepository(db.downloadDao())
-        viewModel = VideoDownloaderViewModel(repo, context, testDispatcher)
+        val testDetector = WebViewMediaDetector(
+            coroutineScope = kotlinx.coroutines.CoroutineScope(testDispatcher + kotlinx.coroutines.SupervisorJob()),
+            sizeFetcher = { -1L }
+        )
+        viewModel = VideoDownloaderViewModel(
+            downloadRepository = repo,
+            appContext = context,
+            ioDispatcher = testDispatcher,
+            detector = testDetector
+        )
     }
 
     @After
@@ -672,6 +688,280 @@ class VideoDownloaderViewModelTest {
         // clearTypeFilter resets back to empty (all active)
         viewModel.clearTypeFilter()
         assertTrue(viewModel.typeFilter.value.isEmpty())
+    }
+
+    @Test
+    fun `selectedStatusFilters starts empty and toggling adds and removes filters`() {
+        assertTrue(viewModel.selectedStatusFilters.value.isEmpty())
+
+        viewModel.toggleStatusFilter(DownloadFilterStatus.DOWNLOADING)
+        assertEquals(setOf(DownloadFilterStatus.DOWNLOADING), viewModel.selectedStatusFilters.value)
+
+        viewModel.toggleStatusFilter(DownloadFilterStatus.FAILED)
+        assertEquals(
+            setOf(DownloadFilterStatus.DOWNLOADING, DownloadFilterStatus.FAILED),
+            viewModel.selectedStatusFilters.value
+        )
+
+        viewModel.toggleStatusFilter(DownloadFilterStatus.DOWNLOADING)
+        assertEquals(setOf(DownloadFilterStatus.FAILED), viewModel.selectedStatusFilters.value)
+
+        viewModel.clearStatusFilters()
+        assertTrue(viewModel.selectedStatusFilters.value.isEmpty())
+    }
+
+    @Test
+    fun `matchesFilterStatus correctly evaluates all six filter statuses`() {
+        val baseItem = DownloadItem(
+            id = 1,
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/video.mp4",
+            fileName = "video.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO,
+            createdAt = 1000L,
+            updatedAt = 1000L
+        )
+
+        val queuedItem = baseItem.copy(status = DownloadStatus.QUEUED)
+        assertTrue(queuedItem.matchesFilterStatus(DownloadFilterStatus.QUEUED))
+        assertFalse(queuedItem.matchesFilterStatus(DownloadFilterStatus.DOWNLOADING))
+
+        val downloadingItem = baseItem.copy(status = DownloadStatus.DOWNLOADING)
+        assertTrue(downloadingItem.matchesFilterStatus(DownloadFilterStatus.DOWNLOADING))
+        assertFalse(downloadingItem.matchesFilterStatus(DownloadFilterStatus.COMPLETED))
+
+        val transcodingItem = baseItem.copy(
+            status = DownloadStatus.COMPLETED,
+            transcodeStatus = TranscodeStatus.TRANSCODING
+        )
+        assertTrue(transcodingItem.matchesFilterStatus(DownloadFilterStatus.TRANSCODING))
+        assertFalse(transcodingItem.matchesFilterStatus(DownloadFilterStatus.COMPLETED))
+
+        val completedItem = baseItem.copy(
+            status = DownloadStatus.COMPLETED,
+            transcodeStatus = TranscodeStatus.COMPLETED
+        )
+        assertTrue(completedItem.matchesFilterStatus(DownloadFilterStatus.COMPLETED))
+        assertFalse(completedItem.matchesFilterStatus(DownloadFilterStatus.TRANSCODING))
+
+        val failedDownloadItem = baseItem.copy(status = DownloadStatus.FAILED)
+        assertTrue(failedDownloadItem.matchesFilterStatus(DownloadFilterStatus.FAILED))
+
+        val failedTranscodeItem = baseItem.copy(
+            status = DownloadStatus.COMPLETED,
+            transcodeStatus = TranscodeStatus.FAILED
+        )
+        assertTrue(failedTranscodeItem.matchesFilterStatus(DownloadFilterStatus.FAILED))
+
+        val cancelledItem = baseItem.copy(status = DownloadStatus.CANCELLED)
+        assertTrue(cancelledItem.matchesFilterStatus(DownloadFilterStatus.CANCELLED))
+    }
+
+    @Test
+    fun `buildHourGroups groups downloads into 1-hour buckets with correct relative title formatting`() {
+        val zone = ZoneId.of("UTC")
+        // Fixed now: 2026-10-24T18:30:00Z
+        val nowMillis = Instant.parse("2026-10-24T18:30:00Z").toEpochMilli()
+        val clock = { nowMillis }
+
+        val itemTodayRecent1 = DownloadItem(
+            id = 1,
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/1.mp4",
+            fileName = "1.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO,
+            status = DownloadStatus.COMPLETED,
+            createdAt = Instant.parse("2026-10-24T18:15:00Z").toEpochMilli(),
+            updatedAt = 1000L
+        )
+        val itemTodayRecent2 = DownloadItem(
+            id = 2,
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/2.mp4",
+            fileName = "2.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO,
+            status = DownloadStatus.DOWNLOADING,
+            createdAt = Instant.parse("2026-10-24T18:05:00Z").toEpochMilli(),
+            updatedAt = 1000L
+        )
+        val itemTodayEarlier = DownloadItem(
+            id = 3,
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/3.mp4",
+            fileName = "3.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO,
+            status = DownloadStatus.COMPLETED,
+            createdAt = Instant.parse("2026-10-24T16:20:00Z").toEpochMilli(),
+            updatedAt = 1000L
+        )
+        val itemYesterday = DownloadItem(
+            id = 4,
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/4.mp4",
+            fileName = "4.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO,
+            status = DownloadStatus.FAILED,
+            createdAt = Instant.parse("2026-10-23T10:00:00Z").toEpochMilli(),
+            updatedAt = 1000L
+        )
+
+        val downloads = listOf(itemTodayRecent1, itemTodayRecent2, itemTodayEarlier, itemYesterday)
+
+        val groups = buildHourGroups(
+            downloads = downloads,
+            statusFilters = emptySet(),
+            userToggledGroups = emptyMap(),
+            zoneId = zone,
+            clock = clock
+        )
+
+        assertEquals(3, groups.size)
+        // Group 1: 18:00 - 19:00 Today
+        assertEquals("Today, 6:00 PM - 7:00 PM", groups[0].title)
+        assertEquals(2, groups[0].items.size)
+        assertTrue(groups[0].isExpanded) // Most recent group is expanded by default
+
+        // Group 2: 16:00 - 17:00 Today
+        assertEquals("Today, 4:00 PM - 5:00 PM", groups[1].title)
+        assertEquals(1, groups[1].items.size)
+        assertFalse(groups[1].isExpanded) // Older group collapsed by default
+
+        // Group 3: 10:00 - 11:00 Yesterday
+        assertEquals("Yesterday, 10:00 AM - 11:00 AM", groups[2].title)
+        assertEquals(1, groups[2].items.size)
+        assertFalse(groups[2].isExpanded) // Older group collapsed by default
+    }
+
+    @Test
+    fun `buildHourGroups respects user expansion overrides and excludes empty hours`() {
+        val zone = ZoneId.of("UTC")
+        val nowMillis = Instant.parse("2026-10-24T18:30:00Z").toEpochMilli()
+
+        val item1 = DownloadItem(
+            id = 1,
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/1.mp4",
+            fileName = "1.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO,
+            status = DownloadStatus.COMPLETED,
+            createdAt = Instant.parse("2026-10-24T18:15:00Z").toEpochMilli(),
+            updatedAt = 1000L
+        )
+        val item2 = DownloadItem(
+            id = 2,
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/2.mp4",
+            fileName = "2.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO,
+            status = DownloadStatus.DOWNLOADING,
+            createdAt = Instant.parse("2026-10-24T14:15:00Z").toEpochMilli(),
+            updatedAt = 1000L
+        )
+
+        val hourStart1 = Instant.parse("2026-10-24T18:00:00Z").toEpochMilli()
+        val hourStart2 = Instant.parse("2026-10-24T14:00:00Z").toEpochMilli()
+
+        // User manually collapsed group 1 and manually expanded group 2
+        val userOverrides = mapOf(
+            hourStart1 to false,
+            hourStart2 to true
+        )
+
+        val groups = buildHourGroups(
+            downloads = listOf(item1, item2),
+            statusFilters = emptySet(),
+            userToggledGroups = userOverrides,
+            zoneId = zone,
+            clock = { nowMillis }
+        )
+
+        assertEquals(2, groups.size)
+        assertFalse(groups[0].isExpanded)
+        assertTrue(groups[1].isExpanded)
+    }
+
+    @Test
+    fun `buildHourGroups filters by status and only shows non-empty hour groups`() {
+        val zone = ZoneId.of("UTC")
+        val nowMillis = Instant.parse("2026-10-24T18:30:00Z").toEpochMilli()
+
+        val item1 = DownloadItem(
+            id = 1,
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/1.mp4",
+            fileName = "1.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO,
+            status = DownloadStatus.COMPLETED,
+            createdAt = Instant.parse("2026-10-24T18:15:00Z").toEpochMilli(),
+            updatedAt = 1000L
+        )
+        val item2 = DownloadItem(
+            id = 2,
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/2.mp4",
+            fileName = "2.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO,
+            status = DownloadStatus.FAILED,
+            createdAt = Instant.parse("2026-10-24T14:15:00Z").toEpochMilli(),
+            updatedAt = 1000L
+        )
+
+        // Filter only FAILED: item1 is filtered out, leaving only item2's hour group
+        val groups = buildHourGroups(
+            downloads = listOf(item1, item2),
+            statusFilters = setOf(DownloadFilterStatus.FAILED),
+            userToggledGroups = emptyMap(),
+            zoneId = zone,
+            clock = { nowMillis }
+        )
+
+        assertEquals(1, groups.size)
+        assertEquals("Today, 2:00 PM - 3:00 PM", groups[0].title)
+        assertEquals(1, groups[0].items.size)
+        assertEquals(2L, groups[0].items[0].id)
+    }
+
+    @Test
+    fun `toggleHourGroupExpansion in viewModel toggles group expansion state`() = runTest {
+        val id1 = repo.enqueue(
+            sourcePageUrl = "https://example.com",
+            mediaUrl = "https://example.com/1.mp4",
+            fileName = "1.mp4",
+            mimeType = "video/mp4",
+            mediaType = MediaType.VIDEO
+        )
+        testScheduler.advanceUntilIdle()
+
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.groupedDownloads.collect()
+        }
+
+        testScheduler.advanceUntilIdle()
+        val groups = viewModel.groupedDownloads.value
+        assertEquals(1, groups.size)
+        val hourStart = groups[0].hourStartEpochMillis
+        assertTrue(groups[0].isExpanded)
+
+        // Toggle to collapse
+        viewModel.toggleHourGroupExpansion(hourStart)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.groupedDownloads.value[0].isExpanded)
+
+        // Toggle back to expand
+        viewModel.toggleHourGroupExpansion(hourStart)
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.groupedDownloads.value[0].isExpanded)
+
+        job.cancel()
     }
 }
 
