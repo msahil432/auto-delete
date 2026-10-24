@@ -140,6 +140,16 @@ fun DownloadItemCard(
                         )
                     }
                 }
+                item.transcodeStatus == TranscodeStatus.FAILED && !item.errorMessage.isNullOrBlank() -> {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = item.errorMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 else -> { /* No progress bar for completed/queued/cancelled */ }
             }
 
@@ -207,8 +217,16 @@ private fun formatSubtitle(item: DownloadItem): String {
     val sizeText = when {
         item.transcodeStatus == TranscodeStatus.COMPLETED && item.originalSizeBytes > 0 && item.compressedSizeBytes > 0 ->
             "${formatFileSize(item.originalSizeBytes)} → ${formatFileSize(item.compressedSizeBytes)} (h265)"
+        item.transcodeStatus == TranscodeStatus.ALREADY_H265 && item.totalBytes > 0 ->
+            "${formatFileSize(item.totalBytes)} (Already H.265)"
+        item.transcodeStatus == TranscodeStatus.SKIPPED_LARGER && item.originalSizeBytes > 0 && item.compressedSizeBytes > 0 ->
+            "${formatFileSize(item.originalSizeBytes)} (Kept original, H.265 was larger: ${formatFileSize(item.compressedSizeBytes)})"
+        item.transcodeStatus == TranscodeStatus.SKIPPED_LARGER && item.totalBytes > 0 ->
+            "${formatFileSize(item.totalBytes)} (Kept original, H.265 was larger)"
         item.transcodeStatus == TranscodeStatus.TRANSCODING ->
             "${formatFileSize(item.totalBytes)} (transcoding…)"
+        item.transcodeStatus == TranscodeStatus.FAILED && item.totalBytes > 0 ->
+            "${formatFileSize(item.totalBytes)} (H.265 failed, kept original)"
         item.totalBytes > 0 -> formatFileSize(item.totalBytes)
         item.downloadedBytes > 0 -> formatFileSize(item.downloadedBytes)
         else -> item.mediaType.name.replace("_", " ")

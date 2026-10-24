@@ -57,6 +57,10 @@ class HlsMergeWorker(
             }
             val outputFile = File(downloadsDir, cleanName)
 
+            if (outputFile.exists()) {
+                outputFile.delete()
+            }
+
             // Track time processed via FFmpegKit statistics callback
             FFmpegKitConfig.enableStatisticsCallback { statistics ->
                 val timeMs = statistics.time.toLong()
@@ -71,28 +75,92 @@ class HlsMergeWorker(
                 }
             }
 
-            // Remux HLS stream directly to MP4 container without re-encoding
-            val command = "-y -i \"$m3u8Url\" -c copy -bsf:a aac_adtstoasc \"${outputFile.absolutePath}\""
-            val session = FFmpegKit.execute(command)
-            val returnCode = session.returnCode
+            // 1. Check if the HLS stream is already encoded in H.265
+            val isAlreadyH265 = VideoCodecDetector.isH265Stream(m3u8Url)
 
-            if (ReturnCode.isSuccess(returnCode)) {
-                val fileSize = outputFile.length()
-                repo.markCompleted(downloadId, outputFile.absolutePath, fileSize)
-                H265TranscodeWorker.scheduleNextTranscodeIfAvailable(appContext)
-                Breadcrumbs.record(
-                    category = Breadcrumbs.CAT_DOWNLOADER,
-                    message = "HLS merge completed",
-                    data = mapOf("downloadId" to downloadId, "fileSize" to fileSize)
-                )
-                MediaDownloadWorker.scheduleNextIfAvailable(appContext)
-                Result.success()
+            if (isAlreadyH265) {
+                // Already H.265: Remux directly with stream copy
+                val command = "-y -i \"$m3u8Url\" -c copy -bsf:a aac_adtstoasc \"${outputFile.absolutePath}\""
+                val session = FFmpegKit.execute(command)
+                val returnCode = session.returnCode
+
+                if (ReturnCode.isSuccess(returnCode) && outputFile.exists() && outputFile.length() > 0) {
+                    val fileSize = outputFile.length()
+                    repo.markHlsCompleted(
+                        id = downloadId,
+                        localFilePath = outputFile.absolutePath,
+                        totalBytes = fileSize,
+                        transcodeStatus = com.msahil432.multitool.data.TranscodeStatus.ALREADY_H265
+                    )
+                    Breadcrumbs.record(
+                        category = Breadcrumbs.CAT_DOWNLOADER,
+                        message = "HLS merge completed (already H.265, copy only)",
+                        data = mapOf("downloadId" to downloadId, "fileSize" to fileSize)
+                    )
+                    H265TranscodeWorker.scheduleNextTranscodeIfAvailable(appContext)
+                    MediaDownloadWorker.scheduleNextIfAvailable(appContext)
+                    Result.success()
+                } else {
+                    val errorMsg = "FFmpeg returned code $returnCode, state ${session.state}"
+                    repo.markFailed(downloadId, errorMsg)
+                    Sentry.captureMessage("HLS merge failed: $errorMsg: ${session.failStackTrace}")
+                    MediaDownloadWorker.scheduleNextIfAvailable(appContext)
+                    Result.failure()
+                }
             } else {
-                val errorMsg = "FFmpeg returned code $returnCode, state ${session.state}"
-                repo.markFailed(downloadId, errorMsg)
-                Sentry.captureMessage("HLS merge failed: $errorMsg: ${session.failStackTrace}")
-                MediaDownloadWorker.scheduleNextIfAvailable(appContext)
-                Result.failure()
+                // 4. While the HLS merge worker is merging files, transcode the video to H265 as part of the same
+                val transcodeCommand = "-y -i \"$m3u8Url\" -c:v hevc_mediacodec -c:a copy -tag:v hvc1 -bsf:a aac_adtstoasc \"${outputFile.absolutePath}\""
+                val session = FFmpegKit.execute(transcodeCommand)
+                val returnCode = session.returnCode
+
+                if (ReturnCode.isSuccess(returnCode) && outputFile.exists() && outputFile.length() > 0) {
+                    val fileSize = outputFile.length()
+                    repo.markHlsCompleted(
+                        id = downloadId,
+                        localFilePath = outputFile.absolutePath,
+                        totalBytes = fileSize,
+                        transcodeStatus = com.msahil432.multitool.data.TranscodeStatus.COMPLETED
+                    )
+                    Breadcrumbs.record(
+                        category = Breadcrumbs.CAT_DOWNLOADER,
+                        message = "HLS merge and H265 transcode completed",
+                        data = mapOf("downloadId" to downloadId, "fileSize" to fileSize)
+                    )
+                    H265TranscodeWorker.scheduleNextTranscodeIfAvailable(appContext)
+                    MediaDownloadWorker.scheduleNextIfAvailable(appContext)
+                    Result.success()
+                } else {
+                    // Transcode failed: Fall back to remuxing with -c copy so the user doesn't lose the download
+                    if (outputFile.exists()) outputFile.delete()
+                    val fallbackCommand = "-y -i \"$m3u8Url\" -c copy -bsf:a aac_adtstoasc \"${outputFile.absolutePath}\""
+                    val fallbackSession = FFmpegKit.execute(fallbackCommand)
+
+                    if (ReturnCode.isSuccess(fallbackSession.returnCode) && outputFile.exists() && outputFile.length() > 0) {
+                        val fileSize = outputFile.length()
+                        val transcodeErrMsg = "H.265 transcode failed (code $returnCode), preserved original stream"
+                        repo.markHlsCompleted(
+                            id = downloadId,
+                            localFilePath = outputFile.absolutePath,
+                            totalBytes = fileSize,
+                            transcodeStatus = com.msahil432.multitool.data.TranscodeStatus.FAILED,
+                            errorMessage = transcodeErrMsg
+                        )
+                        Breadcrumbs.record(
+                            category = Breadcrumbs.CAT_DOWNLOADER,
+                            message = "HLS transcode failed, fallback copy succeeded",
+                            data = mapOf("downloadId" to downloadId, "fileSize" to fileSize)
+                        )
+                        H265TranscodeWorker.scheduleNextTranscodeIfAvailable(appContext)
+                        MediaDownloadWorker.scheduleNextIfAvailable(appContext)
+                        Result.success()
+                    } else {
+                        val errorMsg = "FFmpeg HLS transcode and fallback failed with code $returnCode"
+                        repo.markFailed(downloadId, errorMsg)
+                        Sentry.captureMessage("HLS merge failed: $errorMsg: ${session.failStackTrace}")
+                        MediaDownloadWorker.scheduleNextIfAvailable(appContext)
+                        Result.failure()
+                    }
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "HLS merge failed for downloadId=$downloadId", e)

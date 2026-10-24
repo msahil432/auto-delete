@@ -279,18 +279,87 @@ class DownloadRepository(
     /** Returns the count of actively transcoding downloads. */
     suspend fun transcodingCount(): Int = dao.getTranscodingCount()
 
+    /** Returns the ID of an actively transcoding download, or null if none is running. */
+    suspend fun getActivelyTranscodingId(): Long? = dao.getActivelyTranscodingId()
+
     /** Marks a download as actively transcoding to H.265. */
     suspend fun markTranscodeStarted(id: Long) {
-        dao.updateTranscodeStatus(id, TranscodeStatus.TRANSCODING, clock())
+        dao.updateTranscodeStatus(id, TranscodeStatus.TRANSCODING, errorMessage = null, now = clock())
     }
 
     /** Marks a download as successfully transcoded with compressed size and new file path. */
     suspend fun markTranscodeCompleted(id: Long, originalBytes: Long, compressedBytes: Long, newPath: String) {
-        dao.updateTranscodeResult(id, TranscodeStatus.COMPLETED, originalBytes, compressedBytes, newPath, clock())
+        dao.updateTranscodeResult(id, TranscodeStatus.COMPLETED, originalBytes, compressedBytes, newPath, errorMessage = null, now = clock())
     }
 
-    /** Marks a download's transcode as failed, preserving the original file. */
-    suspend fun markTranscodeFailed(id: Long) {
-        dao.updateTranscodeStatus(id, TranscodeStatus.FAILED, clock())
+    /** Marks a download's transcode as skipped because the file is already encoded in H.265/HEVC. */
+    suspend fun markTranscodeSkippedAlreadyH265(id: Long, originalBytes: Long) {
+        val path = dao.getDownloadById(id)?.localFilePath ?: ""
+        dao.updateTranscodeResult(id, TranscodeStatus.ALREADY_H265, originalBytes, originalBytes, path, errorMessage = null, now = clock())
+    }
+
+    /** Marks a download's transcode as skipped because the transcoded file was larger than the original. */
+    suspend fun markTranscodeSkippedLarger(id: Long, originalBytes: Long, compressedBytes: Long) {
+        dao.updateTranscodeSkippedLarger(id, originalBytes, compressedBytes, clock())
+    }
+
+    /** Marks a download's transcode as failed, preserving the original file and recording the error message. */
+    suspend fun markTranscodeFailed(id: Long, errorMessage: String? = null) {
+        dao.updateTranscodeStatus(id, TranscodeStatus.FAILED, errorMessage = errorMessage, now = clock())
+    }
+
+    /**
+     * Marks an HLS merge download as completed successfully with explicit transcode status.
+     */
+    suspend fun markHlsCompleted(
+        id: Long,
+        localFilePath: String,
+        totalBytes: Long,
+        transcodeStatus: TranscodeStatus,
+        errorMessage: String? = null
+    ) {
+        try {
+            dao.getDownloadById(id)?.let { item ->
+                dao.update(
+                    item.copy(
+                        status = DownloadStatus.COMPLETED,
+                        localFilePath = localFilePath,
+                        progressPercent = 100,
+                        downloadedBytes = totalBytes,
+                        totalBytes = totalBytes,
+                        originalSizeBytes = if (item.originalSizeBytes <= 0L) totalBytes else item.originalSizeBytes,
+                        compressedSizeBytes = if (transcodeStatus == TranscodeStatus.COMPLETED) totalBytes else -1L,
+                        transcodeStatus = transcodeStatus,
+                        errorMessage = errorMessage,
+                        updatedAt = clock()
+                    )
+                )
+                Breadcrumbs.record(
+                    category = Breadcrumbs.CAT_DOWNLOADER,
+                    message = "HLS download completed",
+                    data = mapOf(
+                        "id" to id,
+                        "bytes" to totalBytes,
+                        "path" to localFilePath,
+                        "transcodeStatus" to transcodeStatus.name
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+        }
+    }
+
+    /** Resets any orphaned TRANSCODING downloads back to PENDING. */
+    suspend fun resetOrphanedTranscodes(): Int {
+        val count = dao.resetOrphanedTranscodes(clock())
+        if (count > 0) {
+            Breadcrumbs.record(
+                category = Breadcrumbs.CAT_DOWNLOADER,
+                message = "Reset orphaned transcode jobs to PENDING",
+                data = mapOf("count" to count)
+            )
+        }
+        return count
     }
 }

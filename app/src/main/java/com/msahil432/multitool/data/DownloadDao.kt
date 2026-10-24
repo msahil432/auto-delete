@@ -87,10 +87,14 @@ interface DownloadDao {
     @Query("SELECT COUNT(*) FROM downloads WHERE transcodeStatus = 'TRANSCODING'")
     suspend fun getTranscodingCount(): Int
 
-    /** Updates transcode state fields for a given download. */
+    /** Returns the ID of an actively transcoding download, or null if none is running. */
+    @Query("SELECT id FROM downloads WHERE transcodeStatus = 'TRANSCODING' LIMIT 1")
+    suspend fun getActivelyTranscodingId(): Long?
+
+    /** Updates transcode state fields and optional error message for a given download. */
     @Query("""
         UPDATE downloads SET transcodeStatus = :status, originalSizeBytes = :originalBytes,
-        compressedSizeBytes = :compressedBytes, localFilePath = :filePath, updatedAt = :now
+        compressedSizeBytes = :compressedBytes, localFilePath = :filePath, errorMessage = :errorMessage, updatedAt = :now
         WHERE id = :id
     """)
     suspend fun updateTranscodeResult(
@@ -99,10 +103,28 @@ interface DownloadDao {
         originalBytes: Long,
         compressedBytes: Long,
         filePath: String,
+        errorMessage: String?,
         now: Long
     )
 
-    /** Updates only the transcode status and timestamp for a download. */
-    @Query("UPDATE downloads SET transcodeStatus = :status, updatedAt = :now WHERE id = :id")
-    suspend fun updateTranscodeStatus(id: Long, status: TranscodeStatus, now: Long)
+    /** Updates the transcode status, error message, and timestamp for a download. */
+    @Query("UPDATE downloads SET transcodeStatus = :status, errorMessage = :errorMessage, updatedAt = :now WHERE id = :id")
+    suspend fun updateTranscodeStatus(id: Long, status: TranscodeStatus, errorMessage: String?, now: Long)
+
+    /** Updates download when transcode is discarded because transcoded file was larger, preserving original file path. */
+    @Query("""
+        UPDATE downloads SET transcodeStatus = 'SKIPPED_LARGER', originalSizeBytes = :originalBytes,
+        compressedSizeBytes = :compressedBytes, updatedAt = :now
+        WHERE id = :id
+    """)
+    suspend fun updateTranscodeSkippedLarger(
+        id: Long,
+        originalBytes: Long,
+        compressedBytes: Long,
+        now: Long
+    )
+
+    /** Resets any orphaned TRANSCODING downloads back to PENDING. */
+    @Query("UPDATE downloads SET transcodeStatus = 'PENDING', updatedAt = :now WHERE transcodeStatus = 'TRANSCODING'")
+    suspend fun resetOrphanedTranscodes(now: Long): Int
 }

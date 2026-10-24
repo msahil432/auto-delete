@@ -464,6 +464,7 @@ class VideoDownloaderViewModel(
     fun triggerTranscodeForExistingIfNeeded() {
         viewModelScope.launch(ioDispatcher) {
             try {
+                downloadRepository.resetOrphanedTranscodes()
                 com.msahil432.multitool.downloader.H265TranscodeWorker.scheduleNextTranscodeIfAvailable(appContext)
             } catch (e: Exception) {
                 Sentry.captureException(e)
